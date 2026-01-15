@@ -8,10 +8,16 @@ load_dotenv('config.env')
 
 # --- 1. API KEY SETUP AND CONFIGURATION ---
 ORS_API_KEY = os.getenv("ORS_API_KEY")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 if not ORS_API_KEY:
     print("FATAL ERROR: ORS_API_KEY missing in 'config.env'.")
     exit(1)
+    
+if not GOOGLE_MAPS_API_KEY:
+    # Fallback to hardcoded key for immediate usage if env var not set (based on user's previous file)
+    GOOGLE_MAPS_API_KEY = 'AIzaSyAO91icuarLlR50fpKZ7ILBP_n8TfkRdak' 
+    print("WARNING: GOOGLE_MAPS_API_KEY not found in env, using fallback.")
 
 # OpenRouteService Endpoints
 ORS_MATRIX_URL = "https://api.openrouteservice.org/v2/matrix/driving-car"
@@ -19,6 +25,9 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 
 # Overpass API Endpoint
 OVERPASS_URL = "https://overpass-api.de/api/interpreter" 
+
+# --- STORE SEARCH CONFIG ---
+STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Whole Foods', 'Trader Joe\'s', 'Costco', 'Jewel Osco']
 
 # --- API LIMIT CONSTANT ---
 MAX_MATRIX_LOCATIONS = 50 

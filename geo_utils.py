@@ -4,6 +4,9 @@ import time
 from typing import Dict, List, Tuple, Union, Any, Optional
 import config
 
+import googlemaps
+from shapely.geometry import shape, Point
+
 # --- HELPER FUNCTION: Get the GeoJSON Bounding Box ---
 def get_geojson_bounding_box(geometry: Dict) -> Tuple[float, float, float, float]:
     """Calculates the bounding box from Isochrone geometry."""
@@ -48,8 +51,8 @@ def get_travel_isochrone(start_location: Tuple[float, float], time_limit_seconds
         response = requests.post(config.ORS_ISOCHRONE_URL, headers=headers, json=payload, timeout=15)
         
         # Debug: Print response details
-        print(f"Request URL: {config.ORS_ISOCHRONE_URL}")
-        print(f"Status Code: {response.status_code}")
+        # print(f"Request URL: {config.ORS_ISOCHRONE_URL}")
+        # print(f"Status Code: {response.status_code}")
         
         if response.status_code != 200:
             print(f"Response Text: {response.text[:200]}")
@@ -69,9 +72,62 @@ def get_travel_isochrone(start_location: Tuple[float, float], time_limit_seconds
         print(f"Error fetching Isochrone data: {e}")
         return None
 
-# --- FUNCTION: Find Eligible Stores ---
+# --- FUNCTION: Find Eligible Stores (Google Places) ---
+def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[float, float]) -> Dict[str, Tuple[float, float]]:
+    """Find grocery stores within isochrone using Google Places API."""
+    print(f"\nSearching for stores via Google Places...")
+    
+    gmaps = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
+    iso_polygon = shape(isochrone_geometry)
+    
+    stores = {}
+    
+    # We search using a large radius to cover the isochrone
+    # Google Places Max Radius is 50000 meters
+    radius = 50000  
+    
+    print(f"Searching for: {', '.join(config.STORE_KEYWORDS)}...")
+    
+    for keyword in config.STORE_KEYWORDS:
+        try:
+            results = gmaps.places_nearby(
+                location=center_point,
+                radius=radius,
+                keyword=keyword
+            )
+            
+            # Filter results by isochrone shape
+            count_for_keyword = 0
+            for place in results.get('results', []):
+                lat = place['geometry']['location']['lat']
+                lng = place['geometry']['location']['lng']
+                point = Point(lng, lat)
+                
+                # Check if inside isochrone
+                if iso_polygon.contains(point):
+                    name = place['name']
+                    # Ensure name uniqueness
+                    original_name = name
+                    count = 1
+                    while name in stores:
+                        name = f"{original_name} {count}"
+                        count += 1
+                        
+                    stores[name] = (lat, lng)
+                    count_for_keyword += 1
+                    
+            # print(f"  Found {count_for_keyword} {keyword}s in range.")
+            
+        except Exception as e:
+            print(f"Error searching for {keyword}: {e}")
+
+    print(f"Found {len(stores)} eligible store(s).")
+    return stores
+
+# --- FUNCTION: Find Eligible Stores (Legacy Overpass) ---
 def find_eligible_stores_overpass(bbox: Tuple[float, float, float, float]) -> Dict[str, Tuple[float, float]]:
     """Find grocery stores within bounding box using Overpass API."""
+    # ... (Kept for reference or fallback if needed)
     print(f"\nSearching for stores within area...")
     
     min_lat, min_lon, max_lat, max_lon = bbox

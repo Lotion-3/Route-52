@@ -94,7 +94,8 @@ if __name__ == "__main__":
     bbox = geo_utils.get_geojson_bounding_box(isochrone_geometry)
     
     # Step 5: Find stores
-    STORE_LOCATIONS = geo_utils.find_eligible_stores_overpass(bbox)
+    # bbox is no longer strictly needed for google places search, but we use the user location as center
+    STORE_LOCATIONS = geo_utils.find_eligible_stores_google(isochrone_geometry, USER_LOC)
     
     # Filter to closest stores
     if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
