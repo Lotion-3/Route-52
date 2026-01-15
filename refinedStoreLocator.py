@@ -3,11 +3,11 @@ from googlemaps import Client as GoogleMapsClient
 from shapely.geometry import shape, Point
 
 # --- CONFIGURATION ---
-ORS_KEY = 'YOUR_ORS_API_KEY'
-GOOGLE_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'
-START_COORDS = [-122.4194, 37.7749]  # [Longitude, Latitude] (San Francisco)
-TRAVEL_TIME_SEC = 600                # 10 minutes
-TRAVEL_MODE = 'foot-walking'         # options: 'driving-car', 'cycling-regular', etc.
+ORS_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjcxNjJmZGM4Yzg2YzQwMTM4MDU4YmExZGQ5ODdlOTdjIiwiaCI6Im11cm11cjY0In0='
+GOOGLE_KEY = 'AIzaSyAO91icuarLlR50fpKZ7ILBP_n8TfkRdak'
+START_COORDS = [-86.1151735, 39.9651798]  # [Longitude, Latitude]
+TRAVEL_TIME_SEC = 3600                
+TRAVEL_MODE = 'driving-car'         # options: 'driving-car', 'cycling-regular', etc.
 
 # --- 1. GENERATE ISOCHRONE ---
 ors_client = openrouteservice.Client(key=ORS_KEY)
@@ -15,8 +15,7 @@ iso_geojson = ors_client.isochrones(
     locations=[START_COORDS],
     profile=TRAVEL_MODE,
     range=[TRAVEL_TIME_SEC],
-    attributes=['total_pop'],
-    format='geojson'
+    attributes=['total_pop']
 )
 
 # Convert to a Shapely polygon for spatial filtering
@@ -32,7 +31,7 @@ radius = 1500  # Adjust based on your isochrone size
 
 # Define types for grocery and retail
 # Google uses specific types: https://developers.google.com/maps/documentation/places/web-service/supported_types
-place_types = ['grocery_or_supermarket', 'department_store', 'clothing_store']
+place_types = ['grocery_or_supermarket', 'department_store']
 found_stores = []
 
 for p_type in place_types:
