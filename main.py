@@ -1,120 +1,127 @@
-
 import sys
 import config
 import data_loader
 import meal_planner
 import geo_utils
 import price_manager
+import price_managerOG
 import optimizer
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+
+def get_user_inputs():
+    print("=" * 60)
+    print("USER PREFERENCES SETUP")
+    print("=" * 60)
+    
+    # 1. Address to Coordinate Conversion
+    geolocator = Nominatim(user_agent="basket_buddy_planner")
+    user_loc = None
+    
+    while user_loc is None:
+        address = input("Enter your Address (e.g., 100 Monument Circle, Indianapolis, IN): ").strip()
+        if not address:
+            print("Using default coordinates (Indianapolis).")
+            user_loc = (40.0033, -86.1366)
+            break
+            
+        try:
+            print(f"🌍 Locating '{address}'...")
+            location = geolocator.geocode(address)
+            if location:
+                user_loc = (location.latitude, location.longitude)
+                print(f"✅ Found: {location.address}")
+                print(f"📍 Coordinates: {user_loc}")
+            else:
+                print("❌ Address not found. Please try being more specific (include City/State).")
+        except GeocoderTimedOut:
+            print("⏳ Service timed out. Please try again.")
+
+    # 2. Shopping Time Input
+    try:
+        time_input = input("\nShopping time available in hours (default 3): ").strip()
+        shop_hours = float(time_input) if time_input else 3.0
+    except ValueError:
+        print("Invalid format. Using 3.0 hours.")
+        shop_hours = 3.0
+
+    # 3. Calorie Input
+    try:
+        cal_input = input("Daily calorie target (default 2000): ").strip()
+        cal_target = int(cal_input) if cal_input else 2000
+    except ValueError:
+        print("Invalid format. Using 2000 kcal.")
+        cal_target = 2000
+    
+    # 4. Developer mode or gemini
+    # 3. Calorie Input
+    try:
+        dev_input = input("Fake data(1) or Real data(0)").strip()
+        dev_mode = int(dev_input) if dev_input else 1
+    except ValueError:
+        print("Invalid format. Using 2000 kcal.")
+        dev_mode = 1
+        
+    return user_loc, shop_hours, cal_target, dev_mode
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
+    # Get Dynamic Inputs from Address
+    USER_LOC, SHOP_HOURS, CAL_TARGET, DEV_MODE = get_user_inputs()
+    MAX_TIME_SECS = SHOP_HOURS * 3600
+
+    print("\n" + "=" * 60)
+    print("INITIALIZING PLANNER")
     print("=" * 60)
-    print("MEAL PLANNER & GROCERY OPTIMIZER")
-    print("=" * 60)
-    print(f"Location: {config.USER_START_LOCATION}")
-    print(f"Shopping time available: {config.SHOPPING_TIME_HOURS} hours")
-    print(f"Nutrition target: {config.DAILY_CALORIE_TARGET:,} calories/day")
+    print(f"Start Point: {USER_LOC}")
+    print(f"Budgeted Time: {SHOP_HOURS} hours")
+    print(f"Daily Calories: {CAL_TARGET}")
     print("=" * 60)
     
     # Step 1: Load available vegetables
     available_veggies = data_loader.load_available_vegetables()
-    if not available_veggies:
-        print("FATAL: No vegetables available for meal planning.")
-        sys.exit(1)
     
     # Step 2: Load and filter recipes
     all_recipes = data_loader.load_recipes()
     filtered_recipes = meal_planner.filter_recipes_by_available_vegetables(all_recipes, available_veggies)
     
-    if not filtered_recipes:
-        print("FATAL: No recipes available with the current vegetables.")
-        sys.exit(1)
-    
     # Step 3: Create weekly meal plan
     meal_plan, ingredient_quantities = meal_planner.create_weekly_meal_plan(filtered_recipes, available_veggies)
     
-    if not meal_plan:
-        print("FATAL: Could not create meal plan.")
-        sys.exit(1)
-    
-    # Display meal plan
-    print("\n" + "=" * 60)
-    print("WEEKLY MEAL PLAN")
-    print("=" * 60)
-    for meal in meal_plan:
-        print(f"{meal['day']} - {meal['meal_type']}:")
-        print(f"  Recipe: {meal['recipe']}")
-        print(f"  Calories: {meal['calories']:.0f}, Protein: {meal['protein']:.1f}g")
-        print(f"  Ingredients: {', '.join(meal['ingredients'][:3])}...")
-        print()
-    
-    print("\n" + "=" * 60)
-    print("INGREDIENTS NEEDED")
-    print("=" * 60)
-    for veggie, quantity in ingredient_quantities.items():
-        print(f"  {veggie.title()}: {quantity} units")
-    
     # Step 4: Calculate reachable area
-    ONE_WAY_TIME_SECONDS = int(config.MAX_TIME_SECONDS / 4)
-    isochrone_geometry = geo_utils.get_travel_isochrone(config.USER_START_LOCATION, ONE_WAY_TIME_SECONDS)
-    
-    if not isochrone_geometry:
-        print("FATAL: Could not calculate reachable area.")
-        sys.exit(1)
-    
+    ONE_WAY_TIME_SECONDS = int(MAX_TIME_SECS / 4)
+    isochrone_geometry = geo_utils.get_travel_isochrone(USER_LOC, ONE_WAY_TIME_SECONDS)
     bbox = geo_utils.get_geojson_bounding_box(isochrone_geometry)
     
     # Step 5: Find stores
     STORE_LOCATIONS = geo_utils.find_eligible_stores_overpass(bbox)
     
-    if not STORE_LOCATIONS:
-        print("FATAL: No stores found in reachable area.")
-        sys.exit(1)
-    
-    # Filter stores if needed
+    # Filter to closest stores
     if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
-        print(f"Filtering stores to {config.MAX_STORES_TO_USE} closest...")
         distances = []
-        start_lat, start_lon = config.USER_START_LOCATION
         for name, (lat, lon) in STORE_LOCATIONS.items():
-            dist_sq = (lat - start_lat)**2 + (lon - start_lon)**2
+            dist_sq = (lat - USER_LOC[0])**2 + (lon - USER_LOC[1])**2
             distances.append((dist_sq, name, (lat, lon)))
         distances.sort(key=lambda x: x[0])
         STORE_LOCATIONS = {name: loc for _, name, loc in distances[:config.MAX_STORES_TO_USE]}
     
-    print(f"\nStores for optimization: {len(STORE_LOCATIONS)}")
-    
     # Step 6: Get travel times
-    all_coords = [config.USER_START_LOCATION] + list(STORE_LOCATIONS.values())
+    all_coords = [USER_LOC] + list(STORE_LOCATIONS.values())
     location_names = ["Start"] + list(STORE_LOCATIONS.keys())
-    
-    print("\nGetting travel times...")
     matrix_response = geo_utils.get_distance_matrix(all_coords)
-    
-    if not matrix_response:
-        print("FATAL: Could not get travel times.")
-        sys.exit(1)
-    
     durations_matrix = geo_utils.process_matrix_result(matrix_response)
-    if not durations_matrix:
-        print("FATAL: No travel time data.")
-        sys.exit(1)
     
-    # Step 7: Get prices
-    price_database, removed_items, shopping_list = price_manager.fetch_grocery_prices(
+    # Step 7: Get prices via Gemini Grounding
+    if (DEV_MODE):
+        price_path = price_managerOG
+    else:
+        price_path = price_manager
+    price_database, removed_items, shopping_list = price_path.fetch_grocery_prices(
         ingredient_quantities, list(STORE_LOCATIONS.keys())
     )
     
-    if not price_database or not shopping_list:
-        print("FATAL: Could not generate prices.")
-        sys.exit(1)
-    
     # Step 8: Optimize shopping
-    print("\n" + "=" * 60)
-    print("OPTIMIZING GROCERY SHOPPING")
-    print("=" * 60)
-    
+    config.MAX_TIME_SECONDS = MAX_TIME_SECS 
     optimal_route, item_cost, total_time_seconds = optimizer.find_optimal_store(
         durations_matrix, price_database, location_names, shopping_list
     )
@@ -125,28 +132,8 @@ if __name__ == "__main__":
     print("=" * 60)
     
     if optimal_route:
-        print(f"✅ Recommended Route: Start → {' → '.join(optimal_route)} → Home")
-        print(f"💰 Estimated Cost: ${item_cost:.2f}")
-        print(f"⏱️  Total Time: {int(total_time_seconds/60)}m {int(total_time_seconds%60)}s")
-        
-        # Show what to buy where
-        print(f"\n📋 Shopping List Breakdown:")
-        for item_data in shopping_list:
-            item_name = item_data["name"]
-            quantity = item_data["qty"]
-            best_price = float('inf')
-            best_store = None
-            
-            for store in optimal_route:
-                price = price_database[store].get(item_name, float('inf'))
-                if price < best_price:
-                    best_price = price
-                    best_store = store
-            
-            if best_store:
-                print(f"  {quantity} × {item_name.title()}: ${best_price:.2f} each at {best_store}")
+        print(f"✅ Route: Start → {' → '.join(optimal_route)} → Home")
+        print(f"💰 Cost: ${item_cost:.2f}")
+        print(f"⏱️  Time: {int(total_time_seconds/60)}m {int(total_time_seconds%60)}s")
     else:
-        print("❌ No feasible shopping route found within time constraint.")
-        print("Try increasing your shopping time or reducing the number of ingredients.")
-    
-    print("=" * 60)
+        print("❌ No route found. Try increasing shopping time or simplifying the list.")
