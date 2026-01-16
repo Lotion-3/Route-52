@@ -73,7 +73,7 @@ def get_travel_isochrone(start_location: Tuple[float, float], time_limit_seconds
         return None
 
 # --- FUNCTION: Find Eligible Stores (Google Places) ---
-def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[float, float]) -> Dict[str, Tuple[float, float]]:
+def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[float, float]) -> Tuple[Dict[str, Tuple[float, float]], Dict[str, str]]:
     """Find grocery stores within isochrone using Google Places API."""
     print(f"\nSearching for stores via Google Places...")
     
@@ -81,6 +81,7 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
     iso_polygon = shape(isochrone_geometry)
     
     stores = {}
+    store_addresses = {}
     
     # We search using a large radius to cover the isochrone
     # Google Places Max Radius is 50000 meters
@@ -129,6 +130,7 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
                         count += 1
                         
                     stores[name] = (lat, lng)
+                    store_addresses[name] = place.get('vicinity', 'Unknown Address')
                     count_for_keyword += 1
                     
             # print(f"  Found {count_for_keyword} {keyword}s in range.")
@@ -137,7 +139,7 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
             print(f"Error searching for {keyword}: {e}")
 
     print(f"Found {len(stores)} eligible store(s).")
-    return stores
+    return stores, store_addresses
 
 # --- FUNCTION: Find Eligible Stores (Legacy Overpass) ---
 def find_eligible_stores_overpass(bbox: Tuple[float, float, float, float]) -> Dict[str, Tuple[float, float]]:
@@ -236,3 +238,61 @@ def get_city_for_store(store_name: str) -> str:
             return city
     
     return "Indianapolis"
+
+# --- FUNCTION: Filter to Unique Chains ---
+def filter_unique_closest_chains(
+    stores: Dict[str, Tuple[float, float]], 
+    addresses: Dict[str, str], 
+    user_loc: Tuple[float, float]
+) -> Tuple[Dict[str, Tuple[float, float]], Dict[str, str]]:
+    """
+    Filters the list of stores to keep only the closest single location for each chain.
+    """
+    print(f"\nFiltering for unique closest chains...")
+    
+    unique_stores = {}
+    unique_addresses = {}
+    
+    # Pre-calculate distances for all stores
+    store_distances = []
+    for name, loc in stores.items():
+        dist_sq = (loc[0] - user_loc[0])**2 + (loc[1] - user_loc[1])**2
+        store_distances.append({
+            "name": name,
+            "loc": loc,
+            "address": addresses.get(name, "Unknown"),
+            "dist": dist_sq
+        })
+    
+    # Sort ALL stores by distance first
+    store_distances.sort(key=lambda x: x["dist"])
+    
+    # Track which chains we have already found a "winner" for
+    found_chains = set()
+    
+    for entry in store_distances:
+        # Check which chain this store belongs to
+        original_name = entry["name"]
+        
+        # We need to match against the base Keywords (e.g. "Walmart" matches "Walmart Supercenter 1")
+        matched_result = None
+        for keyword in config.STORE_KEYWORDS:
+            if keyword.lower() in original_name.lower():
+                matched_result = keyword
+                break
+        
+        if matched_result:
+            # It belongs to a known chain
+            if matched_result not in found_chains:
+                # This is the closest one for this chain!
+                unique_stores[original_name] = entry["loc"]
+                unique_addresses[original_name] = entry["address"]
+                found_chains.add(matched_result)
+        else:
+            # It's a store that didn't match our keywords (maybe legacy Overpass?)
+            # Or a generic "Store". Keep it saferly if it's unique name, but usually we only care about keywords.
+            unique_stores[original_name] = entry["loc"]
+            unique_addresses[original_name] = entry["address"]
+            
+    print(f"Filtered {len(stores)} locations -> {len(unique_stores)} unique chains.")
+    return unique_stores, unique_addresses

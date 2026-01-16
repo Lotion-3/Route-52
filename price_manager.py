@@ -41,7 +41,8 @@ class GroceryPricesResponse(BaseModel):
 
 def fetch_grocery_prices(
     ingredient_quantities: Dict[str, int], 
-    store_names: List[str]
+    store_names: List[str],
+    store_addresses: Dict[str, str] = {}
 ) -> Tuple[Dict[str, Dict[str, float]], List[str], List[Dict[str, Union[str, int]]]]:
     
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -59,9 +60,11 @@ def fetch_grocery_prices(
         batch = search_items[i:i + batch_size]
         print(f"🔄 Fetching Batch {int(i/batch_size) + 1}...")
 
+        store_cols = [f"{name} ({store_addresses.get(name, 'Unknown Address')})" for name in store_names]
+        
         prompt = (f"Provide a JSON price table for grocery items. "
                   f"Group similar items together. "
-                  f"Columns are the following adresses: {', '.join(store_names)} "
+                  f"Columns are the following adresses: {', '.join(store_cols)} "
                   f"Rows are the following items: {', '.join(batch)} "
                   f"If retail price is unavailable online please leave price blank")
 

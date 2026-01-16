@@ -107,6 +107,22 @@ if __name__ == "__main__":
     
     # Step 3: Skip manual meal creation (Done by Gemini)
     
+    # Step 3: Print the meal plan
+    print("\n" + "=" * 60)
+    print("GENERATED WEEKLY MEAL PLAN")
+    print("=" * 60)
+    
+    current_day = ""
+    for meal in meal_plan:
+        if meal['day'] != current_day:
+            current_day = meal['day']
+            print(f"\n📅 {current_day.upper()}")
+            print("-" * 30)
+        
+        print(f"   • {meal['meal_type']}: {meal['recipe']} ({meal['calories']} kcal)")
+    
+    print("=" * 60)
+    
     # Step 4: Calculate reachable area
     if not ingredient_quantities:
         print("❌ Meal plan generation failed or returned no ingredients. Exiting.")
@@ -116,7 +132,10 @@ if __name__ == "__main__":
     isochrone_geometry = geo_utils.get_travel_isochrone(USER_LOC, ONE_WAY_TIME_SECONDS)
     
     # Step 5: Find stores
-    STORE_LOCATIONS = geo_utils.find_eligible_stores_google(isochrone_geometry, USER_LOC)
+    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.find_eligible_stores_google(isochrone_geometry, USER_LOC)
+    
+    # Deduplicate to unique chains
+    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, USER_LOC)
     
     # Filter to closest stores if too many found
     if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
@@ -126,6 +145,7 @@ if __name__ == "__main__":
             distances.append((dist_sq, name, (lat, lon)))
         distances.sort(key=lambda x: x[0])
         STORE_LOCATIONS = {name: loc for _, name, loc in distances[:config.MAX_STORES_TO_USE]}
+        STORE_ADDRESSES = {name: STORE_ADDRESSES[name] for name in STORE_LOCATIONS}
     
     # Step 6: Get travel times
     all_coords = [USER_LOC] + list(STORE_LOCATIONS.values())
@@ -138,13 +158,13 @@ if __name__ == "__main__":
         
     print("\n🔍 Searching for prices for all recipe ingredients...")
     price_database, removed_items, shopping_list = price_path.fetch_grocery_prices(
-        ingredient_quantities, list(STORE_LOCATIONS.keys())
+        ingredient_quantities, list(STORE_LOCATIONS.keys()), STORE_ADDRESSES
     )
     
     # Step 8: Optimize shopping
     config.MAX_TIME_SECONDS = MAX_TIME_SECS 
     
-    optimal_route, item_cost, total_time_seconds = optimizer.find_optimal_store(
+    optimal_route, item_cost, total_time_seconds, item_assignments = optimizer.find_optimal_store(
         durations_matrix, price_database, location_names, shopping_list
     )
     
@@ -157,5 +177,12 @@ if __name__ == "__main__":
         print(f"✅ Route: Start → {' → '.join(optimal_route)} → Home")
         print(f"💰 Cost: ${item_cost:.2f}")
         print(f"⏱️  Time: {int(total_time_seconds/60)}m {int(total_time_seconds%60)}s")
+        
+        print("\n🛒 SHOPPING LIST BREAKDOWN:")
+        for store in optimal_route:
+            items = item_assignments.get(store, [])
+            print(f"\n📍 {store} ({len(items)} items):")
+            for item in items:
+                print(f"   - {item}")
     else:
         print("❌ No route found within the time limit.")

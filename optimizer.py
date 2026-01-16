@@ -3,37 +3,16 @@ from typing import List, Dict, Tuple, Union, Optional
 import re
 import config
 
-# --- SHARED NORMALIZATION (Must match price_manager) ---
-def get_norm_name(name: str) -> str:
-    name = name.lower().strip()
-    name = re.split(r',', name)[0]
-    name = re.sub(r'tomatoe', 'tomato', name)
-    name = re.sub(r'atoes\b', 'ato', name)
-    name = re.sub(r's\b', '', name)
-    return name.strip()
-
-def get_unit_price(item_name: str, store_inventory: Dict[str, float]) -> float:
-    """Helper to find price in a store's specific data dump."""
-    target = get_norm_name(item_name)
-    # Check if the name exists exactly as stored
-    if item_name in store_inventory:
-        return store_inventory[item_name]
-    # Fallback to normalized search
-    for actual_key, price in store_inventory.items():
-        if get_norm_name(actual_key) == target:
-            return price
-    return float('inf')
-
 # --- CORE OPTIMIZATION FUNCTIONS ---
 def calculate_split_shopping_price(
     shopping_list: List[Dict[str, Union[str, int]]],
     store_ids: List[str], 
     price_database: Dict[str, Dict[str, float]],
     max_cost_threshold: float = float('inf')
-) -> Tuple[float, Dict[str, int]]:
+) -> Tuple[float, Dict[str, List[str]]]:
     
     total_price = 0.0
-    item_assignment_counts = {s: 0 for s in store_ids}
+    item_assignments = {s: [] for s in store_ids}
     
     for item_data in shopping_list:
         item_name = item_data["name"]
@@ -43,9 +22,10 @@ def calculate_split_shopping_price(
         
         for store_id in store_ids:
             store_inventory = price_database.get(store_id, {})
-            unit_price = get_unit_price(item_name, store_inventory)
+            # Direct lookup since keys are guaranteed to match by price_manager
+            unit_price = store_inventory.get(item_name)
             
-            if unit_price != float('inf'):
+            if unit_price is not None:
                 cost = unit_price * quantity
                 if cost < min_item_cost:
                     min_item_cost = cost
@@ -53,30 +33,31 @@ def calculate_split_shopping_price(
         
         if min_item_cost == float('inf'):
             # Item not found in ANY of the stores
-            return float('inf'), item_assignment_counts
+            return float('inf'), item_assignments
         
         total_price += min_item_cost
         
         # Optimization: Early exit if we already exceed the best known price
         if total_price > max_cost_threshold:
-            return float('inf'), item_assignment_counts
+            return float('inf'), item_assignments
             
         if best_store:
-            item_assignment_counts[best_store] += quantity
+            item_assignments[best_store].append(f"{item_name} (x{quantity})")
             
-    return total_price, item_assignment_counts
+    return total_price, item_assignments
 
 def find_optimal_store(
     durations_matrix: List[List[float]],
     price_database: Dict[str, Dict[str, float]],
     location_names: List[str],
     shopping_list: List[Dict[str, Union[str, int]]]
-) -> Tuple[List[str], float, float]:
+) -> Tuple[List[str], float, float, Dict[str, List[str]]]:
     
     start_index = location_names.index("Start")
     optimal_route = []
     min_cost = float('inf')
     best_total_time = 0.0
+    optimal_assignments = {}
     
     # Map store name to its matrix index
     name_to_idx = {name: i for i, name in enumerate(location_names)}
@@ -93,7 +74,7 @@ def find_optimal_store(
     valid_single_stores = []
     
     for store_id in store_names_only:
-        cost, _ = calculate_split_shopping_price(shopping_list, [store_id], price_database)
+        cost, assignments = calculate_split_shopping_price(shopping_list, [store_id], price_database)
         
         if cost == float('inf'):
             continue  # Store doesn't have everything
@@ -109,7 +90,8 @@ def find_optimal_store(
                 min_cost = cost
                 optimal_route = [store_id]
                 best_total_time = total_time
-                
+                optimal_assignments = assignments
+
     if optimal_route:
         print(f" -> Current Best: {optimal_route} at ${min_cost:.2f}")
     else:
@@ -118,17 +100,9 @@ def find_optimal_store(
     # -----------------------------------------------------
     # PHASE 2: PRUNING
     # -----------------------------------------------------
-    # We only want to consider stores for combinations if they offer CHEAPER prices 
-    # for at least one item compared to our best single store found so far.
-    # Note: If no single store worked, we consider all stores that have *some* items.
-    
     eligible_for_combo = []
     
     if min_cost != float('inf'):
-        # Check if store has potential savings
-        # (This is a simplified heuristic: if a store is consistently more expensive, skip it)
-        # Detailed check: A store is useful if it has ANY item cheaper than the "Best Single Store" average unit price?
-        # Actually simplest is: keep all stores that have inventory.
         eligible_for_combo = store_names_only 
     else:
         eligible_for_combo = store_names_only
@@ -146,8 +120,6 @@ def find_optimal_store(
         idx_b = name_to_idx[store_b]
         
         # 1. Travel Time Check (Start -> A -> B -> Start)
-        # Note: We check both directions (A->B and B->A) and pick the shorter one
-        
         t_start_a = durations_matrix[start_index][idx_a]
         t_a_b     = durations_matrix[idx_a][idx_b]
         t_b_start = durations_matrix[idx_b][start_index]
@@ -161,8 +133,7 @@ def find_optimal_store(
         # Use the faster driving route
         travel_time = min(route_1_time, route_2_time)
         
-        # Add Shopping Time (Overhead is incurred TWICE for 2 stores)
-        # We assume split shopping still takes same per-item time total, but 2x overhead
+        # Add Shopping Time
         shopping_time = (config.BASE_FIXOUT_OVERHEAD * 2) + (len(shopping_list) * config.TIME_PER_UNIT_SECONDS)
         
         total_time = travel_time + shopping_time
@@ -171,7 +142,7 @@ def find_optimal_store(
             continue # Skip this pair, too far
             
         # 2. Cost Check (With Early Exit)
-        cost, _ = calculate_split_shopping_price(
+        cost, assignments = calculate_split_shopping_price(
             shopping_list, 
             [store_a, store_b], 
             price_database, 
@@ -186,6 +157,7 @@ def find_optimal_store(
             else:
                 optimal_route = [store_b, store_a]
             best_total_time = total_time
+            optimal_assignments = assignments
             print(f" -> Found better combo: {optimal_route} at ${min_cost:.2f}")
 
-    return optimal_route, min_cost, best_total_time
+    return optimal_route, min_cost, best_total_time, optimal_assignments
