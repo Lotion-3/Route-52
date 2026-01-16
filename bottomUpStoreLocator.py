@@ -1,10 +1,11 @@
 import openrouteservice
 from googlemaps import Client as GoogleMapsClient
 from shapely.geometry import shape, Point
+import config
 
 # --- CONFIGURATION ---
-ORS_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjcxNjJmZGM4Yzg2YzQwMTM4MDU4YmExZGQ5ODdlOTdjIiwiaCI6Im11cm11cjY0In0='
-GOOGLE_KEY = 'AIzaSyAO91icuarLlR50fpKZ7ILBP_n8TfkRdak'
+ORS_KEY = config.ORS_API_KEY
+GOOGLE_KEY = config.GOOGLE_MAPS_API_KEY
 
 # --- INPUT & GEOCODING ---
 gmaps = GoogleMapsClient(key=GOOGLE_KEY)

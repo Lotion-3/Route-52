@@ -1,14 +1,31 @@
 import os
-import json
+import re
+import time
 from typing import Dict, List, Tuple, Union
 from google import genai
 from google.genai import types
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
+from difflib import get_close_matches
 
-# Initialize the client
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# --- 1. SHARED NORMALIZATION LOGIC ---
 
-# 1. Define a schema that avoids using a Raw Dict
+def normalize_grocery_name(name: str) -> str:
+    """Standardizes names so 'tomatoe' or 'tomatoes, diced' matches 'tomato'."""
+    name = name.lower().strip()
+    # Remove descriptors after commas
+    name = re.split(r',', name)[0]
+    # Remove common culinary adjectives
+    culinary_terms = [r'\bboiled\b', r'\bcooked\b', r'\bfrozen\b', r'\bfresh\b', r'\bdiced\b', r'\bwhole\b']
+    for term in culinary_terms:
+        name = re.sub(term, '', name)
+    # Fix spelling and plurals
+    name = re.sub(r'tomatoe', 'tomato', name)
+    name = re.sub(r'atoes\b', 'ato', name)
+    name = re.sub(r's\b', '', name)
+    return name.strip()
+
+# --- 2. GEMINI SCHEMA DEFINITIONS ---
+
 class ItemPrice(BaseModel):
     item_name: str
     price: float
@@ -20,47 +37,97 @@ class StoreInventory(BaseModel):
 class GroceryPricesResponse(BaseModel):
     stores: List[StoreInventory]
 
+# --- 3. MAIN PRICE FETCHING FUNCTION ---
+
 def fetch_grocery_prices(
     ingredient_quantities: Dict[str, int], 
     store_names: List[str]
 ) -> Tuple[Dict[str, Dict[str, float]], List[str], List[Dict[str, Union[str, int]]]]:
     
-    print("\n🔍 Searching Google for real-time prices...")
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
     
-    items_list = list(ingredient_quantities.keys())
-    # Note: Search grounding works best with a manageable number of stores
-    stores_subset = store_names[:8] 
+    # Track original names to map Gemini's output back correctly
+    normalized_to_orig = {normalize_grocery_name(k): k for k in ingredient_quantities.keys()}
+    search_items = list(normalized_to_orig.keys())
+    print(search_items)
+    price_database = {store: {} for store in store_names}
+    batch_size = 15
     
-    prompt = f"""
-    Find the current local prices for these ingredients: {', '.join(items_list)}.
-    Check these specific stores: {', '.join(stores_subset)}.
-    If exact prices aren't found, estimate based on current market rates in the Indianapolis area.
-    """
+    print(f"📦 Processing {len(search_items)} items in batches of {batch_size}...")
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                response_mime_type="application/json",
-                response_schema=GroceryPricesResponse, # Using the new List-based schema
+    for i in range(0, len(search_items), batch_size):
+        batch = search_items[i:i + batch_size]
+        print(f"🔄 Fetching Batch {int(i/batch_size) + 1}...")
+
+        prompt = (f"Provide a JSON price table for grocery items. "
+                  f"Group similar items together. "
+                  f"Columns are the following adresses: {', '.join(store_names)} "
+                  f"Rows are the following items: {', '.join(batch)} "
+                  f"If retail price is unavailable online please leave price blank")
+
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    response_mime_type="application/json",
+                    response_schema=GroceryPricesResponse,
+                )
             )
-        )
-        
-        # 2. Convert the List-based response back into the Dictionary format the rest of your app expects
-        raw_data = response.parsed # SDK automatically parses into the Pydantic model
-        price_database = {}
-        
-        for store in raw_data.stores:
-            price_database[store.store_name] = {
-                item.item_name: item.price for item in store.items
-            }
-        
-        print(f"✅ Successfully retrieved prices for {len(price_database)} stores.")
-        shopping_list = [{"name": item, "qty": qty} for item, qty in ingredient_quantities.items()]
-        return price_database, [], shopping_list
+            
+            if response.parsed:
+                for store_data in response.parsed.stores:
+                    # Fuzzy match store name: "Walmart" -> "Walmart Supercenter 1"
+                    matched_store = next((s for s in price_database.keys() 
+                                         if store_data.store_name.lower() in s.lower() 
+                                         or s.lower() in store_data.store_name.lower()), None)
+                    
+                    if matched_store:
+                        for item in store_data.items:
+                            gemini_norm = normalize_grocery_name(item.item_name)
+                            # Link back to original recipe name
+                            orig_name = normalized_to_orig.get(gemini_norm)
+                            if not orig_name:
+                                matches = get_close_matches(gemini_norm, normalized_to_orig.keys(), n=1, cutoff=0.7)
+                                if matches: orig_name = normalized_to_orig[matches[0]]
+                            
+                            if orig_name:
+                                price_database[matched_store][orig_name] = item.price
+            time.sleep(1)
+        except Exception as e:
+            print(f"⚠️ Warning: Batch failed: {e}")
+            continue
 
-    except Exception as e:
-        print(f"❌ Error fetching real prices: {e}")
-        return {}, items_list, []
+    # --- UPDATED: Final Summary with Missing Ingredient Tracking ---
+    print("\n" + "="*50)
+    print("STORE AVAILABILITY SUMMARY")
+    print("="*50)
+    
+    all_required_names = list(ingredient_quantities.keys())
+    
+    for store in store_names:
+        # Get what we actually found in this specific store
+        found_in_this_store = price_database.get(store, {}).keys()
+        found_normalized = {normalize_grocery_name(f) for f in found_in_this_store}
+        
+        # Determine exactly which original ingredients are missing
+        missing_ingredients = [
+            item for item in all_required_names 
+            if normalize_grocery_name(item) not in found_normalized
+        ]
+        
+        found_count = len(all_required_names) - len(missing_ingredients)
+        print(f"\n📍 {store} | Found: {found_count}/{len(all_required_names)}")
+        
+        if missing_ingredients:
+            # Display first 10 missing items so you can debug the list
+            print(f"❌ Missing ({len(missing_ingredients)}): {', '.join(missing_ingredients[:10])}...")
+        else:
+            print("✅ 100% Items Available")
+
+    # Clean empty stores and prepare outputs
+    price_database = {k: v for k, v in price_database.items() if v}
+    shopping_list = [{"name": k, "qty": v} for k, v in ingredient_quantities.items()]
+    
+    return price_database, [], shopping_list
