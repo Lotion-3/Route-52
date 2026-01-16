@@ -29,6 +29,26 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 # --- STORE SEARCH CONFIG ---
 STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Whole Foods', 'Trader Joe\'s', 'Costco', 'Jewel Osco']
 
+# Keywords to exclude from store results (e.g. specialized departments)
+EXCLUDED_STORE_TERMS = [
+    'gas', 'fuel', 'station', 
+    'tire', 'auto', 'lube', 
+    'optical', 'vision', 'glasses', 
+    'hearing', 'audiology', 
+    'pharmacy', 'drug', 
+    'liquor', 'wine', 'spirits',
+    'photo', 'market' # Be careful with market? "Boston Market" vs "Whole Foods Market".
+]
+# Refined list to avoid false positives:
+EXCLUDED_STORE_TERMS = [
+    'gas station', 'fuel center', 'fuel station',
+    'tire center', 'tire shop', 'auto center',
+    'optical', 'vision center',
+    'hearing aid', 'hearing center',
+    'pharmacy', 
+    'liquor store' 
+]
+
 # --- API LIMIT CONSTANT ---
 MAX_MATRIX_LOCATIONS = 50 
 MAX_STORES_TO_USE = MAX_MATRIX_LOCATIONS - 1  # One spot for "Start" location

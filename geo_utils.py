@@ -106,6 +106,21 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
                 # Check if inside isochrone
                 if iso_polygon.contains(point):
                     name = place['name']
+                    
+                    # --- FILTER: Exclude unwanted store sub-types ---
+                    # Check 1: Exclude if name contains specific banned terms
+                    if any(term in name.lower() for term in config.EXCLUDED_STORE_TERMS):
+                        # print(f"Skipping {name} (Excluded term)")
+                        continue
+
+                    # Check 2: Exclude if it's primarily a gas station/repair shop without being a main store
+                    place_types = place.get('types', [])
+                    if 'gas_station' in place_types or 'car_repair' in place_types:
+                        # Allow if it is ALSO a supermarket or department store (e.g. big box stores)
+                        if not any(t in place_types for t in ['supermarket', 'grocery_or_supermarket', 'department_store', 'shopping_mall']):
+                            # print(f"Skipping {name} (Type: {place_types})")
+                            continue
+
                     # Ensure name uniqueness
                     original_name = name
                     count = 1
