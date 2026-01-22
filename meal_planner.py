@@ -40,10 +40,10 @@ def create_weekly_meal_plan(
     print(f"   Calories: {daily_calories} kcal/day")
     print("-"*50)
 
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY_V"))
 
     prompt = (
-        f"Create a {days} day meal plan with {meals_per_day} meals a day, "
+        f"Please create a {days} day meal plan with {meals_per_day} meals a day, "
         f"strictly targeting {daily_calories} calories per day (+/- 10%). "
         f"Provide a structured list of meals and a consolidated list of grocery items needed. "
         f"All items must be purchasable in a single standard US grocery trip. "
@@ -51,7 +51,7 @@ def create_weekly_meal_plan(
         f"1. DO NOT group items (e.g. 'nuts (almonds, walnuts)' is BANNED). Pick ONE specific item (e.g. 'almonds')."
         f"2. Use singular names (e.g. 'apple' not 'apples')."
         f"3. Do not include brand off-brand names."
-        f"4. Be specific but common (e.g. 'ground beef', 'milk', 'cheddar cheese')."
+        f"4. Use as common ingredients as possible."
     )
 
     try:

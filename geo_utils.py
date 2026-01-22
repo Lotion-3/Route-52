@@ -288,11 +288,7 @@ def filter_unique_closest_chains(
                 unique_stores[original_name] = entry["loc"]
                 unique_addresses[original_name] = entry["address"]
                 found_chains.add(matched_result)
-        else:
-            # It's a store that didn't match our keywords (maybe legacy Overpass?)
-            # Or a generic "Store". Keep it saferly if it's unique name, but usually we only care about keywords.
-            unique_stores[original_name] = entry["loc"]
-            unique_addresses[original_name] = entry["address"]
+        # REMOVED: else clause that was keeping unmatched stores
             
     print(f"Filtered {len(stores)} locations -> {len(unique_stores)} unique chains.")
     return unique_stores, unique_addresses
