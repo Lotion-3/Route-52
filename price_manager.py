@@ -7,24 +7,8 @@ from typing import Dict, List, Tuple, Union
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
-from difflib import get_close_matches
 
-# --- 1. SHARED NORMALIZATION LOGIC ---
-
-def normalize_grocery_name(name: str) -> str:
-    """Standardizes names so 'tomatoe' or 'tomatoes, diced' matches 'tomato'."""
-    name = name.lower().strip()
-    # Remove descriptors after commas
-    name = re.split(r',', name)[0]
-    # Remove common culinary adjectives
-    culinary_terms = [r'\bboiled\b', r'\bcooked\b', r'\bfrozen\b', r'\bfresh\b', r'\bdiced\b', r'\bwhole\b']
-    for term in culinary_terms:
-        name = re.sub(term, '', name)
-    # Fix spelling and plurals
-    name = re.sub(r'tomatoe', 'tomato', name)
-    name = re.sub(r'atoes\b', 'ato', name)
-    name = re.sub(r's\b', '', name)
-    return name.strip()
+# --- 1. DIRECT MATCHING LOGIC ---
 
 # --- 2. GEMINI SCHEMA DEFINITIONS ---
 
@@ -49,9 +33,8 @@ def fetch_grocery_prices(
     
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY_L"))
     
-    # Track original names to map Gemini's output back correctly
-    normalized_to_orig = {normalize_grocery_name(k): k for k in ingredient_quantities.keys()}
-    search_items = list(normalized_to_orig.keys())
+    # Track original names for direct matching
+    search_items = list(ingredient_quantities.keys())
     price_database = {store: {} for store in store_names}
     
     print(f"📦 Processing {len(search_items)} items across {len(store_names)} stores...")
@@ -85,6 +68,11 @@ def fetch_grocery_prices(
             )
             
             response_text = response.text
+            
+            # Check if response is None
+            if response_text is None:
+                print(f"  ⚠️  No response text received for {store_name}")
+                continue
             
             # Improved JSON extraction with multiple strategies
             json_str = None
@@ -123,44 +111,41 @@ def fetch_grocery_prices(
                         items_list = store_entry.get('items', [])
                         print(f"    📦 Store: {store_name_raw}, Items: {len(items_list)}")
                         
-                        # Fuzzy match store name
-                        matched_store = next((s for s in store_names 
-                                              if store_name_raw.lower() in s.lower() 
-                                              or s.lower() in store_name_raw.lower()), None)
+                        # Use the store name as provided by Gemini
+                        matched_store = store_name_raw
                         
-                        if matched_store:
-                            found_count = 0
-                            for item in items_list:
-                                name_raw = item.get('item_name')
-                                price_raw = item.get('price')
-                                
-                                # Filter out None, zero, or negative prices
-                                try:
-                                    if name_raw and price_raw is not None:
-                                        price_float = float(price_raw)
-                                        if price_float > 0:
-                                            gemini_norm = normalize_grocery_name(name_raw)
-                                            
-                                            orig_name = normalized_to_orig.get(gemini_norm)
-                                            if not orig_name:
-                                                matches = get_close_matches(gemini_norm, normalized_to_orig.keys(), n=1, cutoff=0.7)
-                                                if matches: orig_name = normalized_to_orig[matches[0]]
-                                            
-                                            if orig_name:
-                                                print(f"      🛒 Found: {orig_name} at ${price_float}")
-                                                price_database[matched_store][orig_name] = price_float
-                                                found_count += 1
-                                            else:
-                                                print(f"      ⚠️  No match for '{name_raw}' (normalized: '{gemini_norm}')")
-                                except (ValueError, TypeError) as e:
-                                    print(f"      ⚠️  Error processing item: {e}")
-                                    continue
+                        # Initialize store in database if not exists
+                        if matched_store not in price_database:
+                            price_database[matched_store] = {}
+                        
+                        for item in items_list:
+                            name_raw = item.get('item_name')
+                            price_raw = item.get('price')
                             
-                            if found_count == 0 and len(items_list) > 0:
-                                print(f"      ⚠️  No items matched from {len(items_list)} returned items")
-                                print(f"      📝 Sample item: {items_list[0] if items_list else 'N/A'}")
-                        else:
-                             print(f"    ❌ No match for store: '{store_name_raw}'")
+                            # Accept all items as returned by Gemini
+                            try:
+                                if name_raw is not None and price_raw is not None:
+                                    price_float = float(price_raw)
+                                    
+                                    # Map Gemini's detailed name back to original ingredient name
+                                    matched_ingredient = None
+                                    for original_name in search_items:
+                                        # Check if original ingredient is contained in Gemini's response
+                                        if original_name.lower() in name_raw.lower() or name_raw.lower() in original_name.lower():
+                                            matched_ingredient = original_name
+                                            break
+                                    
+                                    # Use matched ingredient name, or fall back to Gemini's name
+                                    final_name = matched_ingredient if matched_ingredient else name_raw
+                                    price_database[matched_store][final_name] = price_float
+                                    
+                                    if matched_ingredient:
+                                        print(f"      🛒 Accepted: {name_raw} -> {matched_ingredient} at ${price_float}")
+                                    else:
+                                        print(f"      🛒 Accepted: {name_raw} at ${price_float}")
+                            except (ValueError, TypeError) as e:
+                                print(f"      ⚠️  Error processing item: {e}")
+                                continue
                 except (json.JSONDecodeError, ValueError, SyntaxError) as e:
                     print(f"  ⚠️  JSON parse failed for {store_name}: {e}")
                     print(f"  📝 Extracted JSON (first 300 chars): {json_str[:300]}...")
@@ -169,7 +154,7 @@ def fetch_grocery_prices(
                 print(f"  📝 Response (first 300 chars): {response_text[:300]}...")
 
 
-            time.sleep(2)  # Increased delay to avoid rate limiting
+            time.sleep(5)  # Increased delay to avoid rate limiting
         except Exception as e:
             print(f"  ⚠️  Request failed: {e}")
             import traceback
@@ -184,9 +169,8 @@ def fetch_grocery_prices(
     all_required_names = list(ingredient_quantities.keys())
     for store in store_names:
         found_in_store = price_database.get(store, {})
-        found_normalized = {normalize_grocery_name(f) for f in found_in_store.keys()}
         
-        missing = [item for item in all_required_names if normalize_grocery_name(item) not in found_normalized]
+        missing = [item for item in all_required_names if item not in found_in_store.keys()]
         found_count = len(all_required_names) - len(missing)
         
         print(f"📍 {store} | Found: {found_count}/{len(all_required_names)}")
