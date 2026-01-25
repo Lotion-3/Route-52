@@ -26,7 +26,11 @@ class MealPlanResponse(BaseModel):
 def create_weekly_meal_plan(
     days: int, 
     meals_per_day: int, 
-    daily_calories: int
+    daily_calories: int,
+    diet_restrictions: str = "",
+    cuisines: str = "",
+    experiment: bool = True,
+    cook_time: str = "30-45 mins"
 ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
     Generates a meal plan using Google Gemini.
@@ -38,13 +42,21 @@ def create_weekly_meal_plan(
     print("🤖 ASKING GEMINI FOR A CUSTOM MEAL PLAN...")
     print(f"   Target: {days} days, {meals_per_day} meals/day")
     print(f"   Calories: {daily_calories} kcal/day")
+    if diet_restrictions: print(f"   Diet: {diet_restrictions}")
+    if cuisines: print(f"   Cuisines: {cuisines}")
     print("-"*50)
 
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY_V"))
+    
+    experiment_text = "Yes, please provide variety and new dishes." if experiment else "No, stick to classic/simple recipes."
 
     prompt = (
         f"Please create a {days} day meal plan with {meals_per_day} meals a day, "
         f"strictly targeting {daily_calories} calories per day (+/- 10%). "
+        f"Dietary Restrictions: {diet_restrictions if diet_restrictions else 'None'}. "
+        f"Cuisine Preferences: {cuisines if cuisines else 'No specific preference'}. "
+        f"Willingness to Experiment: {experiment_text} "
+        f"Preferred Cooking Time per Meal: {cook_time}. "
         f"Provide a structured list of meals and a consolidated list of grocery items needed. "
         f"All items must be purchasable in a single standard US grocery trip. "
         f"CRITICAL RULES FOR SHOPPING LIST:"
