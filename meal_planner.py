@@ -33,10 +33,25 @@ def create_weekly_meal_plan(
     daily_calories: int,
     diet_restrictions: str = "",
     cuisines: str = "",
+    fridge_contents: str = "",
     experiment: bool = True,
-    cook_time_pref: str = "30-45 mins" # User preference argument
-) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
-    
+    cook_time: str = "30-45 mins"
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    Generates a meal plan using Google Gemini.
+    Returns:
+      1. meal_plan: List of dictionaries (compatible with main.py structure)
+      2. ingredient_quantities: Dictionary {ingredient_name: quantity}
+    """
+    print("\n" + "-"*50)
+    print("🤖 ASKING GEMINI FOR A CUSTOM MEAL PLAN...")
+    print(f"   Target: {days} days, {meals_per_day} meals/day")
+    print(f"   Calories: {daily_calories} kcal/day")
+    if diet_restrictions: print(f"   Diet: {diet_restrictions}")
+    if cuisines: print(f"   Cuisines: {cuisines}")
+    if fridge_contents: print(f"   Fridge Contents: {fridge_contents}")
+    print("-"*50)
+
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY_V"))
     
     # Updated prompt to explicitly mention cook_time for each meal
