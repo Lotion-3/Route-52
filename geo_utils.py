@@ -288,7 +288,9 @@ def filter_unique_closest_chains(
                 unique_stores[original_name] = entry["loc"]
                 unique_addresses[original_name] = entry["address"]
                 found_chains.add(matched_result)
-        # REMOVED: else clause that was keeping unmatched stores
+                print(f"  ✅ Keeping closest {matched_result}: {original_name} ({int(entry['dist'])}m²)")
+            else:
+                print(f"  ❌ Skipping duplicate {matched_result}: {original_name} (Further away)")
             
     print(f"Filtered {len(stores)} locations -> {len(unique_stores)} unique chains.")
     return unique_stores, unique_addresses
