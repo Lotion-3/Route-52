@@ -1,7 +1,7 @@
 import sys
 import config
-
 import meal_planner
+import fridge_manager
 import geo_utils
 import price_manager
 import price_managerOG
@@ -126,6 +126,15 @@ def get_user_inputs():
         print("Invalid format. Using 2000 kcal.")
         cal_target = 2000
         
+    # --- Fridge Scan (New) ---
+    print("\n--- Fridge Scanner ---")
+    fridge_items = ""
+    scan_input = input("Do you want to scan a picture of your fridge? (y/n): ").strip().lower()
+    if scan_input in ['y', 'yes']:
+        image_path = "fridge.jpeg"
+        if image_path:
+            fridge_items = fridge_manager.analyze_fridge_image(image_path)
+            
     # --- New Questions for Meal Plan Context ---
     print("\n--- Meal Preferences ---")
     
@@ -167,13 +176,13 @@ def get_user_inputs():
         print("Invalid format. Using 3 meals.")
         meals_per_day = 3
         
-    return user_loc, shop_hours, cal_target, dev_mode, days_plan, meals_per_day, dietary_restrictions, cuisines, experiment, cook_time
+    return user_loc, shop_hours, cal_target, dev_mode, days_plan, meals_per_day, dietary_restrictions, cuisines, experiment, cook_time, fridge_items
 
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     # Get Dynamic Inputs
-    USER_LOC, SHOP_HOURS, CAL_TARGET, DEV_MODE, DAYS_PLAN, MEALS_PER_DAY, DIET_RESTRICTIONS, CUISINES, EXPERIMENT, COOK_TIME = get_user_inputs()
+    USER_LOC, SHOP_HOURS, CAL_TARGET, DEV_MODE, DAYS_PLAN, MEALS_PER_DAY, DIET_RESTRICTIONS, CUISINES, EXPERIMENT, COOK_TIME, FRIDGE_ITEMS = get_user_inputs()
     MAX_TIME_SECS = SHOP_HOURS * 3600
 
     # Update config values dynamically based on user input
@@ -191,7 +200,7 @@ if __name__ == "__main__":
     # Step 1: Create meal plan using Gemini (No longer loading CSVs)
     meal_plan, ingredient_quantities = meal_planner.create_weekly_meal_plan(
         DAYS_PLAN, MEALS_PER_DAY, CAL_TARGET,
-        DIET_RESTRICTIONS, CUISINES, EXPERIMENT, COOK_TIME
+        DIET_RESTRICTIONS, CUISINES, FRIDGE_ITEMS, EXPERIMENT, COOK_TIME
     )
     
     # Step 2: Skip filtering (Done by Gemini)

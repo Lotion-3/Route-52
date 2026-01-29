@@ -29,6 +29,7 @@ def create_weekly_meal_plan(
     daily_calories: int,
     diet_restrictions: str = "",
     cuisines: str = "",
+    fridge_contents: str = "",
     experiment: bool = True,
     cook_time: str = "30-45 mins"
 ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
@@ -44,6 +45,7 @@ def create_weekly_meal_plan(
     print(f"   Calories: {daily_calories} kcal/day")
     if diet_restrictions: print(f"   Diet: {diet_restrictions}")
     if cuisines: print(f"   Cuisines: {cuisines}")
+    if fridge_contents: print(f"   Fridge Contents: {fridge_contents}")
     print("-"*50)
 
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY_V"))
