@@ -27,7 +27,7 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter" 
 
 # --- STORE SEARCH CONFIG ---
-STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Whole Foods', 'Trader Joe\'s', 'Costco', 'Jewel Osco']
+STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Whole Foods', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco']
 
 # Keywords to exclude from store results (e.g. specialized departments)
 EXCLUDED_STORE_TERMS = [
@@ -51,7 +51,7 @@ EXCLUDED_STORE_TERMS = [
 
 # --- API LIMIT CONSTANT ---
 MAX_MATRIX_LOCATIONS = 50 
-MAX_STORES_TO_USE = MAX_MATRIX_LOCATIONS - 1  # One spot for "Start" location
+MAX_STORES_TO_USE = 10  # Explicitly limited to avoid API rate limits
 
 # --- PRICE VARIANCE RANGE ---
 MIN_PRICE_FACTOR = 0.6

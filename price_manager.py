@@ -1,136 +1,103 @@
 import os
 import re
-import time
-from typing import Dict, List, Tuple, Union
-from google import genai
-from google.genai import types
-from pydantic import BaseModel
-from difflib import get_close_matches
+import requests
+from typing import List, Dict, Tuple, Any
+from dotenv import load_dotenv
 
-# --- 1. SHARED NORMALIZATION LOGIC ---
-
-def normalize_grocery_name(name: str) -> str:
-    """Standardizes names so 'tomatoe' or 'tomatoes, diced' matches 'tomato'."""
-    name = name.lower().strip()
-    # Remove descriptors after commas
-    name = re.split(r',', name)[0]
-    # Remove common culinary adjectives
-    culinary_terms = [r'\bboiled\b', r'\bcooked\b', r'\bfrozen\b', r'\bfresh\b', r'\bdiced\b', r'\bwhole\b']
-    for term in culinary_terms:
-        name = re.sub(term, '', name)
-    # Fix spelling and plurals
-    name = re.sub(r'tomatoe', 'tomato', name)
-    name = re.sub(r'atoes\b', 'ato', name)
-    name = re.sub(r's\b', '', name)
-    return name.strip()
-
-# --- 2. GEMINI SCHEMA DEFINITIONS ---
-
-class ItemPrice(BaseModel):
-    item_name: str
-    price: float
-
-class StoreInventory(BaseModel):
-    store_name: str
-    items: List[ItemPrice]
-
-class GroceryPricesResponse(BaseModel):
-    stores: List[StoreInventory]
-
-# --- 3. MAIN PRICE FETCHING FUNCTION ---
+load_dotenv("config.env")
+SEARCHAPI_KEY = os.getenv("SEARCHAPI_API_KEY")
 
 def fetch_grocery_prices(
-    ingredient_quantities: Dict[str, int], 
-    store_names: List[str],
-    store_addresses: Dict[str, str] = {}
-) -> Tuple[Dict[str, Dict[str, float]], List[str], List[Dict[str, Union[str, int]]]]:
+    ingredient_data: Dict[str, Dict[str, Any]], 
+    store_names: List[str], 
+    store_addresses: Dict[str, str]
+) -> Tuple[Dict[str, float], List[str], List[Dict[str, Any]]]:
     
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    price_database = {}
+    removed_items = []
     
-    # Track original names to map Gemini's output back correctly
-    normalized_to_orig = {normalize_grocery_name(k): k for k in ingredient_quantities.keys()}
-    search_items = list(normalized_to_orig.keys())
-    print(search_items)
-    price_database = {store: {} for store in store_names}
-    batch_size = 15
-    
-    print(f"📦 Processing {len(search_items)} items in batches of {batch_size}...")
+    # Improved regex for prices and retail units
+    PRICE_RE = r'\$\s?(\d+)\s?\.?(\d{2})?'
+    UNIT_RE = r'(\d+(?:\.\d+)?)\s?(oz|ounce|fl\s?oz|lb|pound|g|gram|kg|ml|l|liter|gal|gallon|ct|count|each|pk|pack|bag|box)'
 
-    for i in range(0, len(search_items), batch_size):
-        batch = search_items[i:i + batch_size]
-        print(f"🔄 Fetching Batch {int(i/batch_size) + 1}...")
-
-        store_cols = [f"{name} ({store_addresses.get(name, 'Unknown Address')})" for name in store_names]
-        
-        prompt = (f"Provide a JSON price table for grocery items. "
-                  f"Group similar items together. "
-                  f"Columns are the following adresses: {', '.join(store_cols)} "
-                  f"Rows are the following items: {', '.join(batch)} "
-                  f"If retail price is unavailable online please leave price blank")
-
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())],
-                    response_mime_type="application/json",
-                    response_schema=GroceryPricesResponse,
-                )
-            )
-            
-            if response.parsed:
-                for store_data in response.parsed.stores:
-                    # Fuzzy match store name: "Walmart" -> "Walmart Supercenter 1"
-                    matched_store = next((s for s in price_database.keys() 
-                                         if store_data.store_name.lower() in s.lower() 
-                                         or s.lower() in store_data.store_name.lower()), None)
-                    
-                    if matched_store:
-                        for item in store_data.items:
-                            gemini_norm = normalize_grocery_name(item.item_name)
-                            # Link back to original recipe name
-                            orig_name = normalized_to_orig.get(gemini_norm)
-                            if not orig_name:
-                                matches = get_close_matches(gemini_norm, normalized_to_orig.keys(), n=1, cutoff=0.7)
-                                if matches: orig_name = normalized_to_orig[matches[0]]
-                            
-                            if orig_name:
-                                price_database[matched_store][orig_name] = item.price
-            time.sleep(1)
-        except Exception as e:
-            print(f"⚠️ Warning: Batch failed: {e}")
-            continue
-
-    # --- UPDATED: Final Summary with Missing Ingredient Tracking ---
-    print("\n" + "="*50)
-    print("STORE AVAILABILITY SUMMARY")
-    print("="*50)
-    
-    all_required_names = list(ingredient_quantities.keys())
-    
     for store in store_names:
-        # Get what we actually found in this specific store
-        found_in_this_store = price_database.get(store, {}).keys()
-        found_normalized = {normalize_grocery_name(f) for f in found_in_this_store}
+        price_database[store] = {}
+        full_address = store_addresses.get(store, "")
         
-        # Determine exactly which original ingredients are missing
-        missing_ingredients = [
-            item for item in all_required_names 
-            if normalize_grocery_name(item) not in found_normalized
-        ]
-        
-        found_count = len(all_required_names) - len(missing_ingredients)
-        print(f"\n📍 {store} | Found: {found_count}/{len(all_required_names)}")
-        
-        if missing_ingredients:
-            # Display first 10 missing items so you can debug the list
-            print(f"❌ Missing ({len(missing_ingredients)}): {', '.join(missing_ingredients[:10])}...")
-        else:
-            print("✅ 100% Items Available")
+        # Format location for SearchApi.io (e.g., "Zanesville, OH, US")
+        addr_parts = full_address.split(",")
+        canonical_location = ", ".join(addr_parts[-3:]).strip() if len(addr_parts) >= 3 else full_address
 
-    # Clean empty stores and prepare outputs
-    price_database = {k: v for k, v in price_database.items() if v}
-    shopping_list = [{"name": k, "qty": v} for k, v in ingredient_quantities.items()]
+        print(f"\n📡 Fetching live prices for {store} in {canonical_location}...")
+
+        for item_name, metadata in ingredient_data.items():
+            search_term = metadata.get("query", item_name)
+            query = f"{search_term} price at {store}"
+            
+            try:
+                url = "https://www.searchapi.io/api/v1/search"
+                params = {
+                    "engine": "google",
+                    "q": query,
+                    "api_key": SEARCHAPI_KEY,
+                    "location": canonical_location,
+                    "gl": "us",
+                    "hl": "en"
+                }
+                
+                response = requests.get(url, params=params, timeout=15)
+                
+                if response.status_code == 400:
+                    params.pop("location", None)
+                    response = requests.get(url, params=params, timeout=15)
+
+                if response.status_code != 200:
+                    print(f"   ❌ Error {response.status_code} for {item_name}")
+                    continue
+                
+                results = response.json().get("organic_results", [])
+                
+                found_item = False
+                for res in results[:5]: 
+                    snippet = res.get("snippet", "").lower()
+                    price_match = re.search(PRICE_RE, snippet)
+                    
+                    if price_match:
+                        # Total price found in snippet
+                        total_price = float(f"{price_match.group(1)}.{price_match.group(2) or '00'}")
+                        
+                        if total_price > 0.10:
+                            # Find unit size in snippet to normalize
+                            u_match = re.search(UNIT_RE, snippet)
+                            u_size = float(u_match.group(1)) if u_match else 1.0
+                            
+                            # NORMALIZATION: Calculate price per 1 unit (e.g., $ per 1 lb)
+                            # This makes it compatible with optimizer.py's math
+                            price_per_unit = total_price / u_size
+
+                            price_database[store][item_name] = price_per_unit
+                            
+                            print(f"   ✅ {item_name.capitalize():<15} | ${price_per_unit:>6.2f} per {metadata.get('unit', 'unit')}")
+                            found_item = True
+                            break
+                
+                if not found_item:
+                    print(f"   ❕ No price data in snippets for: {item_name}")
+
+            except Exception as e:
+                print(f"   ⚠️ Error processing {item_name}: {e}")
+
+    # Prepare shopping list for optimizer (converting dict to list of dicts)
+    shopping_list = [{"name": k, "qty": v.get("qty", 1)} for k, v in ingredient_data.items()]
+    return price_database, removed_items, shopping_list
+
+if __name__ == "__main__":
+    # Test block
+    test_ingredients = {
+        "watermelon": {"query": "whole seedless watermelon", "unit": "each", "qty": 1},
+        "paprika": {"query": "ground paprika 2oz", "unit": "oz", "qty": 2}
+    }
+    test_stores = ["Kroger"]
+    test_addr = {"Kroger": "Zanesville, Ohio, United States"}
     
-    return price_database, [], shopping_list
+    db, _, _ = fetch_grocery_prices(test_ingredients, test_stores, test_addr)

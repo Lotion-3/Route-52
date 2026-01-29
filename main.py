@@ -1,13 +1,80 @@
 import sys
 import config
-
 import meal_planner
+import fridge_manager
 import geo_utils
 import price_manager
 import price_managerOG
 import optimizer
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
+
+def calculate_calories():
+    print("\n" + "-" * 40)
+    print("CALORIE CALCULATOR")
+    print("-" * 40)
+    try:
+        weight_input = input("Current Weight (lbs): ").strip()
+        if not weight_input: return 2000
+        weight_lbs = float(weight_input)
+        
+        print("Height:")
+        ft_input = input("  Feet: ").strip()
+        in_input = input("  Inches: ").strip()
+        height_ft = int(ft_input) if ft_input else 5
+        height_in = int(in_input) if in_input else 9
+        
+        age_input = input("Age: ").strip()
+        age = int(age_input) if age_input else 30
+        
+        gender = input("Gender (M/F): ").strip().upper()
+        
+        print("\nActivity Level:")
+        print("1. Sedentary (little to no exercise)")
+        print("2. Lightly Active (1-3 days/week)")
+        print("3. Moderately Active (3-5 days/week)")
+        print("4. Very Active (6-7 days/week)")
+        act_input = input("Select (1-4) [default 2]: ").strip()
+        tdee_multipliers = {'1': 1.2, '2': 1.375, '3': 1.55, '4': 1.725}
+        multiplier = tdee_multipliers.get(act_input, 1.375)
+        
+        # Mifflin-St Jeor Equation
+        weight_kg = weight_lbs * 0.453592
+        height_cm = ((height_ft * 12) + height_in) * 2.54
+        
+        if gender == 'M':
+            bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) + 5
+        else:
+            bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) - 161
+            
+        tdee = bmr * multiplier
+        
+        print(f"\nEstimated Maintenance Calories (TDEE): {int(tdee)}")
+        print("Goal:")
+        print("1. Lose Weight (-500 kcal)")
+        print("2. Maintain")
+        print("3. Gain Weight (+500 kcal)")
+        goal_input = input("Select (1-3) [default 2]: ").strip()
+        
+        if goal_input == '1':
+            target = tdee - 500
+        elif goal_input == '3':
+            target = tdee + 500
+        else:
+            target = tdee
+            
+        final_target = int(target)
+        # Safety bounds
+        if final_target < 1200: 
+            print("⚠️  Calculated target is very low. Setting to minimum 1200.")
+            final_target = 1200
+            
+        print(f"✅ Setting Daily Target to: {final_target} kcal")
+        return final_target
+        
+    except ValueError:
+        print("⚠️  Invalid input detected. Defaulting to 2000 kcal.")
+        return 2000
 
 def get_user_inputs():
     print("=" * 60)
@@ -45,13 +112,45 @@ def get_user_inputs():
         print("Invalid format. Using 3.0 hours.")
         shop_hours = 3.0
 
-    # 3. Calorie Input
+    # 3. Calorie Input Strategy
+    cal_target = 2000
     try:
-        cal_input = input("Daily calorie target (default 2000): ").strip()
-        cal_target = int(cal_input) if cal_input else 2000
+        print("\n--- Calorie Goals ---")
+        use_calc = input("Are you working toward a certain weight? (y/n): ").strip().lower()
+        if use_calc == 'y' or use_calc == 'yes':
+            cal_target = calculate_calories()
+        else:
+            cal_input = input("Daily calorie target (default 2000): ").strip()
+            cal_target = int(cal_input) if cal_input else 2000
     except ValueError:
         print("Invalid format. Using 2000 kcal.")
         cal_target = 2000
+        
+    # --- Fridge Scan (New) ---
+    print("\n--- Fridge Scanner ---")
+    fridge_items = ""
+    scan_input = input("Do you want to scan a picture of your fridge? (y/n): ").strip().lower()
+    if scan_input in ['y', 'yes']:
+        image_path = "fridge.jpeg"
+        if image_path:
+            fridge_items = fridge_manager.analyze_fridge_image(image_path)
+            
+    # --- New Questions for Meal Plan Context ---
+    print("\n--- Meal Preferences ---")
+    
+    # dietary restrictions
+    dietary_restrictions = input("Dietary restrictions (e.g., 'vegan, gluten-free, no peanuts' or Enter for None): ").strip()
+    
+    # preferred cuisines
+    cuisines = input("Preferred cuisines (e.g., 'Italian, Mexican' or Enter for Any): ").strip()
+    
+    # willing to experiment
+    exp_input = input("Are you willing to experiment with new recipes? (y/n) [default y]: ").strip().lower()
+    experiment = False if exp_input in ['n', 'no'] else True
+    
+    # cooking time
+    cook_time = input("How much time do you want to spend cooking per meal? (e.g. '30 mins', '1 hour'): ").strip()
+    if not cook_time: cook_time = "30-45 minutes"
     
     # 4. Developer mode or gemini
     try:
@@ -77,13 +176,13 @@ def get_user_inputs():
         print("Invalid format. Using 3 meals.")
         meals_per_day = 3
         
-    return user_loc, shop_hours, cal_target, dev_mode, days_plan, meals_per_day
+    return user_loc, shop_hours, cal_target, dev_mode, days_plan, meals_per_day, dietary_restrictions, cuisines, experiment, cook_time, fridge_items
 
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     # Get Dynamic Inputs
-    USER_LOC, SHOP_HOURS, CAL_TARGET, DEV_MODE, DAYS_PLAN, MEALS_PER_DAY = get_user_inputs()
+    USER_LOC, SHOP_HOURS, CAL_TARGET, DEV_MODE, DAYS_PLAN, MEALS_PER_DAY, DIET_RESTRICTIONS, CUISINES, EXPERIMENT, COOK_TIME, FRIDGE_ITEMS = get_user_inputs()
     MAX_TIME_SECS = SHOP_HOURS * 3600
 
     # Update config values dynamically based on user input
@@ -100,7 +199,8 @@ if __name__ == "__main__":
     
     # Step 1: Create meal plan using Gemini (No longer loading CSVs)
     meal_plan, ingredient_quantities = meal_planner.create_weekly_meal_plan(
-        DAYS_PLAN, MEALS_PER_DAY, CAL_TARGET
+        DAYS_PLAN, MEALS_PER_DAY, CAL_TARGET,
+        DIET_RESTRICTIONS, CUISINES, FRIDGE_ITEMS, EXPERIMENT, COOK_TIME
     )
     
     # Step 2: Skip filtering (Done by Gemini)
