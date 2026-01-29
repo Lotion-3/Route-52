@@ -58,7 +58,7 @@ def create_weekly_meal_plan(
     prompt = (
         f"Create a {days}-day meal plan ({meals_per_day} meals/day) at {daily_calories} kcal/day. "
         f"Restrictions: {diet_restrictions}. Cuisines: {cuisines}. "
-        f"Target cook time per meal: {cook_time_pref}. "
+        f"Target cook time per meal: {cook_time}. "
         "For each meal, you MUST provide an estimated 'cook_time' string."
         "\nSHOPPING LIST RULES:"
         "\n1. For produce/meat, use 'weighted' strategy and 'lb' or 'each' units."
