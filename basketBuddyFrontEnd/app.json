@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "basketBuddyFrontEnd",
+    "name": "BasketBuddies",
     "slug": "basketBuddyFrontEnd",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,9 +9,17 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAO91icuarLlR50fpKZ7ILBP_n8TfkRdak"
+      }
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAO91icuarLlR50fpKZ7ILBP_n8TfkRdak"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
