@@ -46,12 +46,25 @@ export interface ShoppingPlanResponse {
 
 export const generatePlan = async (params: ShoppingPlanRequest): Promise<ShoppingPlanResponse> => {
     try {
-        const response = await fetch(`${DEV_API_URL}/plan`, {
+        const response = await fetch(`${DEV_API_URL}/generate_plan`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(params),
+            // Ensure these defaults match your server.py requirements exactly
+            body: JSON.stringify({
+                preferences: {
+                    address: params.location,
+                    shopping_time_hours: Number(params.time) || 1, // Assume hours if passed as such, or 1 as default
+                    calorie_target: Number(params.calories) || 2000,
+                    days_plan: Number(params.days) || 7,
+                    meals_per_day: Number(params.meals_per_day) || 3,
+                    dietary_restrictions: "",
+                    cuisines: "",
+                    experiment: true,
+                    cook_time: "30-45 minutes"
+                }
+            }),
         });
 
         if (!response.ok) {

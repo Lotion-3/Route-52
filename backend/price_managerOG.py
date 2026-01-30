@@ -5,9 +5,10 @@ import data_loader
 import geo_utils
 
 def fetch_grocery_prices(
-    ingredient_quantities: Dict[str, int], 
-    store_ids: List[str]
-) -> Tuple[Dict[str, Dict[str, float]], List[str], List[Dict[str, Union[str, int]]]]:
+    ingredient_data: Dict[str, Dict[str, any]], 
+    store_ids: List[str],
+    store_addresses: Dict[str, str] = None
+) -> Tuple[Dict[str, Dict[str, float]], List[str], List[Dict[str, any]]]:
     """
     Generate store-specific prices for ingredients.
     Each store-item combination gets a UNIQUE but consistent random factor.
@@ -18,11 +19,11 @@ def fetch_grocery_prices(
     
     if not city_price_data:
         print("Error: Could not load price data.")
-        return {}, list(ingredient_quantities.keys()), []
+        return {}, list(ingredient_data.keys()), []
     
     price_database: Dict[str, Dict[str, float]] = {}
     removed_items: List[str] = []
-    shopping_list: List[Dict[str, Union[str, int]]] = []
+    shopping_list: List[Dict[str, any]] = []
     
     # Check which ingredients are available
     available_vegetables = set()
@@ -30,7 +31,9 @@ def fetch_grocery_prices(
         available_vegetables.update(city_data.keys())
     
     # Create shopping list from available ingredients
-    for veggie, quantity in ingredient_quantities.items():
+    for item_name, metadata in ingredient_data.items():
+        veggie = item_name.lower().strip()
+        quantity = metadata.get("qty", 1)
         if veggie in available_vegetables:
             shopping_list.append({"name": veggie, "qty": quantity})
         else:

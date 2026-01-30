@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BasketBuddies",
-    "slug": "basketBuddyFrontEnd",
+    "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/Screenshot 2026-01-21 132808.png",
