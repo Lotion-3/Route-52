@@ -8,7 +8,11 @@ import ShoppingMap from '@/components/ShoppingMap';
 
 export default function ResultsScreen() {
   const router = useRouter();
-  const { budget, time, location } = useLocalSearchParams();
+  const {
+    budget, time, location,
+    dietary_restrictions, cuisines, experiment,
+    cook_time, days, meals_per_day, calories
+  } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<ShoppingPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,12 +21,19 @@ export default function ResultsScreen() {
     async function fetchPlan() {
       try {
         setLoading(true);
-        console.log('Fetching plan with:', { budget, time, location });
+        console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, cuisines });
 
         const data = await generatePlan({
           location: (location as string) || 'Indianapolis, IN',
           budget: parseFloat(budget as string) || 150,
-          time: parseFloat(time as string) || 60,
+          time: parseFloat(time as string) || 3, // Now hours by default
+          calories: parseInt(calories as string) || 2000,
+          days: parseInt(days as string) || 7,
+          meals_per_day: parseInt(meals_per_day as string) || 3,
+          dietary_restrictions: dietary_restrictions as string,
+          cuisines: cuisines as string,
+          experiment: experiment === 'true',
+          cook_time: cook_time as string,
           fake_data: true
         });
 
@@ -37,7 +48,7 @@ export default function ResultsScreen() {
     }
 
     fetchPlan();
-  }, [budget, time, location]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, calories]);
 
   const ListFooter = () => (
     <TouchableOpacity

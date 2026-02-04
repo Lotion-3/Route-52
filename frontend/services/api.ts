@@ -27,6 +27,10 @@ export interface ShoppingPlanRequest {
     calories?: number;
     days?: number;
     meals_per_day?: number;
+    dietary_restrictions?: string;
+    cuisines?: string;
+    experiment?: boolean;
+    cook_time?: string;
     fake_data?: boolean;
 }
 
@@ -51,18 +55,17 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
             headers: {
                 'Content-Type': 'application/json',
             },
-            // Ensure these defaults match your server.py requirements exactly
             body: JSON.stringify({
                 preferences: {
                     address: params.location,
-                    shopping_time_hours: Number(params.time) || 1, // Assume hours if passed as such, or 1 as default
+                    shopping_time_hours: Number(params.time) || 1,
                     calorie_target: Number(params.calories) || 2000,
                     days_plan: Number(params.days) || 7,
                     meals_per_day: Number(params.meals_per_day) || 3,
-                    dietary_restrictions: "",
-                    cuisines: "",
-                    experiment: true,
-                    cook_time: "30-45 minutes"
+                    dietary_restrictions: params.dietary_restrictions || "",
+                    cuisines: params.cuisines || "",
+                    experiment: params.experiment !== undefined ? params.experiment : true,
+                    cook_time: params.cook_time || "30-45 minutes"
                 }
             }),
         });
