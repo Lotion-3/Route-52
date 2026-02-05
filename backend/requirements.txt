@@ -1,15 +1,10 @@
 fastapi
 uvicorn
+pydantic
+requests
 python-dotenv
 geopy
-requests
-openrouteservice
-google-generativeai
-pandas
-numpy
-python-multipart
-uvicorn
-Pillow
+google-genai
 googlemaps
 shapely
-# Add any other specific libraries used in your project
+pillow
