@@ -24,16 +24,16 @@ export default function ResultsScreen() {
         console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, cuisines });
 
         const data = await generatePlan({
-          location: (location as string) || 'Indianapolis, IN',
-          budget: parseFloat(budget as string) || 150,
-          time: parseFloat(time as string) || 3, // Now hours by default
-          calories: parseInt(calories as string) || 2000,
-          days: parseInt(days as string) || 7,
-          meals_per_day: parseInt(meals_per_day as string) || 3,
-          dietary_restrictions: dietary_restrictions as string,
-          cuisines: cuisines as string,
-          experiment: experiment === 'true',
-          cook_time: cook_time as string,
+          location: Array.isArray(location) ? location[0] : (location || 'Indianapolis, IN'),
+          budget: parseFloat(Array.isArray(budget) ? budget[0] : (budget || '150')),
+          time: parseFloat(Array.isArray(time) ? time[0] : (time || '3')),
+          calories: parseInt(Array.isArray(calories) ? calories[0] : (calories || '2000')),
+          days: parseInt(Array.isArray(days) ? days[0] : (days || '7')),
+          meals_per_day: parseInt(Array.isArray(meals_per_day) ? meals_per_day[0] : (meals_per_day || '3')),
+          dietary_restrictions: Array.isArray(dietary_restrictions) ? dietary_restrictions[0] : (dietary_restrictions || ''),
+          cuisines: Array.isArray(cuisines) ? cuisines[0] : (cuisines || ''),
+          experiment: (Array.isArray(experiment) ? experiment[0] : experiment) === 'true',
+          cook_time: Array.isArray(cook_time) ? cook_time[0] : (cook_time || '30-45 minutes'),
           fake_data: true
         });
 
@@ -59,34 +59,38 @@ export default function ResultsScreen() {
     </TouchableOpacity>
   );
 
-  const renderStoreCard = ({ item, index }: { item: any; index: number }) => (
-    <View style={styles.storeCard}>
-      <View style={styles.storeHeader}>
-        <View style={[styles.storeIcon, { backgroundColor: Colors.primary + '20' }]}>
-          <Text style={[styles.storeInitial, { color: Colors.primary }]}>{item.store[0]}</Text>
-        </View>
-        <View style={styles.storeInfo}>
-          <Text style={styles.storeName}>{item.store}</Text>
-          <Text style={styles.storeAddress}>{item.address}</Text>
-        </View>
-        <View style={styles.storeMeta}>
-          <Text style={styles.storeCost}>~</Text>
-          <Text style={styles.storeItems}>{item.items.length} items</Text>
-        </View>
-      </View>
+  const renderStoreCard = ({ item }: { item: ShoppingPlanResponse['shopping_list'][0] }) => {
+    const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
 
-      <View style={styles.divider} />
-
-      <View style={styles.itemList}>
-        {item.items.map((prod: any, idx: number) => (
-          <View key={idx} style={styles.itemRow}>
-            <View style={styles.itemBullet} />
-            <Text style={styles.itemName}>{prod.name}</Text>
+    return (
+      <View style={styles.storeCard}>
+        <View style={styles.storeHeader}>
+          <View style={[styles.storeIcon, { backgroundColor: Colors.primary + '20' }]}>
+            <Text style={[styles.storeInitial, { color: Colors.primary }]}>{item.store?.[0] || '?'}</Text>
           </View>
-        ))}
+          <View style={styles.storeInfo}>
+            <Text style={styles.storeName}>{item.store}</Text>
+            <Text style={styles.storeAddress}>{item.address}</Text>
+          </View>
+          <View style={styles.storeMeta}>
+            <Text style={styles.storeCost}>${storeTotal.toFixed(2)}</Text>
+            <Text style={styles.storeItems}>{item.items.length} items</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.itemList}>
+          {item.items.map((product, idx) => (
+            <View key={idx} style={styles.itemRow}>
+              <View style={styles.itemBullet} />
+              <Text style={styles.itemName}>{product.name}</Text>
+            </View>
+          ))}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -158,15 +162,15 @@ export default function ResultsScreen() {
       <FlatList
         data={plan.shopping_list}
         keyExtractor={(item) => item.store}
-        renderItem={renderStoreCard}
-        ListHeaderComponent={() => (
+        renderItem={({ item }) => renderStoreCard({ item })}
+        ListHeaderComponent={
           <View>
             <Text style={styles.sectionTitle}>Shopping Route</Text>
             <Text style={{ marginLeft: 4, marginBottom: 16, color: Colors.textLight }}>
               Route: {plan.route.join(' → ')}
             </Text>
           </View>
-        )}
+        }
         ListFooterComponent={ListFooter}
         contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}

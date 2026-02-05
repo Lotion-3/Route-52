@@ -40,14 +40,8 @@ export default function SearchScreen() {
 
   const router = useRouter();
 
-  let [fontsLoaded] = useFonts({
-    'Garamond-Regular': EBGaramond_400Regular,
-    'Garamond-Bold': EBGaramond_700Bold,
-  });
+  // Fonts are now loaded in app/_layout.tsx for global availability
 
-  if (!fontsLoaded) {
-    return null;
-  }
 
   const calculateTDEE = () => {
     try {
