@@ -4,6 +4,9 @@ import { useRouter } from 'expo-router';
 import { useFonts, EBGaramond_400Regular, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import GradientButton from '@/components/GradientButton';
+import Logo from '@/components/Logo';
+import { Ionicons } from '@expo/vector-icons';
 
 const CustomRadioButton = ({ label, selected, onSelect }: { label: string; selected: boolean; onSelect: () => void }) => (
   <TouchableOpacity style={styles.radioContainer} onPress={onSelect}>
@@ -40,9 +43,6 @@ export default function SearchScreen() {
 
   const router = useRouter();
 
-  // Fonts are now loaded in app/_layout.tsx for global availability
-
-
   const calculateTDEE = () => {
     try {
       const w = parseFloat(weight) * 0.453592;
@@ -71,7 +71,10 @@ export default function SearchScreen() {
   };
 
   const handleSearch = () => {
-    if (!budget && !time && !location) return;
+    if (!budget && !time && !location) {
+      alert("Please enter at least one of: Location, Budget, or Time.");
+      return;
+    }
     router.push({
       pathname: '/results',
       params: {
@@ -92,458 +95,417 @@ export default function SearchScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={{ flex: 1 }}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <IconSymbol name="basket.fill" size={40} color={Colors.primary} />
-          </View>
-          <Text style={styles.title}>BasketBuddies</Text>
-          <Text style={styles.subtitle}>Smart Grocery Planning</Text>
+      <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+
+        <View style={styles.sectionHead}>
+          <Logo />
+          <Text style={styles.header}>BasketBuddies</Text>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.inputGroup}>
+        {/* SECTION 1: Location */}
+        <View style={styles.section}>
+          <View style={styles.card}>
             <Text style={styles.label}>Your Location</Text>
-            <View style={styles.inputWrapper}>
-              <IconSymbol name="house.fill" size={18} color="#94A3B8" style={{ marginLeft: 15 }} />
+            <View style={styles.inputRow}>
+              <Ionicons name="location-outline" size={18} color="#9CA3AF" />
               <TextInput
-                style={[styles.input, { paddingLeft: 10 }]}
                 placeholder="Address or Zip Code"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
                 value={location}
                 onChangeText={setLocation}
               />
             </View>
           </View>
+        </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>Weekly Budget</Text>
-              <View style={styles.inputWrapper}>
-                <Text style={styles.currency}>$</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="150"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="numeric"
-                  value={budget}
-                  onChangeText={setBudget}
-                />
-              </View>
-            </View>
+        {/* SECTION 2: Budget & Time */}
+        <View style={styles.section}>
+          <View style={styles.card}>
+            <View style={styles.row}>
 
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Shopping Time</Text>
-              <View style={styles.inputWrapper}>
-                <IconSymbol name="clock.fill" size={18} color="#94A3B8" style={{ marginLeft: 15 }} />
-                <TextInput
-                  style={[styles.input, { paddingLeft: 10 }]}
-                  placeholder="3 hrs"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="numeric"
-                  value={time}
-                  onChangeText={setTime}
-                />
+              <View style={styles.half}>
+                <Text style={styles.label}>Weekly Budget ($)</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="cash-outline" size={18} color="#9CA3AF" />
+                  <TextInput
+                    placeholder="150"
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.iconInput}
+                    keyboardType="numeric"
+                    value={budget}
+                    onChangeText={setBudget}
+                  />
+                </View>
               </View>
+
+              <View style={styles.half}>
+                <Text style={styles.label}>Shopping Time (hrs)</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="time-outline" size={18} color="#9CA3AF" />
+                  <TextInput
+                    placeholder="3"
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.iconInput}
+                    keyboardType="numeric"
+                    value={time}
+                    onChangeText={setTime}
+                  />
+                </View>
+              </View>
+
             </View>
           </View>
+        </View>
 
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Diet & Preferences</Text>
-
-          <View style={styles.inputGroup}>
+        {/* SECTION 3: Diet & Cuisines */}
+        <View style={styles.section}>
+          <View style={styles.card}>
             <Text style={styles.label}>Dietary Restrictions</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputRow, { marginBottom: 16 }]}>
+              <Ionicons name="medkit-outline" size={18} color="#9CA3AF" />
               <TextInput
-                style={styles.input}
-                placeholder="Vegan, Gluten-free, No peanuts"
-                placeholderTextColor="#94A3B8"
+                placeholder="Vegan, Gluten-free..."
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
                 value={dietaryRestrictions}
                 onChangeText={setDietaryRestrictions}
               />
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
             <Text style={styles.label}>Preferred Cuisines</Text>
-            <View style={styles.inputWrapper}>
+            <View style={styles.inputRow}>
+              <Ionicons name="restaurant-outline" size={18} color="#9CA3AF" />
               <TextInput
-                style={styles.input}
-                placeholder="Italian, Mexican, Asian"
-                placeholderTextColor="#94A3B8"
+                placeholder="Italian, Mexican, Asian..."
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
                 value={cuisines}
                 onChangeText={setCuisines}
               />
             </View>
           </View>
+        </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>Meal Plan Days</Text>
-              <View style={styles.inputWrapper}>
+        {/* SECTION 4: Planning Details */}
+        <View style={styles.section}>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={styles.label}>Days</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="calendar-outline" size={18} color="#9CA3AF" />
+                  <TextInput
+                    placeholder="7"
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.iconInput}
+                    keyboardType="numeric"
+                    value={daysPlan}
+                    onChangeText={setDaysPlan}
+                  />
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Meals/Day</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="fast-food-outline" size={18} color="#9CA3AF" />
+                  <TextInput
+                    placeholder="3"
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.iconInput}
+                    keyboardType="numeric"
+                    value={mealsPerDay}
+                    onChangeText={setMealsPerDay}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={{ marginTop: 16 }}>
+              <Text style={styles.label}>Max Cook Time</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="alarm-outline" size={18} color="#9CA3AF" />
                 <TextInput
-                  style={styles.input}
-                  placeholder="7"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="numeric"
-                  value={daysPlan}
-                  onChangeText={setDaysPlan}
+                  placeholder="30-45 minutes"
+                  placeholderTextColor="#9CA3AF"
+                  style={styles.iconInput}
+                  value={cookTime}
+                  onChangeText={setCookTime}
                 />
               </View>
             </View>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Meals/Day</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="3"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="numeric"
-                  value={mealsPerDay}
-                  onChangeText={setMealsPerDay}
-                />
-              </View>
-            </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Max Cook Time / Meal</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="30-45 minutes"
-                placeholderTextColor="#94A3B8"
-                value={cookTime}
-                onChangeText={setCookTime}
+            <View style={[styles.switchGroup, { marginTop: 16 }]}>
+              <Text style={styles.label}>Explore New Recipes?</Text>
+              <Switch
+                value={experiment}
+                onValueChange={setExperiment}
+                trackColor={{ false: '#CBD5E1', true: '#1F2933' }}
+                thumbColor={'#FFFFFF'}
               />
             </View>
           </View>
-
-          <View style={styles.switchGroup}>
-            <Text style={styles.label}>Explore New Recipes?</Text>
-            <Switch
-              value={experiment}
-              onValueChange={setExperiment}
-              trackColor={{ false: '#CBD5E1', true: Colors.primary }}
-              thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : experiment ? Colors.primary : '#F4F3F4'}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.nutritionHeader}>
-            <Text style={styles.sectionTitle}>Daily Calorie Target</Text>
-            <TouchableOpacity onPress={() => setShowCalculator(!showCalculator)}>
-              <Text style={styles.calcToggle}>{showCalculator ? "Hide Calc" : "Open Calculator"}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="2000"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={calories}
-              onChangeText={setCalories}
-            />
-          </View>
-
-          {showCalculator && (
-            <View style={styles.calculatorCard}>
-              <Text style={styles.calcTitle}>Calorie Calculator</Text>
-
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.labelSmall}>Weight (lbs)</Text>
-                  <TextInput style={styles.calcInput} keyboardType="numeric" value={weight} onChangeText={setWeight} />
-                </View>
-                <View style={[styles.inputGroup, { flex: 0.5, marginRight: 10 }]}>
-                  <Text style={styles.labelSmall}>Ft</Text>
-                  <TextInput style={styles.calcInput} keyboardType="numeric" value={heightFt} onChangeText={setHeightFt} />
-                </View>
-                <View style={[styles.inputGroup, { flex: 0.5 }]}>
-                  <Text style={styles.labelSmall}>In</Text>
-                  <TextInput style={styles.calcInput} keyboardType="numeric" value={heightIn} onChangeText={setHeightIn} />
-                </View>
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.labelSmall}>Age</Text>
-                  <TextInput style={styles.calcInput} keyboardType="numeric" value={age} onChangeText={setAge} />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.labelSmall}>Gender</Text>
-                  <View style={styles.radioGroup}>
-                    <CustomRadioButton label="M" selected={gender === 'M'} onSelect={() => setGender('M')} />
-                    <CustomRadioButton label="F" selected={gender === 'F'} onSelect={() => setGender('F')} />
-                  </View>
-                </View>
-              </View>
-
-              <Text style={styles.labelSmall}>Activity Level</Text>
-              <View style={styles.radioGrid}>
-                <CustomRadioButton label="Sedentary" selected={activityLevel === '1'} onSelect={() => setActivityLevel('1')} />
-                <CustomRadioButton label="Light" selected={activityLevel === '2'} onSelect={() => setActivityLevel('2')} />
-                <CustomRadioButton label="Moderate" selected={activityLevel === '3'} onSelect={() => setActivityLevel('3')} />
-                <CustomRadioButton label="Active" selected={activityLevel === '4'} onSelect={() => setActivityLevel('4')} />
-              </View>
-
-              <Text style={styles.labelSmall}>Goal</Text>
-              <View style={styles.radioGrid}>
-                <CustomRadioButton label="Lose Weight" selected={goal === '1'} onSelect={() => setGoal('1')} />
-                <CustomRadioButton label="Maintain" selected={goal === '2'} onSelect={() => setGoal('2')} />
-                <CustomRadioButton label="Gain Weight" selected={goal === '3'} onSelect={() => setGoal('3')} />
-              </View>
-
-              <TouchableOpacity style={styles.calcButton} onPress={calculateTDEE}>
-                <Text style={styles.calcButtonText}>Apply Results</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSearch}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>Generate Plan</Text>
-            <IconSymbol name="arrow.right" size={20} color="#FFF" />
-          </TouchableOpacity>
         </View>
 
-        <Text style={styles.footerText}>Powered by Google Gemini</Text>
+        {/* SECTION 5: Calories */}
+        <View style={styles.section}>
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.label}>Daily Calorie Target</Text>
+              <TouchableOpacity onPress={() => setShowCalculator(!showCalculator)}>
+                <Text style={styles.linkText}>{showCalculator ? "Hide Calc" : "Calculator"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputRow}>
+              <Ionicons name="flame-outline" size={18} color="#9CA3AF" />
+              <TextInput
+                placeholder="2000"
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
+                keyboardType="numeric"
+                value={calories}
+                onChangeText={setCalories}
+              />
+            </View>
+
+            {showCalculator && (
+              <View style={styles.calculatorSection}>
+                <Text style={styles.sectionTitle}>Calculator</Text>
+
+                <View style={styles.row}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.labelSmall}>Weight (lbs)</Text>
+                    <TextInput style={styles.calcInput} keyboardType="numeric" value={weight} onChangeText={setWeight} />
+                  </View>
+                  <View style={{ flex: 0.5, marginRight: 8 }}>
+                    <Text style={styles.labelSmall}>Ft</Text>
+                    <TextInput style={styles.calcInput} keyboardType="numeric" value={heightFt} onChangeText={setHeightFt} />
+                  </View>
+                  <View style={{ flex: 0.5 }}>
+                    <Text style={styles.labelSmall}>In</Text>
+                    <TextInput style={styles.calcInput} keyboardType="numeric" value={heightIn} onChangeText={setHeightIn} />
+                  </View>
+                </View>
+
+                <View style={[styles.row, { marginTop: 12 }]}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.labelSmall}>Age</Text>
+                    <TextInput style={styles.calcInput} keyboardType="numeric" value={age} onChangeText={setAge} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.labelSmall}>Gender</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      <CustomRadioButton label="M" selected={gender === 'M'} onSelect={() => setGender('M')} />
+                      <CustomRadioButton label="F" selected={gender === 'F'} onSelect={() => setGender('F')} />
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={[styles.labelSmall, { marginTop: 12 }]}>Activity Level</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>
+                  <CustomRadioButton label="Sedentary" selected={activityLevel === '1'} onSelect={() => setActivityLevel('1')} />
+                  <CustomRadioButton label="Light" selected={activityLevel === '2'} onSelect={() => setActivityLevel('2')} />
+                  <CustomRadioButton label="Moderate" selected={activityLevel === '3'} onSelect={() => setActivityLevel('3')} />
+                  <CustomRadioButton label="Active" selected={activityLevel === '4'} onSelect={() => setActivityLevel('4')} />
+                </View>
+
+                <Text style={[styles.labelSmall, { marginTop: 4 }]}>Goal</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+                  <CustomRadioButton label="Lose" selected={goal === '1'} onSelect={() => setGoal('1')} />
+                  <CustomRadioButton label="Maintain" selected={goal === '2'} onSelect={() => setGoal('2')} />
+                  <CustomRadioButton label="Gain" selected={goal === '3'} onSelect={() => setGoal('3')} />
+                </View>
+
+                <TouchableOpacity style={styles.calcButton} onPress={calculateTDEE}>
+                  <Text style={styles.calcButtonText}>Apply Results</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <GradientButton
+          title="Generate Plan →"
+          onPress={handleSearch}
+        />
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    padding: 24,
+  page: {
+    backgroundColor: '#F7F2EA',
+    padding: 20,
     paddingTop: 60,
-    paddingBottom: 40,
+    flexGrow: 1,
   },
+
+  sectionHead: {
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+
   header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(0, 82, 255, 0.1)',
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 42,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1F2933',
     fontFamily: 'Garamond-Bold',
-    color: Colors.primary,
-    marginBottom: 4,
+    marginTop: 16,
   },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textLight,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
+
+  section: {
     marginBottom: 16,
-    marginTop: 10,
   },
+
+  card: {
+    backgroundColor: '#FEFEFC',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 8,
+
+    // soft shadow (iOS)
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+
+    // Android
+    elevation: 4,
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+
+  input: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: '#111827',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#FAFAFA',
+  },
+
+  iconInput: {
+    flex: 1,
+    marginLeft: 10,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#111827',
+  },
+
+  // Additional styles needed for functionality
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 14,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    height: 56,
-  },
-  currency: {
-    fontSize: 20,
-    color: Colors.text,
-    marginLeft: 16,
-    fontWeight: '600',
-  },
-  input: {
+
+  half: {
     flex: 1,
-    height: '100%',
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: Colors.text,
-    fontWeight: '500',
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 10,
-    opacity: 0.5,
-  },
+
   switchGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  nutritionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  calcToggle: {
-    color: Colors.primary,
+
+  linkText: {
+    color: '#1F2933',
     fontWeight: '600',
     fontSize: 12,
+    textDecorationLine: 'underline',
   },
-  button: {
-    backgroundColor: Colors.primary,
-    height: 56,
-    borderRadius: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+
+  // Calculator Styles
+  calculatorSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  buttonText: {
-    color: '#fff',
+  sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 8,
+    color: '#1F2933',
+    marginBottom: 12,
   },
-  footerText: {
-    textAlign: 'center',
-    marginTop: 32,
-    color: Colors.textLight,
+  labelSmall: {
     fontSize: 12,
-    opacity: 0.6
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
   },
-  // Radio Button Styles
+  calcInput: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    height: 40,
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  calcButton: {
+    backgroundColor: '#1F2933',
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  calcButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
+  // Custom Radio Button
   radioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 15,
-    marginBottom: 10,
+    marginRight: 16,
+    marginBottom: 8,
   },
   radioButton: {
     height: 20,
     width: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
   radioButtonSelected: {
-    borderColor: Colors.primary,
+    borderColor: '#1F2933',
   },
   radioButtonInner: {
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#1F2933',
   },
   radioLabel: {
     fontSize: 14,
-    color: Colors.text,
+    color: '#4B5563',
   },
-  radioGroup: {
-    flexDirection: 'row',
-    height: 48,
-    alignItems: 'center',
-  },
-  radioGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 5,
-    marginBottom: 15,
-  },
-  // Calculator Styles
-  calculatorCard: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 15,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  calcTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 15,
-  },
-  labelSmall: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textLight,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  calcInput: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    height: 40,
-    paddingHorizontal: 10,
-    fontSize: 14,
-  },
-  calcButton: {
-    backgroundColor: Colors.text,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  calcButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  }
 });

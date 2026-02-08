@@ -94,10 +94,10 @@ export default function ResultsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[styles.container, styles.center, { backgroundColor: '#F7F2EA' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loadingCircle}>
-          <IconSymbol name="basket.fill" size={50} color={Colors.primary} />
+          <IconSymbol name="basket.fill" size={120} color={Colors.primary} />
         </View>
         <Text style={styles.loadingText}>Optimizing your route...</Text>
         <Text style={styles.loadingSub}>Checking prices & locations...</Text>
@@ -184,12 +184,13 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
 
   loadingCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: Colors.card, elevation: 5,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 20
+    width: 240, height: 240, borderRadius: 120,
+    backgroundColor: '#FFFFFF', elevation: 5,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 32,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }
   },
-  loadingText: { fontSize: 20, fontWeight: 'bold', color: Colors.text },
-  loadingSub: { fontSize: 14, color: Colors.textLight, marginTop: 8 },
+  loadingText: { fontSize: 40, fontWeight: '700', color: '#1F2933', fontFamily: 'Garamond-Bold' },
+  loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
 
   mapContainer: {
     height: 250,
