@@ -1,11 +1,17 @@
 
 import requests
 import time
+import os
 from typing import Dict, List, Tuple, Union, Any, Optional
 import config
 
 import googlemaps
 from shapely.geometry import shape, Point
+
+# Gemini Imports
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
 
 # --- HELPER FUNCTION: Get the GeoJSON Bounding Box ---
 def get_geojson_bounding_box(geometry: Dict) -> Tuple[float, float, float, float]:
@@ -294,3 +300,91 @@ def filter_unique_closest_chains(
             
     print(f"Filtered {len(stores)} locations -> {len(unique_stores)} unique chains.")
     return unique_stores, unique_addresses
+
+# --- FUNCTION: Filter Stores via Gemini ---
+def filter_stores_with_gemini(
+    store_locations: Dict[str, Tuple[float, float]], 
+    shopping_list_keys: List[str], 
+    max_stores: int = 10,
+    user_loc: Tuple[float, float] = None
+) -> Dict[str, Tuple[float, float]]:
+    """
+    Uses Gemini to intelligently filter stores based on relevance to the shopping list.
+    Falls back to distance-based filtering if Gemini fails.
+    """
+    print(f"\n--- AI Store Filtering (Gemini) ---")
+    print(f"Raw store count: {len(store_locations)}")
+    
+    if not store_locations:
+        return {}
+        
+    try:
+        class StoreSelectionResponse(BaseModel):
+            selected_stores: List[str]
+            reasoning: str
+
+        gemini_api_key = os.environ.get("GEMINI_API_KEY_V")
+        if not gemini_api_key:
+            raise ValueError("GEMINI_API_KEY_V not found in environment variables.")
+
+        client = genai.Client(api_key=gemini_api_key)
+        
+        store_names = list(store_locations.keys())
+        store_list_str = ", ".join(store_names)
+        
+        prompt = (
+            f"I have a list of places found on a map: {store_list_str}. "
+            f"I need to buy vegetables: {', '.join(shopping_list_keys)}. "
+            "Identify the actual grocery stores, supermarkets, and places suitable for buying fresh produce. "
+            "Exclude gas stations, dollar stores (unless they sell produce), pharmacies, and extensive duplicates of the same chain if they are redundant (keep 2-3 closest if unsure, or all if distinct). "
+            f"Select up to {max_stores} best options. "
+            "Return the exact names from the list that should be kept."
+        )
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=StoreSelectionResponse,
+            )
+        )
+        
+        selection = response.parsed
+        print(f"Gemini Reasoning: {selection.reasoning}")
+        
+        # Filter the main dictionary
+        gemini_selected_stores = {}
+        for name in selection.selected_stores:
+            # Try exact match first
+            if name in store_locations:
+                gemini_selected_stores[name] = store_locations[name]
+            else:
+                # Content matching for minor hallucinations/formatting diffs
+                for original_name in store_locations:
+                    if name.lower() in original_name.lower():
+                        gemini_selected_stores[original_name] = store_locations[original_name]
+                        break
+        
+        if gemini_selected_stores:
+            print(f"Gemini selected {len(gemini_selected_stores)} stores.")
+            return gemini_selected_stores
+        else:
+            print("Gemini returned no stores. Falling back to simple distance filtering.")
+            
+    except Exception as e:
+        print(f"Gemini Filtering Failed: {e}")
+        print("Falling back to distance filtering.")
+
+    # Fallback: Distance-based filtering
+    if user_loc:
+        distances = []
+        start_lat, start_lon = user_loc
+        for name, (lat, lon) in store_locations.items():
+            dist_sq = (lat - start_lat)**2 + (lon - start_lon)**2
+            distances.append((dist_sq, name, (lat, lon)))
+        distances.sort(key=lambda x: x[0])
+        return {name: loc for _, name, loc in distances[:max_stores]}
+    else:
+        # If no user_loc provided, just return the first N stores
+        return {k: store_locations[k] for k in list(store_locations.keys())[:max_stores]}
