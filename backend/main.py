@@ -5,6 +5,7 @@ import fridge_manager
 import geo_utils
 import price_manager
 import price_managerOG
+import data_manager
 import optimizer
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
@@ -228,6 +229,12 @@ if __name__ == "__main__":
         print("❌ Meal plan generation failed or returned no ingredients. Exiting.")
         sys.exit(0)
         
+    print("\n" + "-" * 40)
+    print("📋 INGREDIENTS NEEDED:")
+    for item, data in ingredient_quantities.items():
+        print(f"   • {item.title()} ({data.get('qty')} {data.get('unit')})")
+    print("-" * 40)
+        
     ONE_WAY_TIME_SECONDS = int(MAX_TIME_SECS / 4)
     isochrone_geometry = geo_utils.get_travel_isochrone(USER_LOC, ONE_WAY_TIME_SECONDS)
     
@@ -254,11 +261,9 @@ if __name__ == "__main__":
     durations_matrix = geo_utils.process_matrix_result(matrix_response)
     
     # Step 7: Get prices
-    price_path = price_managerOG if DEV_MODE else price_manager
-        
-    print("\n🔍 Searching for prices for all recipe ingredients...")
-    price_database, removed_items, shopping_list = price_path.fetch_grocery_prices(
-        ingredient_quantities, list(STORE_LOCATIONS.keys()), STORE_ADDRESSES
+    print("\n🔍 Generating synthetic prices for all recipe ingredients...")
+    price_database, removed_items, shopping_list = data_manager.generate_synthetic_market(
+        ingredient_quantities, list(STORE_LOCATIONS.keys())
     )
     
     # Step 8: Optimize shopping

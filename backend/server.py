@@ -10,6 +10,7 @@ import fridge_manager
 import geo_utils
 import price_manager
 import price_managerOG
+import data_manager
 import optimizer
 from geopy.geocoders import Nominatim
 
@@ -76,6 +77,12 @@ def generate_plan(request: PlanRequest):
     if not ingredient_quantities:
         raise HTTPException(status_code=500, detail="Failed to generate meal plan")
 
+    print("\n" + "-" * 40)
+    print("📋 INGREDIENTS NEEDED:")
+    for item, data in ingredient_quantities.items():
+        print(f"   • {item.title()} ({data.get('qty')} {data.get('unit')})")
+    print("-" * 40)
+
     # 5. Find Stores & Optimize
     # Normalize Shopping Time: if user entered > 10, they probably meant minutes
     sh_hours = prefs.shopping_time_hours
@@ -110,10 +117,9 @@ def generate_plan(request: PlanRequest):
     # Step 7: Get prices
     # The user requested dev_mode to always be 1
     prefs.dev_mode = 1 
-    price_path = price_managerOG if prefs.dev_mode else price_manager
     
-    price_database, removed_items, shopping_list = price_path.fetch_grocery_prices(
-        ingredient_quantities, list(STORE_LOCATIONS.keys()), STORE_ADDRESSES
+    price_database, removed_items, shopping_list = data_manager.generate_synthetic_market(
+        ingredient_quantities, list(STORE_LOCATIONS.keys())
     )
     
     config.MAX_TIME_SECONDS = MAX_TIME_SECS 
