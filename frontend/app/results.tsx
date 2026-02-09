@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useWindowDimensions } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { generatePlan, ShoppingPlanResponse } from '@/services/api';
+import { Feather } from '@expo/vector-icons';
+import { generatePlan, ShoppingPlanResponse, MealPlanItem } from '@/services/api';
 import ShoppingMap from '@/components/ShoppingMap';
+import Logo from '@/components/Logo';
 
 export default function ResultsScreen() {
   const router = useRouter();
@@ -16,6 +18,16 @@ export default function ResultsScreen() {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<ShoppingPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const dayIcons: Record<string, string> = {
+    "Monday": "calendar",
+    "Tuesday": "sun",
+    "Wednesday": "coffee",
+    "Thursday": "clock",
+    "Friday": "smile",
+    "Saturday": "shopping-bag",
+    "Sunday": "home"
+  };
 
   useEffect(() => {
     async function fetchPlan() {
@@ -53,11 +65,66 @@ export default function ResultsScreen() {
   const ListFooter = () => (
     <TouchableOpacity
       style={styles.backButton}
-      onPress={() => router.dismissAll()}
+      onPress={() => router.replace('/')}
     >
       <Text style={styles.backButtonText}>Start New Plan</Text>
     </TouchableOpacity>
   );
+
+  const { width: windowWidth } = useWindowDimensions();
+  const PAGE_PADDING = 24; // Padded via contentContainerStyle in the outer FlatList
+  const GAP = 16;
+  const availableWidth = windowWidth - (PAGE_PADDING * 2);
+
+  // A reasonable min-width for cards containing recipe details
+  const minCardWidth = windowWidth > 900 ? 320 : windowWidth > 500 ? 280 : availableWidth;
+
+  let columns = Math.floor(availableWidth / (minCardWidth + (availableWidth > minCardWidth ? GAP : 0)));
+  columns = Math.max(1, Math.min(columns, 7)); // Min 1, Max 7 (number of days)
+
+  const cardWidth = columns === 1 ? availableWidth : (availableWidth - (GAP * (columns - 1))) / columns;
+
+  const renderMealCard = ({ item }: { item: { day: string, meals: MealPlanItem[] } }) => {
+    const getMealIconInfo = (type: string) => {
+      const t = type.toLowerCase();
+      if (t.includes('breakfast')) return { name: 'sunrise', color: '#B45309' }; // Amber/Sun color
+      if (t.includes('lunch')) return { name: 'coffee', color: '#2563EB' }; // Blue
+      return { name: 'moon', color: '#4F46E5' }; // Indigo
+    };
+
+    return (
+      <View style={[styles.mealCard, { width: cardWidth }]}>
+        <View style={styles.mealCardHeader}>
+          <View style={styles.dayIconCircle}>
+            <Feather name={dayIcons[item.day] as any || 'calendar'} size={18} color={Colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.mealDay}>{item.day}</Text>
+            <Text style={styles.mealCountSmall}>{item.meals.length} meals</Text>
+          </View>
+        </View>
+        <View style={styles.mealDivider} />
+        {item.meals.map((meal, idx) => {
+          const iconInfo = getMealIconInfo(meal.meal_type);
+          return (
+            <View key={idx} style={styles.mealRow}>
+              <View style={styles.mealIconWrapperSmall}>
+                <Feather name={iconInfo.name as any} size={14} color={iconInfo.color} />
+              </View>
+              <View style={styles.mealInfo}>
+                <Text style={styles.mealTypeSmall}>{meal.meal_type}</Text>
+                <Text style={styles.mealRecipeSmall} numberOfLines={1}>{meal.recipe}</Text>
+                <View style={styles.mealFooterSmall}>
+                  <IconSymbol name="clock.fill" size={10} color={Colors.textLight} />
+                  <Text style={styles.mealTimeSmall}>{meal.cook_time}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   const renderStoreCard = ({ item }: { item: ShoppingPlanResponse['shopping_list'][0] }) => {
     const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
@@ -96,10 +163,9 @@ export default function ResultsScreen() {
     return (
       <View style={[styles.container, styles.center, { backgroundColor: '#F7F2EA' }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.loadingCircle}>
-          <IconSymbol name="basket.fill" size={120} color={Colors.primary} />
-        </View>
-        <Text style={styles.loadingText}>Optimizing your route...</Text>
+        <Logo size={180} />
+        <View style={{ height: 12 }} />
+        <Text style={styles.loadingText}>Optimizing your shopping trip...</Text>
         <Text style={styles.loadingSub}>Checking prices & locations...</Text>
       </View>
     );
@@ -107,7 +173,7 @@ export default function ResultsScreen() {
 
   if (error || !plan) {
     return (
-      <View style={[styles.container, styles.center, { padding: 20 }]}>
+      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#F7F2EA' }]}>
         <Stack.Screen options={{ title: 'Error' }} />
         <IconSymbol name="exclamationmark.circle.fill" size={60} color={Colors.error} />
         <Text style={[styles.loadingText, { marginTop: 20 }]}>Planning Failed</Text>
@@ -122,7 +188,7 @@ export default function ResultsScreen() {
           </View>
         )}
 
-        <TouchableOpacity style={styles.backButton} onPress={() => router.dismissAll()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/')}>
           <Text style={styles.backButtonText}>Go Back & Adjust</Text>
         </TouchableOpacity>
       </View>
@@ -133,30 +199,14 @@ export default function ResultsScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Optimal Plan',
-          headerStyle: { backgroundColor: Colors.background },
-          headerShadowVisible: false,
-          headerTintColor: Colors.text,
+          headerShown: false,
         }}
       />
 
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Total Cost</Text>
-          <Text style={styles.summaryValue}>${plan.total_cost.toFixed(2)}</Text>
-        </View>
-        <View style={styles.verticalLine} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Total Time</Text>
-          <Text style={styles.summaryValue}>{plan.total_time_minutes} min</Text>
-        </View>
-      </View>
-
-      <View style={styles.mapContainer}>
-        <ShoppingMap
-          userLocation={plan.user_location}
-          shoppingList={plan.shopping_list}
-        />
+      <View style={styles.brandHeader}>
+        <Logo size={70} />
+        <View style={{ height: 8 }} />
+        <Text style={styles.brandTitle}>BasketBuddies</Text>
       </View>
 
       <FlatList
@@ -165,7 +215,49 @@ export default function ResultsScreen() {
         renderItem={({ item }) => renderStoreCard({ item })}
         ListHeaderComponent={
           <View>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Total Cost</Text>
+                <Text style={styles.summaryValue}>${plan.total_cost.toFixed(2)}</Text>
+              </View>
+              <View style={styles.verticalLine} />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Total Time</Text>
+                <Text style={styles.summaryValue}>{Math.round(plan.total_time_minutes)} min</Text>
+              </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>Your Weekly Menu</Text>
+            <View style={styles.mealGridContainer}>
+              <FlatList
+                scrollEnabled={false}
+                key={columns}
+                numColumns={columns}
+                columnWrapperStyle={columns > 1 ? { gap: GAP } : undefined}
+                data={Object.values(plan.meal_plan.reduce((acc, meal) => {
+                  const day = meal.day;
+                  if (!acc[day]) acc[day] = { day, meals: [] };
+                  acc[day].meals.push(meal);
+                  return acc;
+                }, {} as Record<string, { day: string, meals: MealPlanItem[] }>))
+                  .sort((a, b) => {
+                    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                    return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+                  })
+                }
+                keyExtractor={(item) => item.day}
+                renderItem={renderMealCard}
+                contentContainerStyle={styles.mealListContainer}
+              />
+            </View>
+
             <Text style={styles.sectionTitle}>Shopping Route</Text>
+            <View style={styles.mapContainer}>
+              <ShoppingMap
+                userLocation={plan.user_location}
+                shoppingList={plan.shopping_list}
+              />
+            </View>
             <Text style={{ marginLeft: 4, marginBottom: 16, color: Colors.textLight }}>
               Route: {plan.route.join(' → ')}
             </Text>
@@ -180,21 +272,29 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: '#F7F2EA' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
-  loadingCircle: {
-    width: 240, height: 240, borderRadius: 120,
-    backgroundColor: '#FFFFFF', elevation: 5,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 32,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }
+  brandHeader: {
+    paddingTop: 60,
+    paddingBottom: 10,
+    alignItems: 'center',
+    backgroundColor: '#F7F2EA',
   },
+  brandTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2933',
+    fontFamily: 'Garamond-Bold',
+    marginTop: 8,
+  },
+
   loadingText: { fontSize: 40, fontWeight: '700', color: '#1F2933', fontFamily: 'Garamond-Bold' },
   loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
 
   mapContainer: {
-    height: 250,
-    marginHorizontal: 24,
+    height: 300,
+    marginHorizontal: 0,
     marginBottom: 20,
     borderRadius: 24,
     overflow: 'hidden',
@@ -206,8 +306,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: Colors.card,
-    margin: 24,
-    marginTop: 10,
+    marginBottom: 24,
     padding: 20,
     borderRadius: 16,
     justifyContent: 'space-between',
@@ -221,6 +320,94 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 12, color: Colors.textLight, textTransform: 'uppercase', marginBottom: 4, fontWeight: '600' },
   summaryValue: { fontSize: 18, fontWeight: 'bold', color: Colors.text },
   verticalLine: { width: 1, backgroundColor: Colors.border },
+
+  mealGridContainer: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  mealListContainer: {
+    paddingBottom: 8,
+  },
+  mealCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  mealCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  dayIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  mealDay: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+    textTransform: 'uppercase',
+  },
+  mealCountSmall: {
+    fontSize: 11,
+    color: Colors.textLight,
+  },
+  mealDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginBottom: 16,
+  },
+  mealRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  mealIconWrapperSmall: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  mealInfo: {
+    flex: 1,
+  },
+  mealTypeSmall: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textLight,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  mealRecipeSmall: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  mealFooterSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mealTimeSmall: {
+    fontSize: 10,
+    color: Colors.textLight,
+    marginLeft: 4,
+  },
 
   errorAdvice: {
     backgroundColor: 'rgba(239, 68, 68, 0.05)',
@@ -245,7 +432,11 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 18, fontWeight: 'bold', color: Colors.text, marginBottom: 8, marginLeft: 4
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 12,
+    marginTop: 8,
   },
 
   storeCard: {

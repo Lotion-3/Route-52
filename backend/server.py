@@ -129,13 +129,26 @@ def generate_plan(request: PlanRequest):
     
     formatted_shopping_list = []
     if optimal_route:
-        for store in optimal_route:
+        for store_raw in optimal_route:
+            store = store_raw.strip()
             if store == "Start": continue # Skip the start location in the list
-            items = item_assignments.get(store, [])
+            items = item_assignments.get(store_raw, [])
             store_items = []
-            for item in items:
-                price = price_database.get(store, {}).get(item, 0.0)
-                store_items.append({"name": item, "price": price})
+            for item_data in items:
+                item_name = item_data["name"]
+                item_qty = item_data["qty"]
+                lookup_key = item_name.lower().strip()
+                store_prices = price_database.get(store, {})
+                unit_price = store_prices.get(lookup_key, 0.0)
+                
+                # Debug logging to catch mismatches
+                if unit_price == 0.0:
+                    available_keys = list(store_prices.keys())
+                    print(f"❌ PRICE MISS: Store '{store}' | Key '{lookup_key}' not found.")
+                    print(f"   Available keys in this store: {available_keys[:20]}")
+                
+                total_item_price = unit_price * item_qty
+                store_items.append({"name": f"{item_name} (x{item_qty})", "price": total_item_price})
             
             formatted_shopping_list.append({
                 "store": store,

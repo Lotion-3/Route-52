@@ -34,8 +34,17 @@ export interface ShoppingPlanRequest {
     fake_data?: boolean;
 }
 
+export interface MealPlanItem {
+    day: string;
+    meal_type: string;
+    recipe: string;
+    calories: number;
+    cook_time: string;
+    ingredients: string[];
+}
+
 export interface ShoppingPlanResponse {
-    meal_plan: any[];
+    meal_plan: MealPlanItem[];
     route: string[];
     total_cost: number;
     total_time_minutes: number;

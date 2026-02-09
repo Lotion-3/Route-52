@@ -72,7 +72,7 @@ def fetch_grocery_prices(
                     # Map back to the correct store key
                     matched_store = next((s for s in batch if s.lower() in row.store_name.lower()), None)
                     if matched_store:
-                        price_database[matched_store][row.item_name] = row.price
+                        price_database[matched_store][row.item_name.lower().strip()] = row.price
                 
                 print(f" ✅ Batch complete.")
 

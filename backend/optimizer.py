@@ -18,7 +18,7 @@ def calculate_split_shopping_price(
     item_assignment_counts: Dict[str, int] = {s: 0 for s in store_ids} 
     
     for item_data in shopping_list: 
-        item = item_data["name"].lower()
+        item = item_data["name"].lower().strip()
         quantity = item_data["qty"]
         
         min_item_cost = float('inf') 
@@ -169,7 +169,7 @@ def find_optimal_store(
                 
             is_store_useful = False
             for item_data in shopping_list:
-                item_name = item_data["name"].lower()
+                item_name = item_data["name"].lower().strip()
                 winner_unit_price = price_database.get(k1_winner_store_id, {}).get(item_name, float('inf'))
                 store_unit_price = price_database.get(store_id, {}).get(item_name, float('inf'))
                 if store_unit_price < winner_unit_price:
@@ -262,11 +262,11 @@ def find_optimal_store(
         best_price = float('inf')
         best_s = None
         for s in optimal_route:
-            p = price_database.get(s, {}).get(item.lower(), float('inf'))
+            p = price_database.get(s, {}).get(item.lower().strip(), float('inf'))
             if p < best_price:
                 best_price = p
                 best_s = s
         if best_s:
-            final_assignments[best_s].append(f"{item} (x{quantity})")
+            final_assignments[best_s].append({"name": item, "qty": quantity})
 
     return optimal_route, min_cost, best_total_time, final_assignments

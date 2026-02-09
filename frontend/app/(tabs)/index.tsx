@@ -100,7 +100,8 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
 
         <View style={styles.sectionHead}>
-          <Logo />
+          <Logo size={80} />
+          <View style={{ height: 8 }} />
           <Text style={styles.header}>BasketBuddies</Text>
         </View>
 

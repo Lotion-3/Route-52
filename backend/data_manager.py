@@ -63,7 +63,8 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
     
     # Extract names and quantities
     # ingredient_data is expected to be { "Carrots": {"qty": 1, "unit": "lb"}, ... }
-    for item_name, metadata in ingredient_data.items():
+    for item_raw, metadata in ingredient_data.items():
+        item_name = item_raw.strip()
         qty = metadata.get("qty", 1)
         shopping_list.append({"name": item_name, "qty": qty})
         
@@ -101,7 +102,8 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
         "Costco": 0.8  # Bulk usually means lower unit price
     }
 
-    for store in store_names:
+    for store_raw in store_names:
+        store = store_raw.strip()
         price_database[store] = {}
         # Determine multiplier based on name
         multiplier = 1.0
@@ -115,7 +117,7 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
             # This satisfies "somehow come up with a random price" while keeping it grounded
             variance = random.uniform(0.9, 1.1)
             final_price = round(base_price * multiplier * variance, 2)
-            price_database[store][item] = final_price
+            price_database[store][item.lower().strip()] = final_price
 
     # Save to JSON as requested
     with open("market_data.json", "w") as f:
