@@ -77,7 +77,7 @@ export default function ResultsScreen() {
   const availableWidth = windowWidth - (PAGE_PADDING * 2);
 
   // A reasonable min-width for cards containing recipe details
-  const minCardWidth = windowWidth > 900 ? 320 : windowWidth > 500 ? 280 : availableWidth;
+  const minCardWidth = windowWidth > 1200 ? 400 : windowWidth > 900 ? 350 : windowWidth > 500 ? 280 : availableWidth;
 
   let columns = Math.floor(availableWidth / (minCardWidth + (availableWidth > minCardWidth ? GAP : 0)));
   columns = Math.max(1, Math.min(columns, 7)); // Min 1, Max 7 (number of days)
@@ -140,7 +140,7 @@ export default function ResultsScreen() {
             <Text style={styles.storeAddress}>{item.address}</Text>
           </View>
           <View style={styles.storeMeta}>
-            <Text style={styles.storeCost}>${storeTotal.toFixed(2)}</Text>
+            {storeTotal > 0 && <Text style={styles.storeCost}>${storeTotal.toFixed(2)}</Text>}
             <Text style={styles.storeItems}>{item.items.length} items</Text>
           </View>
         </View>
@@ -152,6 +152,9 @@ export default function ResultsScreen() {
             <View key={idx} style={styles.itemRow}>
               <View style={styles.itemBullet} />
               <Text style={styles.itemName}>{product.name}</Text>
+              {product.price > 0 && (
+                <Text style={styles.itemPrice}>${product.price.toFixed(2)}</Text>
+              )}
             </View>
           ))}
         </View>
@@ -218,7 +221,7 @@ export default function ResultsScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>Total Cost</Text>
-                <Text style={styles.summaryValue}>${plan.total_cost.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>{plan.total_cost > 0 ? `$${plan.total_cost.toFixed(2)}` : 'N/A'}</Text>
               </View>
               <View style={styles.verticalLine} />
               <View style={styles.summaryItem}>
