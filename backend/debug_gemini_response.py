@@ -27,7 +27,7 @@ print(prompt)
 print("\n" + "=" * 60)
 
 response = client.models.generate_content(
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash-exp",
     contents=prompt,
     config=types.GenerateContentConfig(
         tools=[types.Tool(google_search=types.GoogleSearch())],

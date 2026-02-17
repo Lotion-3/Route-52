@@ -42,7 +42,7 @@ def fetch_grocery_prices(
 
         try:
             search_res = client.models.generate_content(
-                model="gemini-2.0-flash", # Best for search
+                model="gemini-2.0-flash-exp", # Best for search
                 contents=search_prompt,
                 config=types.GenerateContentConfig(
                     tools=[types.Tool(google_search=types.GoogleSearch())],
@@ -59,7 +59,7 @@ def fetch_grocery_prices(
             struct_prompt = f"Convert these search results into a JSON table:\n\n{search_res.text}"
             
             struct_res = client.models.generate_content(
-                model="gemini-2.5-flash-lite", # Fastest & cheapest for formatting
+                model="gemini-2.0-flash-exp", # Fastest & cheapest for formatting
                 contents=struct_prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
