@@ -14,7 +14,23 @@ import data_manager
 import optimizer
 from geopy.geocoders import Nominatim
 
+import logging
+import traceback
+
+# Setup logging
+logging.basicConfig(filename='server_error.log', level=logging.ERROR)
+
 app = FastAPI()
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        err_msg = f"Unhandled exception: {exc}\n{traceback.format_exc()}"
+        print(f"🔥 CRITICAL ERROR:\n{err_msg}")
+        logging.error(err_msg)
+        return {"error": str(exc), "traceback": traceback.format_exc()}
 
 # --- CORS CONFIGURATION START ---
 app.add_middleware(
@@ -38,6 +54,7 @@ class UserPreferences(BaseModel):
     experiment: bool = True
     cook_time: str = "30-45 minutes"
     fridge_image_path: Optional[str] = None 
+    fridge_items: Optional[str] = None
     dev_mode: int = 1
 
 class PlanRequest(BaseModel):
@@ -64,23 +81,42 @@ def generate_plan(request: PlanRequest):
     config.TOTAL_WEEKLY_CALORIES = prefs.calorie_target * prefs.days_plan
     
     # 3. Handle Fridge Items
-    fridge_items = ""
+    fridge_items = prefs.fridge_items or ""
     if prefs.fridge_image_path and os.path.exists(prefs.fridge_image_path):
-        fridge_items = fridge_manager.analyze_fridge_image(prefs.fridge_image_path)
+        vision_items = fridge_manager.analyze_fridge_image(prefs.fridge_image_path)
+        if vision_items:
+            fridge_items = f"{fridge_items}, {vision_items}"
     
     # 4. Generate Meal Plan
-    meal_plan, ingredient_quantities = meal_planner.create_weekly_meal_plan(
+    meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
         prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time
     )
     
-    if not ingredient_quantities:
+    if not ingredient_data:
         raise HTTPException(status_code=500, detail="Failed to generate meal plan")
 
+    # Separate items to buy from items at home
+    to_buy_quantities = {}
+    at_home_ingredients = []
+    
+    for name, data in ingredient_data.items():
+        if data.get("is_at_home"):
+            at_home_ingredients.append({
+                "name": name,
+                "qty": data.get("qty"),
+                "unit": data.get("unit")
+            })
+        else:
+            to_buy_quantities[name] = data
+
     print("\n" + "-" * 40)
-    print("📋 INGREDIENTS NEEDED:")
-    for item, data in ingredient_quantities.items():
+    print("📋 INGREDIENTS NEEDED (TO BUY):")
+    for item, data in to_buy_quantities.items():
         print(f"   • {item.title()} ({data.get('qty')} {data.get('unit')})")
+    print("🏠 INGREDIENTS ALREADY AT HOME:")
+    for item in at_home_ingredients:
+        print(f"   • {item['name'].title()} ({item['qty']} {item['unit']})")
     print("-" * 40)
 
     # 5. Find Stores & Optimize
@@ -119,7 +155,7 @@ def generate_plan(request: PlanRequest):
     prefs.dev_mode = 1 
     
     price_database, removed_items, shopping_list = data_manager.generate_synthetic_market(
-        ingredient_quantities, list(STORE_LOCATIONS.keys())
+        to_buy_quantities, list(STORE_LOCATIONS.keys())
     )
     
     config.MAX_TIME_SECONDS = MAX_TIME_SECS 
@@ -157,9 +193,27 @@ def generate_plan(request: PlanRequest):
                 "items": store_items
             })
 
+    # Step 8: Calculate prices for meal ingredients
+    # Create a lookup for unit prices based on optimal assignments
+    item_unit_prices = {}
+    for store_name, items in item_assignments.items():
+        if store_name == "Start": continue
+        store_prices = price_database.get(store_name, {})
+        for itm in items:
+            l_key = itm["name"].lower().strip()
+            item_unit_prices[l_key] = store_prices.get(l_key, 0.0)
+
+    # Attach prices to meal plan ingredients
+    for meal in meal_plan:
+        for ing in meal.get('ingredients', []):
+            l_key = ing['name'].lower().strip()
+            u_price = item_unit_prices.get(l_key, 0.0)
+            ing['price'] = u_price * ing['qty']
+
     return {
         "meal_plan": meal_plan,
         "shopping_list": formatted_shopping_list,
+        "at_home_ingredients": at_home_ingredients,
         "total_cost": item_cost if item_cost != float('inf') else 0,
         "total_time_minutes": total_time_seconds / 60 if total_time_seconds else 0,
         "route": optimal_route if optimal_route else [],

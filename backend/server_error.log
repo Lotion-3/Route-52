@@ -1,0 +1,2219 @@
+ERROR:root:\u274c STEP 2 FAILED. Raw response:
+{
+  "meals": [
+    {
+      "day": "Monday",
+      "meal_type": "Breakfast",
+      "name": "Frittata with Spinach and Ricotta",
+      "calories": 350,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 6,
+          "unit": "unit"
+        },
+        {
+          "name": "Spinach",
+          "qty": 5,
+          "unit": "oz"
+        },
+        {
+          "name": "Ricotta cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 375°F (190°C).",
+        "Sauté spinach in olive oil until wilted.",
+        "Whisk eggs with ricotta, Parmesan, salt, and pepper.",
+        "Pour egg mixture over spinach in an oven-safe skillet.",
+        "Bake for 20-25 minutes, or until set."
+      ]
+    },
+    {
+      "day": "Monday",
+      "meal_type": "Lunch",
+      "name": "Pasta Salad with Pesto, Tomatoes, and Mozzarella",
+      "calories": 450,
+      "cook_time": "20 mins",
+      "ingredients": [
+        {
+          "name": "Pasta",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "Pesto",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Cherry tomatoes",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Cook pasta according to package directions.",
+        "Drain pasta and rinse with cold water.",
+        "Combine pasta with pesto, cherry tomatoes, and mozzarella.",
+        "Drizzle with olive oil and season with salt and pepper."
+      ]
+    },
+    {
+      "day": "Monday",
+      "meal_type": "Dinner",
+      "name": "Chicken Cacciatore with Polenta",
+      "calories": 600,
+      "cook_time": "60 mins",
+      "ingredients": [
+        {
+          "name": "Chicken thighs",
+          "qty": 6,
+          "unit": "unit"
+        },
+        {
+          "name": "Canned crushed tomatoes",
+          "qty": 28,
+          "unit": "oz"
+        },
+        {
+          "name": "Onion",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Bell peppers",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Mushrooms",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "Garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Dried oregano",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Polenta",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Chicken broth",
+          "qty": 4,
+          "unit": "cup"
+        },
+          {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        }
+      ],
+      "instructions": [
+        "Season chicken thighs with salt and pepper.",
+        "Brown chicken in olive oil in a large pot.",
+        "Remove chicken and set aside.",
+        "Sauté onion, bell peppers, mushrooms, and garlic in the same pot.",
+        "Add crushed tomatoes, oregano, salt, and pepper.",
+        "Return chicken to the pot and simmer for 45 minutes.",
+        "Prepare polenta according to package directions using chicken broth.",
+        "Serve chicken cacciatore over polenta, topped with Parmesan cheese."
+      ]
+    },
+    {
+      "day": "Tuesday",
+      "meal_type": "Breakfast",
+      "name": "Scrambled Eggs with Parmesan and Toast",
+      "calories": 250,
+      "cook_time": "10 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Milk",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Butter",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Bread",
+          "qty": 2,
+          "unit": "slices"
+        }
+      ],
+      "instructions": [
+        "Whisk eggs with Parmesan, milk, salt, and pepper.",
+        "Melt butter in a skillet over medium heat.",
+        "Pour egg mixture into the skillet and cook, stirring constantly, until set.",
+        "Toast bread and serve with scrambled eggs."
+      ]
+    },
+    {
+      "day": "Tuesday",
+      "meal_type": "Lunch",
+      "name": "Tuna and White Bean Salad with Lemon Vinaigrette",
+      "calories": 380,
+      "cook_time": "15 mins",
+      "ingredients": [
+        {
+          "name": "Canned tuna",
+          "qty": 5,
+          "unit": "oz"
+        },
+        {
+          "name": "White beans",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Red onion",
+          "qty": 0.25,
+          "unit": "unit"
+        },
+        {
+          "name": "Celery",
+          "qty": 1,
+          "unit": "stalk"
+        },
+        {
+          "name": "Lemon juice",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Dijon mustard",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Drain tuna and white beans.",
+        "Chop red onion and celery.",
+        "Combine tuna, white beans, red onion, and celery in a bowl.",
+        "Whisk lemon juice, olive oil, Dijon mustard, salt, and pepper in a separate bowl.",
+        "Pour vinaigrette over tuna mixture and toss to combine."
+      ]
+    },
+    {
+      "day": "Tuesday",
+      "meal_type": "Dinner",
+      "name": "Mushroom Risotto",
+      "calories": 550,
+      "cook_time": "45 mins",
+      "ingredients": [
+        {
+          "name": "Arborio rice",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Mushrooms",
+          "qty": 10,
+          "unit": "oz"
+        },
+        {
+          "name": "Onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Chicken broth",
+          "qty": 4,
+          "unit": "cup"
+        },
+        {
+          "name": "White wine",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Butter",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Sauté onion and garlic in olive oil and butter in a large pot.",
+        "Add Arborio rice and cook for 1-2 minutes.",
+        "Add white wine and cook until absorbed.",
+        "Add chicken broth, 1/2 cup at a time, stirring constantly until absorbed before adding more.",
+        "Stir in mushrooms and Parmesan cheese.",
+        "Season with salt and pepper."
+      ]
+    },
+    {
+      "day": "Wednesday",
+      "meal_type": "Breakfast",
+      "name": "Omelet with Tomatoes and Basil",
+      "calories": 300,
+      "cook_time": "15 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 3,
+          "unit": "unit"
+        },
+        {
+          "name": "Tomatoes",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Basil",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 2,
+          "unit": "oz"
+        },
+        {
+          "name": "Butter",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Whisk eggs with salt and pepper.",
+        "Melt butter in a skillet over medium heat.",
+        "Pour egg mixture into the skillet and cook until almost set.",
+        "Sprinkle with tomatoes, basil, and mozzarella cheese.",
+        "Fold omelet in half and cook until cheese is melted."
+      ]
+    },
+    {
+      "day": "Wednesday",
+      "meal_type": "Lunch",
+      "name": "Minestrone Soup with Crusty Bread",
+      "calories": 400,
+      "cook_time": "40 mins",
+      "ingredients": [
+        {
+          "name": "Vegetable broth",
+          "qty": 6,
+          "unit": "cup"
+        },
+        {
+          "name": "Diced tomatoes",
+          "qty": 14.5,
+          "unit": "oz"
+        },
+        {
+          "name": "Kidney beans",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Cannellini beans",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Carrots",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Celery",
+          "qty": 2,
+          "unit": "stalks"
+        },
+        {
+          "name": "Zucchini",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Dried oregano",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Pasta",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+                {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Crusty bread",
+          "qty": 2,
+          "unit": "slices"
+        }
+      ],
+      "instructions": [
+        "Sauté onion, carrots, and celery in olive oil in a large pot.",
+        "Add garlic, diced tomatoes, vegetable broth, kidney beans, cannellini beans, zucchini, pasta, oregano, salt, and pepper.",
+        "Bring to a boil and then simmer for 30 minutes.",
+        "Serve with crusty bread and Parmesan cheese."
+      ]
+    },
+    {
+      "day": "Wednesday",
+      "meal_type": "Dinner",
+      "name": "Baked Cod with Roasted Vegetables (Zucchini, Bell Peppers, Onions)",
+      "calories": 480,
+      "cook_time": "35 mins",
+      "ingredients": [
+        {
+          "name": "Cod fillets",
+          "qty": 4,
+          "unit": "unit"
+        },
+        {
+          "name": "Zucchini",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Bell peppers",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Onion",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Garlic powder",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Paprika",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Lemon",
+          "qty": 0.5,
+          "unit": "unit"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 400°F (200°C).",
+        "Chop zucchini, bell peppers, and onion.",
+        "Toss vegetables with olive oil, garlic powder, paprika, salt, and pepper.",
+        "Place vegetables on a baking sheet and bake for 20 minutes.",
+        "Place cod fillets on top of the vegetables, drizzle with olive oil and lemon juice.",
+        "Bake for an additional 10-15 minutes, or until fish is cooked through."
+      ]
+    },
+    {
+      "day": "Thursday",
+      "meal_type": "Breakfast",
+      "name": "Poached Eggs with Asparagus and Hollandaise Sauce",
+      "calories": 400,
+      "cook_time": "25 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Asparagus",
+          "qty": 6,
+          "unit": "spears"
+        },
+        {
+          "name": "Hollandaise sauce",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "White vinegar",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Poach eggs in simmering water with vinegar.",
+        "Steam or grill asparagus until tender.",
+        "Top asparagus with poached eggs and hollandaise sauce.",
+        "Season with salt and pepper."
+      ]
+    },
+    {
+      "day": "Thursday",
+      "meal_type": "Lunch",
+      "name": "Lentil Soup with Parmesan Cheese",
+      "calories": 350,
+      "cook_time": "45 mins",
+      "ingredients": [
+        {
+          "name": "Lentils",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Vegetable broth",
+          "qty": 6,
+          "unit": "cup"
+        },
+        {
+          "name": "Carrots",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Celery",
+          "qty": 2,
+          "unit": "stalks"
+        },
+        {
+          "name": "Onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Diced tomatoes",
+          "qty": 14.5,
+          "unit": "oz"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Bay leaf",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        }
+      ],
+      "instructions": [
+        "Sauté onion, carrots, and celery in olive oil in a large pot.",
+        "Add garlic, lentils, vegetable broth, diced tomatoes, bay leaf, salt, and pepper.",
+        "Bring to a boil and then simmer for 40 minutes.",
+        "Remove bay leaf before serving.",
+        "Serve with Parmesan cheese."
+      ]
+    },
+    {
+      "day": "Thursday",
+      "meal_type": "Dinner",
+      "name": "Chicken Parmesan with Spaghetti",
+      "calories": 700,
+      "cook_time": "50 mins",
+      "ingredients": [
+        {
+          "name": "Chicken breasts",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Spaghetti",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "Canned crushed tomatoes",
+          "qty": 28,
+          "unit": "oz"
+        },
+        {
+          "name": "Breadcrumbs",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "eggs",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Dried oregano",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "Garlic powder",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 375°F (190°C).",
+        "Cook spaghetti according to package directions.",
+        "Pound chicken breasts to 1/2-inch thickness.",
+        "Dip chicken in eggs, then dredge in breadcrumbs mixed with Parmesan cheese, garlic powder, oregano, salt, and pepper.",
+        "Brown chicken in olive oil in a skillet.",
+        "Place chicken in a baking dish, top with crushed tomatoes and mozzarella cheese.",
+        "Bake for 20-25 minutes, or until chicken is cooked through and cheese is melted.",
+        "Serve chicken Parmesan over spaghetti."
+      ]
+    },
+    {
+      "day": "Friday",
+      "meal_type": "Breakfast",
+      "name": "Egg and Cheese Sandwich on Ciabatta",
+      "calories": 400,
+      "cook_time": "15 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Ciabatta roll",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Cheese",
+          "qty": 2,
+          "unit": "slices"
+        },
+        {
+          "name": "Butter",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Scramble eggs with salt and pepper.",
+        "Melt butter in a skillet over medium heat.",
+        "Cook scrambled eggs in the skillet.",
+        "Toast ciabatta roll.",
+        "Assemble sandwich with scrambled eggs and cheese."
+      ]
+    },
+    {
+      "day": "Friday",
+      "meal_type": "Lunch",
+      "name": "Pizza with Pesto, Mozzarella, and Roasted Vegetables",
+      "calories": 500,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "Pizza dough",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Pesto",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "Bell peppers",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Zucchini",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Onion",
+          "qty": 0.25,
+          "unit": "unit"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 450°F (232°C).",
+        "Roll out pizza dough.",
+        "Spread pesto over pizza dough.",
+        "Top with mozzarella cheese, bell peppers, zucchini, and onion.",
+        "Drizzle with olive oil and season with salt and pepper.",
+        "Bake for 15-20 minutes, or until crust is golden brown and cheese is melted."
+      ]
+    },
+    {
+      "day": "Friday",
+      "meal_type": "Dinner",
+      "name": "Shrimp Scampi with Linguine",
+      "calories": 550,
+      "cook_time": "25 mins",
+      "ingredients": [
+        {
+          "name": "Shrimp",
+          "qty": 1,
+          "unit": "lb"
+        },
+        {
+          "name": "Linguine",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "Garlic",
+          "qty": 4,
+          "unit": "cloves"
+        },
+        {
+          "name": "Butter",
+          "qty": 4,
+          "unit": "tbsp"
+        },
+        {
+          "name": "White wine",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Lemon juice",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Red pepper flakes",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "Parsley",
+          "qty": 0.25,
+          "unit": "cup"
+        }
+      ],
+      "instructions": [
+        "Cook linguine according to package directions.",
+        "Sauté garlic in butter and olive oil in a large skillet.",
+        "Add shrimp and cook until pink.",
+        "Add white wine, lemon juice, red pepper flakes, salt, and pepper.",
+        "Simmer for 5 minutes.",
+        "Toss linguine with shrimp scampi sauce.",
+        "Garnish with parsley."
+      ]
+    },
+    {
+      "day": "Saturday",
+      "meal_type": "Breakfast",
+      "name": "Eggs Benedict with Smoked Salmon",
+      "calories": 450,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 3,
+          "unit": "unit"
+        },
+        {
+          "name": "English muffins",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Smoked salmon",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "Hollandaise sauce",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "White vinegar",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Poach eggs in simmering water with vinegar.",
+        "Toast English muffins.",
+        "Top English muffins with smoked salmon and poached eggs.",
+        "Drizzle with hollandaise sauce.",
+        "Season with salt and pepper."
+      ]
+    },
+    {
+      "day": "Saturday",
+      "meal_type": "Lunch",
+      "name": "Caprese Salad (Tomato, Mozzarella, Basil)",
+      "calories": 250,
+      "cook_time": "10 mins",
+      "ingredients": [
+        {
+          "name": "Tomatoes",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "Basil",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Balsamic glaze",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "Salt",
+          "qty": 0.125,
+          "unit": "tsp"
+        },
+        {
+          "name": "Black pepper",
+          "qty": 0.125,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Slice tomatoes and mozzarella cheese.",
+        "Arrange tomatoes, mozzarella, and basil on a plate.",
+        "Drizzle with olive oil and balsamic glaze.",
+        "Season with salt and pepper."
+      ]
+    },
+    {
+      "day": "Saturday",
+      "meal_type": "Dinner",
+      "name": "Lasagna with Ricotta and Spinach",
+      "calories": 650,
+      "cook_time": "75 mins",
+      "ingredients": [
+        {
+          "name": "Lasagna noodles",
+          "qty": 9,
+          "unit": "unit"
+        },
+        {
+          "name": "Ricotta cheese",
+          "qty": 15,
+          "unit": "oz"
+        },
+        {
+          "name": "Spinach",
+          "qty": 10,
+          "unit": "oz"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "Mozzarella cheese",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "eggs",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "Canned crushed tomatoes",
+          "qty": 28,
+          "unit": "oz"
+        },
+        {
+          "name": "Onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "Garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "Dried oregano",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+
+ERROR:root:\u274c STEP 2 FAILED. Raw response:
+{
+  "meals": [
+    {
+      "day": "Monday",
+      "meal_type": "Breakfast",
+      "name": "Frittata with Spinach and Mushrooms",
+      "calories": 350,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 6,
+          "unit": "unit"
+        },
+        {
+          "name": "spinach",
+          "qty": 5,
+          "unit": "oz"
+        },
+        {
+          "name": "mushrooms",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 375°F (190°C).",
+        "Sauté mushrooms and spinach in olive oil until softened.",
+        "Whisk eggs with salt and pepper.",
+        "Pour egg mixture over vegetables in an oven-safe skillet.",
+        "Bake for 20-25 minutes, or until set."
+      ]
+    },
+    {
+      "day": "Monday",
+      "meal_type": "Dinner",
+      "name": "Linguine with Shrimp Scampi",
+      "calories": 550,
+      "cook_time": "25 mins",
+      "ingredients": [
+        {
+          "name": "linguine",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "shrimp",
+          "qty": 1,
+          "unit": "lb"
+        },
+        {
+          "name": "garlic",
+          "qty": 4,
+          "unit": "cloves"
+        },
+        {
+          "name": "butter",
+          "qty": 4,
+          "unit": "tbsp"
+        },
+        {
+          "name": "white wine",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "lemon juice",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "red pepper flakes",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "parsley",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Cook linguine according to package directions.",
+        "Sauté garlic in butter until fragrant.",
+        "Add shrimp and cook until pink.",
+        "Deglaze with white wine and lemon juice.",
+        "Stir in red pepper flakes, parsley, salt, and pepper.",
+        "Toss with cooked linguine."
+      ]
+    },
+    {
+      "day": "Tuesday",
+      "meal_type": "Breakfast",
+      "name": "Baked Eggs with Tomato Sauce and Parmesan",
+      "calories": 280,
+      "cook_time": "20 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 4,
+          "unit": "unit"
+        },
+        {
+          "name": "tomato sauce",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "basil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 400°F (200°C).",
+        "Pour tomato sauce into ramekins.",
+        "Crack an egg into each ramekin.",
+        "Sprinkle with Parmesan cheese, basil, salt, and pepper.",
+        "Bake for 15-18 minutes, or until eggs are set."
+      ]
+    },
+    {
+      "day": "Tuesday",
+      "meal_type": "Dinner",
+      "name": "Chicken Cacciatore with Polenta",
+      "calories": 600,
+      "cook_time": "60 mins",
+      "ingredients": [
+        {
+          "name": "chicken thighs",
+          "qty": 1.5,
+          "unit": "lb"
+        },
+        {
+          "name": "onion",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "bell pepper",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "mushrooms",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "tomato sauce",
+          "qty": 2,
+          "unit": "cups"
+        },
+        {
+          "name": "red wine",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "oregano",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "basil",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "polenta",
+          "qty": 1,
+          "unit": "cup"
+        }
+      ],
+      "instructions": [
+        "Brown chicken thighs in olive oil.",
+        "Sauté onion, bell pepper, and mushrooms until softened.",
+        "Add garlic, oregano, basil, salt, and pepper.",
+        "Pour in tomato sauce and red wine.",
+        "Simmer for 45 minutes.",
+        "Prepare polenta according to package directions.",
+        "Serve chicken cacciatore over polenta."
+      ]
+    },
+    {
+      "day": "Wednesday",
+      "meal_type": "Breakfast",
+      "name": "Scrambled Eggs with Pesto and Toast",
+      "calories": 320,
+      "cook_time": "10 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 3,
+          "unit": "unit"
+        },
+        {
+          "name": "pesto",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "toast",
+          "qty": 2,
+          "unit": "slices"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Whisk eggs with salt and pepper.",
+        "Scramble eggs in a pan.",
+        "Stir in pesto.",
+        "Serve with toast."
+      ]
+    },
+    {
+      "day": "Wednesday",
+      "meal_type": "Dinner",
+      "name": "Mushroom Risotto",
+      "calories": 500,
+      "cook_time": "45 mins",
+      "ingredients": [
+        {
+          "name": "arborio rice",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "mushrooms",
+          "qty": 1,
+          "unit": "lb"
+        },
+        {
+          "name": "onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "vegetable broth",
+          "qty": 4,
+          "unit": "cups"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "white wine",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "butter",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "garlic",
+          "qty": 1,
+          "unit": "clove"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Sauté onion and garlic in olive oil and butter until softened.",
+        "Add mushrooms and cook until browned.",
+        "Add arborio rice and toast for 2 minutes.",
+        "Deglaze with white wine.",
+        "Add vegetable broth, one ladle at a time, stirring constantly until absorbed.",
+        "Stir in Parmesan cheese, salt, and pepper."
+      ]
+    },
+    {
+      "day": "Thursday",
+      "meal_type": "Breakfast",
+      "name": "Omelet with Mozzarella and Basil",
+      "calories": 300,
+      "cook_time": "15 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 3,
+          "unit": "unit"
+        },
+        {
+          "name": "mozzarella cheese",
+          "qty": 2,
+          "unit": "oz"
+        },
+        {
+          "name": "basil",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "butter",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Whisk eggs with salt and pepper.",
+        "Melt butter in a non-stick skillet.",
+        "Pour egg mixture into the skillet.",
+        "Cook until set, then flip.",
+        "Add mozzarella cheese and basil.",
+        "Fold omelet in half and serve."
+      ]
+    },
+    {
+      "day": "Thursday",
+      "meal_type": "Dinner",
+      "name": "Pasta Primavera",
+      "calories": 450,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "pasta",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "broccoli",
+          "qty": 1,
+          "unit": "cup"
+        },
+        {
+          "name": "carrots",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "peas",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "asparagus",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Cook pasta according to package directions.",
+        "Steam broccoli, carrots, peas, and asparagus until tender.",
+        "Sauté garlic in olive oil until fragrant.",
+        "Add steamed vegetables, salt, and pepper.",
+        "Toss with cooked pasta.",
+        "Sprinkle with Parmesan cheese."
+      ]
+    },
+    {
+      "day": "Friday",
+      "meal_type": "Breakfast",
+      "name": "Egg Drop Soup (Italian Style)",
+      "calories": 150,
+      "cook_time": "15 mins",
+      "ingredients": [
+        {
+          "name": "chicken broth",
+          "qty": 4,
+          "unit": "cups"
+        },
+        {
+          "name": "eggs",
+          "qty": 2,
+          "unit": "unit"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "parsley",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Bring chicken broth to a boil.",
+        "Whisk eggs with Parmesan cheese, parsley, salt, and pepper.",
+        "Slowly drizzle egg mixture into boiling broth, stirring gently.",
+        "Serve immediately."
+      ]
+    },
+    {
+      "day": "Friday",
+      "meal_type": "Dinner",
+      "name": "Baked Cod with Lemon and Herbs",
+      "calories": 380,
+      "cook_time": "25 mins",
+      "ingredients": [
+        {
+          "name": "cod fillets",
+          "qty": 1.5,
+          "unit": "lb"
+        },
+        {
+          "name": "lemon",
+          "qty": 1,
+          "unit": "unit"
+        },
+        {
+          "name": "olive oil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "thyme",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "rosemary",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 400°F (200°C).",
+        "Place cod fillets on a baking sheet.",
+        "Drizzle with olive oil and lemon juice.",
+        "Sprinkle with thyme, rosemary, salt, and pepper.",
+        "Bake for 20-22 minutes, or until fish is cooked through."
+      ]
+    },
+    {
+      "day": "Saturday",
+      "meal_type": "Breakfast",
+      "name": "Poached Eggs with Asparagus and Hollandaise",
+      "calories": 400,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "eggs",
+          "qty": 4,
+          "unit": "unit"
+        },
+        {
+          "name": "asparagus",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "hollandaise sauce",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "white vinegar",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Poach eggs in simmering water with white vinegar.",
+        "Steam or grill asparagus until tender.",
+        "Serve poached eggs over asparagus.",
+        "Top with hollandaise sauce, salt, and pepper."
+      ]
+    },
+    {
+      "day": "Saturday",
+      "meal_type": "Dinner",
+      "name": "Lasagna with Turkey Sausage",
+      "calories": 700,
+      "cook_time": "75 mins",
+      "ingredients": [
+        {
+          "name": "lasagna noodles",
+          "qty": 9,
+          "unit": "unit"
+        },
+        {
+          "name": "turkey sausage",
+          "qty": 1,
+          "unit": "lb"
+        },
+        {
+          "name": "ricotta cheese",
+          "qty": 15,
+          "unit": "oz"
+        },
+        {
+          "name": "mozzarella cheese",
+          "qty": 16,
+          "unit": "oz"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "tomato sauce",
+          "qty": 3,
+          "unit": "cups"
+        },
+        {
+          "name": "onion",
+          "qty": 0.5,
+          "unit": "unit"
+        },
+        {
+          "name": "garlic",
+          "qty": 2,
+          "unit": "cloves"
+        },
+        {
+          "name": "olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        },
+        {
+          "name": "basil",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "oregano",
+          "qty": 1,
+          "unit": "tsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.5,
+          "unit": "tsp"
+        },
+        {
+          "name": "eggs",
+          "qty": 1,
+          "unit": "unit"
+        }
+      ],
+      "instructions": [
+        "Cook lasagna noodles according to package directions.",
+        "Brown turkey sausage with onion and garlic in olive oil.",
+        "Stir in tomato sauce, basil, oregano, salt, and pepper.",
+        "Mix ricotta cheese with Parmesan cheese, eggs, salt, and pepper.",
+        "Layer lasagna noodles, sausage sauce, ricotta mixture, and mozzarella cheese in a baking dish.",
+        "Bake at 375°F (190°C) for 45-50 minutes."
+      ]
+    },
+    {
+      "day": "Sunday",
+      "meal_type": "Breakfast",
+      "name": "Italian Breakfast Strata",
+      "calories": 450,
+      "cook_time": "60 mins",
+      "ingredients": [
+        {
+          "name": "bread",
+          "qty": 6,
+          "unit": "slices"
+        },
+        {
+          "name": "eggs",
+          "qty": 8,
+          "unit": "unit"
+        },
+        {
+          "name": "milk",
+          "qty": 2,
+          "unit": "cups"
+        },
+        {
+          "name": "Italian sausage",
+          "qty": 0.5,
+          "unit": "lb"
+        },
+        {
+          "name": "mozzarella cheese",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "Parmesan cheese",
+          "qty": 0.25,
+          "unit": "cup"
+        },
+        {
+          "name": "basil",
+          "qty": 2,
+          "unit": "tbsp"
+        },
+        {
+          "name": "salt",
+          "qty": 0.25,
+          "unit": "tsp"
+        },
+        {
+          "name": "pepper",
+          "qty": 0.25,
+          "unit": "tsp"
+        }
+      ],
+      "instructions": [
+        "Cut bread into cubes.",
+        "Brown Italian sausage.",
+        "Whisk eggs with milk, salt, and pepper.",
+        "Layer bread, sausage, mozzarella cheese and basil in a baking dish.",
+        "Pour egg mixture over the top.",
+        "Sprinkle with Parmesan cheese.",
+        "Bake at 350°F (175°C) for 45-50 minutes."
+      ]
+    },
+    {
+      "day": "Sunday",
+      "meal_type": "Dinner",
+      "name": "Pizza with Prosciutto and Arugula",
+      "calories": 650,
+      "cook_time": "30 mins",
+      "ingredients": [
+        {
+          "name": "pizza dough",
+          "qty": 1,
+          "unit": "lb"
+        },
+        {
+          "name": "tomato sauce",
+          "qty": 0.5,
+          "unit": "cup"
+        },
+        {
+          "name": "mozzarella cheese",
+          "qty": 8,
+          "unit": "oz"
+        },
+        {
+          "name": "prosciutto",
+          "qty": 4,
+          "unit": "oz"
+        },
+        {
+          "name": "arugula",
+          "qty": 2,
+          "unit": "oz"
+        },
+        {
+          "name": "olive oil",
+          "qty": 1,
+          "unit": "tbsp"
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 450°F (230°C).",
+        "Roll out pizza dough.",
+        "Spread tomato sauce over dough.",
+        "Sprinkle with mozzarella cheese.",
+        "Bake for 12-15 minutes.",
+        "Top with prosciutto and arugula.",
+        "Drizzle with olive oil."
+      ]
+    }
+  ],
+  "shopping_list": [
+    {
+      "item_name": "eggs",
+      "search_query": "eggs",
+      "recipe_quantity": 47,
+      "recipe_unit": "unit",
+      "purchase_strategy": "unit",
+      "is_at_home": true
+    },
+    {
+      "item_name": "spinach",
+      "search_query": "fresh spinach",
+      "recipe_quantity": 5,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "mushrooms",
+      "search_query": "fresh mushrooms",
+      "recipe_quantity": 24,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "olive oil",
+      "search_query": "olive oil",
+      "recipe_quantity": 11,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "salt",
+      "search_query": "salt",
+      "recipe_quantity": 4.75,
+      "recipe_unit": "tsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "pepper",
+      "search_query": "pepper",
+      "recipe_quantity": 4.75,
+      "recipe_unit": "tsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "linguine",
+      "search_query": "linguine pasta",
+      "recipe_quantity": 8,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "shrimp",
+      "search_query": "fresh shrimp",
+      "recipe_quantity": 1,
+      "recipe_unit": "lb",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "garlic",
+      "search_query": "fresh garlic",
+      "recipe_quantity": 13,
+      "recipe_unit": "cloves",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "butter",
+      "search_query": "butter",
+      "recipe_quantity": 7,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "white wine",
+      "search_query": "white wine",
+      "recipe_quantity": 1,
+      "recipe_unit": "cup",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "lemon juice",
+      "search_query": "lemon juice",
+      "recipe_quantity": 2,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "red pepper flakes",
+      "search_query": "red pepper flakes",
+      "recipe_quantity": 0.25,
+      "recipe_unit": "tsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "parsley",
+      "search_query": "fresh parsley",
+      "recipe_quantity": 3,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "tomato sauce",
+      "search_query": "tomato sauce",
+      "recipe_quantity": 6.5,
+      "recipe_unit": "cups",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "Parmesan cheese",
+      "search_query": "Parmesan cheese",
+      "recipe_quantity": 2,
+      "recipe_unit": "cups",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "basil",
+      "search_query": "fresh basil",
+      "recipe_quantity": 7,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "chicken thighs",
+      "search_query": "chicken thighs",
+      "recipe_quantity": 1.5,
+      "recipe_unit": "lb",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "onion",
+      "search_query": "onion",
+      "recipe_quantity": 2,
+      "recipe_unit": "unit",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "bell pepper",
+      "search_query": "bell pepper",
+      "recipe_quantity": 1,
+      "recipe_unit": "unit",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "red wine",
+      "search_query": "red wine",
+      "recipe_quantity": 0.5,
+      "recipe_unit": "cup",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "oregano",
+      "search_query": "dried oregano",
+      "recipe_quantity": 2,
+      "recipe_unit": "tsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "polenta",
+      "search_query": "polenta",
+      "recipe_quantity": 1,
+      "recipe_unit": "cup",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "pesto",
+      "search_query": "pesto",
+      "recipe_quantity": 1,
+      "recipe_unit": "tbsp",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "toast",
+      "search_query": "toast bread",
+      "recipe_quantity": 2,
+      "recipe_unit": "slices",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "arborio rice",
+      "search_query": "arborio rice",
+      "recipe_quantity": 1,
+      "recipe_unit": "cup",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "vegetable broth",
+      "search_query": "vegetable broth",
+      "recipe_quantity": 4,
+      "recipe_unit": "cups",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "mozzarella cheese",
+      "search_query": "mozzarella cheese",
+      "recipe_quantity": 28,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "pasta",
+      "search_query": "pasta",
+      "recipe_quantity": 8,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "broccoli",
+      "search_query": "fresh broccoli",
+      "recipe_quantity": 1,
+      "recipe_unit": "cup",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "carrots",
+      "search_query": "fresh carrots",
+      "recipe_quantity": 0.5,
+      "recipe_unit": "cup",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "peas",
+      "search_query": "frozen peas",
+      "recipe_quantity": 0.5,
+      "recipe_unit": "cup",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "asparagus",
+      "search_query": "fresh asparagus",
+      "recipe_quantity": 13.5,
+      "recipe_unit": "oz",
+      "purchase_strategy": "weighted",
+      "is_at_home": false
+    },
+    {
+      "item_name": "chicken broth",
+      "search_query": "chicken broth",
+      "recipe_quantity": 4,
+      "recipe_unit": "cups",
+      "purchase_strategy": "unit",
+      "is_at_home": false
+    },
+    {
+      "item_name": "cod fillets",
+      "search_query": "cod fillets",
+      "recipe_quantity": 1.5,
+

@@ -31,16 +31,18 @@ export interface ShoppingPlanRequest {
     cuisines?: string;
     experiment?: boolean;
     cook_time?: string;
+    fridge_items?: string;
     fake_data?: boolean;
 }
 
 export interface MealPlanItem {
     day: string;
     meal_type: string;
-    recipe: string;
+    name: string;
     calories: number;
     cook_time: string;
-    ingredients: string[];
+    ingredients: { name: string; qty: number; unit: string; price?: number }[];
+    instructions: string[];
 }
 
 export interface ShoppingPlanResponse {
@@ -49,6 +51,7 @@ export interface ShoppingPlanResponse {
     total_cost: number;
     total_time_minutes: number;
     user_location: { lat: number; lng: number };
+    at_home_ingredients: { name: string; qty: number; unit: string }[];
     shopping_list: {
         store: string;
         address: string;
@@ -74,7 +77,8 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
                     dietary_restrictions: params.dietary_restrictions || "",
                     cuisines: params.cuisines || "",
                     experiment: params.experiment !== undefined ? params.experiment : true,
-                    cook_time: params.cook_time || "30-45 minutes"
+                    cook_time: params.cook_time || "30-45 minutes",
+                    fridge_items: params.fridge_items || ""
                 }
             }),
         });
