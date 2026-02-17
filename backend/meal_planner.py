@@ -70,14 +70,14 @@ def create_weekly_meal_plan(
       1. meal_plan: List of dictionaries (compatible with main.py structure)
       2. ingredient_data: Dictionary {ingredient_name: details}
     """
-    print("\n" + "-"*50)
-    print("🤖 ASKING GEMINI FOR A CUSTOM MEAL PLAN...")
-    print(f"   Target: {days} days, {meals_per_day} meals/day")
-    print(f"   Calories: {daily_calories} kcal/day")
-    if diet_restrictions: print(f"   Diet: {diet_restrictions}")
-    if cuisines: print(f"   Cuisines: {cuisines}")
-    if fridge_contents: print(f"   Fridge Contents: {fridge_contents}")
-    print("-"*50)
+    print("\n" + "-"*50, flush=True)
+    print("🤖 ASKING GEMINI FOR A CUSTOM MEAL PLAN...", flush=True)
+    print(f"   Target: {days} days, {meals_per_day} meals/day", flush=True)
+    print(f"   Calories: {daily_calories} kcal/day", flush=True)
+    if diet_restrictions: print(f"   Diet: {diet_restrictions}", flush=True)
+    if cuisines: print(f"   Cuisines: {cuisines}", flush=True)
+    print(f"   Fridge Contents: {repr(fridge_contents)}", flush=True)
+    print("-"*50, flush=True)
 
     api_key = os.environ.get("GEMINI_API_KEY_V")
     if not api_key:
@@ -94,6 +94,7 @@ def create_weekly_meal_plan(
         "Just provide the meal names for each day and type."
     )
 
+    print(f"DEBUG: Explicit fridge list being sent to API: {repr(fridge_contents)}", flush=True)
     try:
         response1 = client.models.generate_content(
             model="gemini-2.0-flash",
@@ -133,7 +134,9 @@ def create_weekly_meal_plan(
                 f"5. 'ingredients' (list of objects with 'name', 'qty', 'unit', 'is_at_home', 'search_query', 'purchase_strategy')\n"
                 f"6. 'instructions' (list of strings)\n\n"
                 f"Rules for ingredients (CRITICAL):\n"
-                f"- 'is_at_home': Check if an ingredient is EXPLICITLY in this fridge list: {fridge_contents}. Set to true if found.\n"
+                f"- 'is_at_home': Set to true ONLY if the ingredient is EXPLICITLY listed in this fridge list: {fridge_contents}. \n"
+                f"  * DO NOT assume common staples (salt, pepper, oil, water, flour) are at home unless they are in the list.\n"
+                f"  * If the fridge list is empty, 'is_at_home' MUST be false for ALL ingredients.\n"
                 f"- 'search_query': Provide a retail search string (e.g., 'organic baby spinach').\n"
                 f"- 'purchase_strategy': 'weighted' for things like produce/meat by lb, 'unit' for discrete items like cans/cartons.\n"
             )
