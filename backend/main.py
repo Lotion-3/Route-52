@@ -3,8 +3,6 @@ import config
 import meal_planner
 import fridge_manager
 import geo_utils
-import price_manager
-import price_managerOG
 import data_manager
 import optimizer
 from geopy.geocoders import Nominatim
