@@ -90,6 +90,7 @@ def generate_plan(request: PlanRequest):
             fridge_items = f"{fridge_items}, {vision_items}"
     
     # 4. Generate Meal Plan
+    print(f"\n📦 FINAL FRIDGE LIST FOR MEAL PLANNER: {repr(fridge_items)}", flush=True)
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
         prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
@@ -114,10 +115,10 @@ def generate_plan(request: PlanRequest):
             to_buy_quantities[name] = data
 
     print("\n" + "-" * 40)
-    print("📋 INGREDIENTS NEEDED (TO BUY):")
+    print(f"📋 INGREDIENTS NEEDED (TO BUY) [{len(to_buy_quantities)} items]:")
     for item, data in to_buy_quantities.items():
         print(f"   • {item.title()} ({data.get('qty')} {data.get('unit')})")
-    print("🏠 INGREDIENTS ALREADY AT HOME:")
+    print(f"🏠 INGREDIENTS ALREADY AT HOME [{len(at_home_ingredients)} items]:")
     for item in at_home_ingredients:
         print(f"   • {item['name'].title()} ({item['qty']} {item['unit']})")
     print("-" * 40)

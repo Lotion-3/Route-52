@@ -89,6 +89,7 @@ def create_weekly_meal_plan(
         "5. Ensure the 'buy_list' cost is within budget."
     )
 
+    print(f"DEBUG: Explicit fridge list being sent to API: {repr(fridge_contents)}", flush=True)
     try:
         response1 = client.models.generate_content(
             model="gemini-2.0-flash",
