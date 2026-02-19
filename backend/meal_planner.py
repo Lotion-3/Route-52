@@ -8,51 +8,40 @@ from pydantic import BaseModel, Field
 
 # --- UPDATED SCHEMAS ---
 
-class ShoppingItem(BaseModel):
-    item_name: str = Field(description="Core name (e.g., 'banana')")
-    search_query: str = Field(description="Retail search string (e.g., 'fresh bananas')")
-    recipe_quantity: float
-    recipe_unit: str
+# --- SCHEMAS FOR 3-PROMPT DESIGN ---
+
+# Step 1: IngredientPool (Sourcing)
+class IngredientInfo(BaseModel):
+    name: str = Field(description="Exact name of the ingredient")
+    qty: float = Field(description="Total quantity needed across ALL meals")
+    unit: str = Field(description="Measurement unit (e.g., 'lbs', 'cups', 'units')")
+    search_query: str = Field(description="A retail search string (only for items to buy)")
     purchase_strategy: str = Field(description="'weighted' or 'unit'")
-    is_at_home: bool = Field(description="True if this item is already in the user's fridge/home")
 
-class MealIngredient(BaseModel):
-    name: str = Field(description="Core name of the ingredient (e.g., 'chicken breast')")
-    qty: float
-    unit: str
-    is_at_home: bool = Field(description="Set to true if this ingredient matches something in the User's fridge list")
-    search_query: str = Field(description="A retail search string for this ingredient (e.g., 'fresh boneless chicken breast')")
-    purchase_strategy: str = Field(description="'weighted' or 'unit' based on how it's typically sold")
+class InitialIngredientStrategy(BaseModel):
+    buy_list: List[IngredientInfo] = Field(description="List of ingredients the user needs to PURCHASE")
+    home_list: List[IngredientInfo] = Field(description="List of ingredients the user ALREADY HAS. MUST use exact names from User Fridge.")
 
-class Meal(BaseModel):
-    day: str
-    meal_type: str = Field(description="Breakfast, Lunch, or Dinner")
-    name: str
-    calories: int
-    cook_time: str = Field(description="Estimated time to cook, e.g., '25 mins'")
-    ingredients: List[MealIngredient]
-    instructions: List[str]
-
-class MealPlanResponse(BaseModel):
-    meals: List[Meal]
-    shopping_list: List[ShoppingItem]
-
-# --- STEP 1 SCHEMAS ---
+# Step 2: MealPlanStructure (Scheduling)
+class MealIngredientMapping(BaseModel):
+    name: str = Field(description="Exact name of the ingredient from the Step 1 Pool")
+    qty: float = Field(description="Quantity used in this specific meal")
+    unit: str = Field(description="Unit used in this specific meal")
 
 class MealBrief(BaseModel):
     day: str
-    meal_type: str
-    name: str
+    meal_type: str = Field(description="Breakfast, Lunch, or Dinner")
+    name: str = Field(description="Full name of the recipe")
+    ingredients: List[MealIngredientMapping] = Field(description="Ingredients mapped from the pool for this meal")
 
-class MealBriefList(BaseModel):
+class MealPlanStructure(BaseModel):
     meals: List[MealBrief]
 
-# --- REIMPLEMENTED FUNCTION ---
-
-# --- DAY-BY-DAY SCHEMAS ---
-
-class DailyMealPlan(BaseModel):
-    meals: List[Meal]
+# Step 3: RecipeDetails (Instruction Generation)
+class RecipeExecution(BaseModel):
+    calories: int
+    cook_time: str = Field(description="e.g., '25 mins'")
+    instructions: List[str]
 
 def create_weekly_meal_plan(
     days: int, 
@@ -62,36 +51,42 @@ def create_weekly_meal_plan(
     cuisines: str = "",
     fridge_contents: str = "",
     experiment: bool = True,
-    cook_time: str = "30-45 mins"
+    cook_time: str = "30-45 mins",
+    health_issues: str = "",
+    budget: float = 150.0
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """
-    Generates a meal plan using Google Gemini.
-    Returns:
-      1. meal_plan: List of dictionaries (compatible with main.py structure)
-      2. ingredient_data: Dictionary {ingredient_name: details}
-    """
-    print("\n" + "-"*50, flush=True)
-    print("🤖 ASKING GEMINI FOR A CUSTOM MEAL PLAN...", flush=True)
-    print(f"   Target: {days} days, {meals_per_day} meals/day", flush=True)
-    print(f"   Calories: {daily_calories} kcal/day", flush=True)
-    if diet_restrictions: print(f"   Diet: {diet_restrictions}", flush=True)
-    if cuisines: print(f"   Cuisines: {cuisines}", flush=True)
-    print(f"   Fridge Contents: {repr(fridge_contents)}", flush=True)
-    print("-"*50, flush=True)
+    logging.basicConfig(filename='meal_planner_debug.log', level=logging.INFO, 
+                        format='%(asctime)s - %(message)s', force=True)
+    
+    def log_step(msg):
+        print(msg)
+        logging.info(msg)
+
+    log_step("\n" + "-"*50)
+    log_step("🤖 3-PROMPT MEAL PLAN GENERATION STARTING...")
+    log_step(f"   Budget: ${budget} | Health: {health_issues}")
+    log_step(f"   Fridge: {fridge_contents if fridge_contents else 'Empty'}")
+    log_step("-"*50)
 
     api_key = os.environ.get("GEMINI_API_KEY_V")
     if not api_key:
-        print("❌ ERROR: GEMINI_API_KEY_V not found in environment.")
+        log_step("❌ ERROR: GEMINI_API_KEY_V not found in environment.")
         return [], {}
 
     client = genai.Client(api_key=api_key)
-    
-    # --- STEP 1: GENERATE MEAL NAMES ---
+
+    # --- PROMPT 1: INGREDIENT SOURCING STRATEGY ---
     prompt_step1 = (
-        f"Generate a {days}-day meal plan ({meals_per_day} meals/day) at {daily_calories} total kcal/day. "
-        f"Dietary Restrictions: {diet_restrictions}. Cuisines: {cuisines}. "
-        f"The user has: {fridge_contents}. Use these if possible.\n"
-        "Just provide the meal names for each day and type."
+        f"Step 1: Create a universal ingredient list for a {days}-day plan ({meals_per_day} meals/day).\n"
+        f"TOTAL BUDGET: ${budget} for the 'buy_list'.\n"
+        f"USER FRIDGE: {fridge_contents}.\n"
+        f"HEALTH/DIET: {health_issues}, {diet_restrictions}.\n\n"
+        "Requirements:\n"
+        "1. List every unique ingredient needed for the week.\n"
+        "2. FOR EACH ITEM, CHOOSE A STANDARD RETAIL UNIT (e.g., 'bottle', 'lb', 'dozen', 'kg', 'bunch') and a realistic quantity of THAT unit needed for the week.\n"
+        "3. FOR FRIDGE ITEMS, USE THE EXACT LABELS PROVIDED BY THE USER.\n"
+        "4. STAPLE SANITY CHECK: For pantry items (oil, spices, flour), do NOT suggest more than 1 unit (e.g., 1 bottle) unless the plan requires bulk amounts.\n"
+        "5. Ensure the 'buy_list' cost is within budget."
     )
 
     print(f"DEBUG: Explicit fridge list being sent to API: {repr(fridge_contents)}", flush=True)
@@ -101,117 +96,117 @@ def create_weekly_meal_plan(
             contents=prompt_step1,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=MealBriefList,
+                response_schema=InitialIngredientStrategy,
             )
         )
-        brief_plan = response1.parsed
-        if not brief_plan or not brief_plan.meals:
-            print("❌ STEP 1 FAILED: No meal briefs generated.")
+        strategy = response1.parsed
+        if not strategy:
+            log_step("❌ STEP 1 FAILED.")
             return [], {}
+
+        log_step(f"✅ Sourcing Complete: {len(strategy.buy_list)} to buy, {len(strategy.home_list)} from home.")
+
+        # --- PROMPT 2: MEAL SCHEDULING & MAPPING ---
+        buy_pool = [f"{ing.name} ({ing.qty} {ing.unit})" for ing in strategy.buy_list]
+        home_pool = [f"{ing.name} ({ing.qty} {ing.unit})" for ing in strategy.home_list]
         
-        # Group meals by day to process day-by-day
-        meals_by_day = {}
-        for m in brief_plan.meals:
-            if m.day not in meals_by_day:
-                meals_by_day[m.day] = []
-            meals_by_day[m.day].append(m)
+        prompt_step2 = (
+            f"Step 2: Create a {days}-day meal plan schedule using ONLY these ingredients:\n"
+            f"BUY LIST: {', '.join(buy_pool)}\n"
+            f"HOME LIST: {', '.join(home_pool)}\n\n"
+            "Constraints:\n"
+            "1. Assign specific ingredients and amounts to each meal.\n"
+            "2. Ensure the meal plan respects dietary goals: {diet_restrictions}, {cuisines}.\n"
+            "3. NO NEW INGREDIENTS. Assume ONLY water."
+        )
 
-        final_meals = []
-        aggregated_ingredients = {} # name -> {qty, unit, is_at_home}
+        response2 = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt_step2,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=MealPlanStructure,
+            )
+        )
+        plan_structure = response2.parsed
+        if not plan_structure:
+            log_step("❌ STEP 2 FAILED.")
+            return [], {}
 
-        # --- STEP 2: GENERATE DETAILS DAY-BY-DAY ---
-        for day, meals in meals_by_day.items():
-            print(f"📅 Expanding recipes for {day}...")
-            meal_list_str = "\n".join([f"- {m.meal_type}: {m.name}" for m in meals])
+        log_step(f"✅ Scheduling Complete: {len(plan_structure.meals)} meals planned.")
+
+        # Build master lookup for ingredient metadata
+        master_lookup = {}
+        for ing in strategy.buy_list:
+            master_lookup[ing.name.lower()] = {"is_at_home": False, "query": ing.search_query, "strategy": ing.purchase_strategy}
+        for ing in strategy.home_list:
+            master_lookup[ing.name.lower()] = {"is_at_home": True, "query": "", "strategy": ing.purchase_strategy}
+
+        # --- PROMPT 3: RECIPE EXECUTION (LOOPING) ---
+        final_meal_plan = []
+        for meal_brief in plan_structure.meals:
+            log_step(f"🍳 Generating instructions for: {meal_brief.name}...")
             
-            prompt_day = (
-                f"Detailed recipe expansion for {day}:\n{meal_list_str}\n\n"
-                f"For EACH meal listed, provide:\n"
-                f"1. 'day' (use '{day}') and 'meal_type' (exactly as listed above)\n"
-                f"2. 'name' (exactly as provided above)\n"
-                f"3. 'calories' (integer)\n"
-                f"4. 'cook_time' (string, e.g. '20 mins')\n"
-                f"5. 'ingredients' (list of objects with 'name', 'qty', 'unit', 'is_at_home', 'search_query', 'purchase_strategy')\n"
-                f"6. 'instructions' (list of strings)\n\n"
-                f"Rules for ingredients (CRITICAL):\n"
-                f"- 'is_at_home': Set to true ONLY if the ingredient is EXPLICITLY listed in this fridge list: {fridge_contents}. \n"
-                f"  * DO NOT assume common staples (salt, pepper, oil, water, flour) are at home unless they are in the list.\n"
-                f"  * If the fridge list is empty, 'is_at_home' MUST be false for ALL ingredients.\n"
-                f"- 'search_query': Provide a retail search string (e.g., 'organic baby spinach').\n"
-                f"- 'purchase_strategy': 'weighted' for things like produce/meat by lb, 'unit' for discrete items like cans/cartons.\n"
+            ing_strings = [f"{i.name} ({i.qty} {i.unit})" for i in meal_brief.ingredients]
+            prompt_step3 = (
+                f"Generate recipe instructions for '{meal_brief.name}'.\n"
+                f"INGREDIENTS: {', '.join(ing_strings)}\n"
+                "Constraints:\n"
+                "1. Provide realistic calories and cook time.\n"
+                "2. Instructions must clear and use the exact ingredient names provided."
             )
 
             try:
-                response_day = client.models.generate_content(
+                response3 = client.models.generate_content(
                     model="gemini-2.0-flash",
-                    contents=prompt_day,
+                    contents=prompt_step3,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=DailyMealPlan,
-                        max_output_tokens=4096,
+                        response_schema=RecipeExecution,
                     )
                 )
-                
-                day_plan = response_day.parsed
-                if not day_plan:
-                    print(f"⚠️ Warning: Failed to expand recipes for {day}. Skipping.")
-                    continue
+                recipe = response3.parsed
+                if recipe:
+                    # Enrich ingredients with metadata for the UI
+                    enriched_ings = []
+                    for i in meal_brief.ingredients:
+                        meta = master_lookup.get(i.name.lower(), {"is_at_home": False, "query": "", "strategy": "unit"})
+                        enriched_ings.append({
+                            "name": i.name, "qty": i.qty, "unit": i.unit,
+                            "is_at_home": meta["is_at_home"],
+                            "search_query": meta["query"],
+                            "purchase_strategy": meta["strategy"]
+                        })
 
-                for m in day_plan.meals:
-                    meal_dict = {
-                        'day': m.day,
-                        'meal_type': m.meal_type,
-                        'name': m.name,
-                        'calories': m.calories,
-                        'cook_time': m.cook_time,
-                        'ingredients': [
-                            {
-                                'name': ing.name, 
-                                'qty': ing.qty, 
-                                'unit': ing.unit,
-                                'is_at_home': ing.is_at_home,
-                                'search_query': ing.search_query,
-                                'purchase_strategy': ing.purchase_strategy
-                            } 
-                            for ing in m.ingredients
-                        ],
-                        'instructions': m.instructions
-                    }
-                    final_meals.append(meal_dict)
-                    
-                    # Track ingredients for aggregation (Manual Code-side sum)
-                    for ing in m.ingredients:
-                        name_lower = ing.name.lower().strip()
-                        if name_lower not in aggregated_ingredients:
-                            aggregated_ingredients[name_lower] = {
-                                "qty": 0.0,
-                                "unit": ing.unit,
-                                "is_at_home": ing.is_at_home,
-                                "query": ing.search_query,
-                                "strategy": ing.purchase_strategy
-                            }
-                        
-                        # Add quantity. Note: In a production app, we'd handle unit conversions here (e.g. g to oz).
-                        # For now, we assume Gemini is consistent per-session or we use the first unit found.
-                        aggregated_ingredients[name_lower]["qty"] += ing.qty
-            
-            except Exception as day_err:
-                print(f"❌ Error expanding {day}: {day_err}")
-                continue
+                    final_meal_plan.append({
+                        "day": meal_brief.day,
+                        "meal_type": meal_brief.meal_type,
+                        "name": meal_brief.name,
+                        "calories": recipe.calories,
+                        "cook_time": recipe.cook_time,
+                        "ingredients": enriched_ings,
+                        "instructions": recipe.instructions
+                    })
+            except Exception as e:
+                log_step(f"⚠️ Failed to generate recipe for {meal_brief.name}: {e}")
 
-        if not final_meals:
-            print("❌ FAILED: No detailed recipes were generated.")
-            return [], {}
+        # Build aggregated ingredient data for mapping in main.py
+        aggregated_ingredient_data = {}
+        for ing in strategy.buy_list:
+            aggregated_ingredient_data[ing.name.lower().strip()] = {
+                "qty": ing.qty, "unit": ing.unit, "is_at_home": False,
+                "query": ing.search_query, "strategy": ing.purchase_strategy
+            }
+        for ing in strategy.home_list:
+            aggregated_ingredient_data[ing.name.lower().strip()] = {
+                "qty": ing.qty, "unit": ing.unit, "is_at_home": True,
+                "query": "", "strategy": ing.purchase_strategy
+            }
 
-        # --- STEP 3: CLEANUP & RETURN ---
-        # No more AI call here. ingredient_data is built from recipes.
-        print(f"🛒 Aggregated {len(aggregated_ingredients)} unique ingredients from recipes.")
-        
-        print("✅ Meal plan implementation complete.")
-        return final_meals, aggregated_ingredients
+        log_step("✅ 3-Prompt plan complete.")
+        return final_meal_plan, aggregated_ingredient_data
 
     except Exception as e:
-        err = f"❌ Error in create_weekly_meal_plan: {e}\n{traceback.format_exc()}"
-        print(err)
-        logging.error(err)
+        err = f"❌ Error in 3-Prompt planner: {e}\n{traceback.format_exc()}"
+        log_step(err)
         return [], {}

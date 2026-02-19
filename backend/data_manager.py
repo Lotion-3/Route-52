@@ -26,15 +26,16 @@ def load_csv_prices(csv_path: str = "alanVeggies.csv") -> List[Dict[str, Any]]:
 class PriceResponse(BaseModel):
     prices: Dict[str, float]
 
-def get_gemini_synthetic_prices(missing_ingredients: List[str]) -> Dict[str, float]:
-    """Asks Gemini for reasonable fresh produce/grocery prices."""
-    if not missing_ingredients:
+def get_gemini_synthetic_prices(missing_items_with_units: List[str]) -> Dict[str, float]:
+    """Asks Gemini for reasonable fresh produce/grocery prices for specific units."""
+    if not missing_items_with_units:
         return {}
     
     prompt = (
-        f"Provide reasonable average retail prices (in USD) for a single unit (lb, each, or bunch) "
-        f"of the following ingredients: {', '.join(missing_ingredients)}. "
-        "Return the response as a JSON object where keys are ingredient names and values are float prices."
+        f"Provide reasonable average retail prices (in USD) for ALL items below. "
+        "Each price must be for the EXACT unit specified:\n"
+        f"{', '.join(missing_items_with_units)}\n\n"
+        "Return the response as a JSON object where keys are the ingredient names (strip the unit from the key) and values are float prices."
     )
     
     try:
@@ -49,8 +50,8 @@ def get_gemini_synthetic_prices(missing_ingredients: List[str]) -> Dict[str, flo
         return response.parsed.prices
     except Exception as e:
         print(f"Gemini Price Fetch Error: {e}")
-        # Fallback to random prices
-        return {item: round(random.uniform(2.0, 8.0), 2) for item in missing_ingredients}
+        # Fallback to random prices (parsing name from "Name (Unit)")
+        return {item.split(' (')[0]: round(random.uniform(2.0, 8.0), 2) for item in missing_items_with_units}
 
 def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_names: List[str]):
     csv_data = load_csv_prices()
@@ -58,34 +59,31 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
     # 1. Map ingredients to CSV items or mark as missing
     market_prices = {}
     matched_base_prices = {}
-    missing_items = []
+    missing_items_with_units = []
     shopping_list = []
     
     # Extract names and quantities
-    # ingredient_data is expected to be { "Carrots": {"qty": 1, "unit": "lb"}, ... }
     for item_raw, metadata in ingredient_data.items():
         item_name = item_raw.strip()
         qty = metadata.get("qty", 1)
+        unit = metadata.get("unit", "units")
         shopping_list.append({"name": item_name, "qty": qty})
         
         item_lower = item_name.lower()
         found = False
         for row in csv_data:
             if item_lower in row['Vegetable'].lower() or row['Vegetable'].lower() in item_lower:
-                # Use Indianapolis for default base if available, otherwise RetailPrice
                 base = float(row.get('Indianapolis', row['RetailPrice']))
                 matched_base_prices[item_name] = base
                 found = True
                 break
         if not found:
-            missing_items.append(item_name)
+            missing_items_with_units.append(f"{item_name} ({unit})")
             
     # 2. Get missing prices from Gemini
-    # User requested: "somehow come up with a random price for other ingredients, (maybe ask gemini for fake prices at that store)"
-    # We get a base price from Gemini for the missing items, then apply store variations below.
-    if missing_items:
-        print(f"Fetching base prices for missing items from Gemini: {missing_items}")
-        gemini_prices = get_gemini_synthetic_prices(missing_items)
+    if missing_items_with_units:
+        print(f"Fetching base prices for missing items from Gemini: {missing_items_with_units}")
+        gemini_prices = get_gemini_synthetic_prices(missing_items_with_units)
         matched_base_prices.update(gemini_prices)
     
     # 3. Generate store-specific variations

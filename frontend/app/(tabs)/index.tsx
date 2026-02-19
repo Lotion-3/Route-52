@@ -35,7 +35,7 @@ export default function HomeScreen() {
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerSection}>
         <Logo size={120} />
-        <Text style={styles.title}>BasketBuddies</Text>
+        <Text style={styles.title}>BasketBuddys</Text>
         <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
       </View>
 
