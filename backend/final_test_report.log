@@ -1,0 +1,5 @@
+Testing generate_plan with Ingredients-First flow and strict matching...
+Status Code: 200
+Successfully received meal plan!
+At-home ingredients found: ['eggs']
+Could not connect to server: 'charmap' codec can't encode characters in position 0-1: character maps to <undefined>

@@ -46,10 +46,12 @@ app.add_middleware(
 class UserPreferences(BaseModel):
     address: str
     shopping_time_hours: float = 3.0
+    budget: float = 150.0
     calorie_target: int = 2000
     days_plan: int = 7
     meals_per_day: int = 3
     dietary_restrictions: Optional[str] = None
+    health_issues: Optional[str] = None
     cuisines: Optional[str] = None
     experiment: bool = True
     cook_time: str = "30-45 minutes"
@@ -90,7 +92,8 @@ def generate_plan(request: PlanRequest):
     # 4. Generate Meal Plan
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
-        prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time
+        prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
+        prefs.health_issues, prefs.budget
     )
     
     if not ingredient_data:

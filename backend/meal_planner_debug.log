@@ -1,0 +1,702 @@
+2026-02-17 23:02:41,309 - 
+--------------------------------------------------
+2026-02-17 23:02:41,311 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:02:41,311 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:02:41,311 -    Fridge: Eggs
+2026-02-17 23:02:41,311 - --------------------------------------------------
+2026-02-17 23:02:42,097 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:02:49,618 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:02:49,627 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-02-17 23:02:49,630 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:14,668 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:14,671 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:03:14,671 - \U0001f373 Generating instructions for: Oatmeal with Banana and Blueberries...
+2026-02-17 23:03:14,671 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:15,777 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:15,779 - \U0001f373 Generating instructions for: Avocado Toast with Spinach and Tomato...
+2026-02-17 23:03:15,780 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:17,106 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:17,109 - \U0001f373 Generating instructions for: Lentil Soup with Brown Rice...
+2026-02-17 23:03:17,109 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:18,632 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:18,634 - \U0001f373 Generating instructions for: Oatmeal with Banana and Walnuts...
+2026-02-17 23:03:18,634 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:19,600 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:19,602 - \U0001f373 Generating instructions for: Black Bean Salad...
+2026-02-17 23:03:19,602 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:20,745 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:20,745 - \U0001f373 Generating instructions for: Sweet Potato and Lentil Stew...
+2026-02-17 23:03:20,745 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:22,462 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:22,462 - \U0001f373 Generating instructions for: Yogurt with Blueberries and Walnuts...
+2026-02-17 23:03:22,462 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:23,593 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:23,595 - \U0001f373 Generating instructions for: Tofu and Spinach Salad...
+2026-02-17 23:03:23,595 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:25,611 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:25,618 - \U0001f373 Generating instructions for: Black Bean and Brown Rice Bowl with Salsa...
+2026-02-17 23:03:25,618 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:26,711 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:26,714 - \U0001f373 Generating instructions for: Oatmeal with Blueberries and Cinnamon...
+2026-02-17 23:03:26,714 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:27,688 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:27,694 - \U0001f373 Generating instructions for: Avocado and Tomato Sandwich...
+2026-02-17 23:03:27,695 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:28,888 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:28,888 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Chili...
+2026-02-17 23:03:28,888 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:30,166 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:30,168 - \U0001f373 Generating instructions for: Yogurt with Banana and Walnuts...
+2026-02-17 23:03:30,168 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:31,469 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:31,476 - \U0001f373 Generating instructions for: Lentil and Spinach Salad...
+2026-02-17 23:03:31,476 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:32,670 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:32,673 - \U0001f373 Generating instructions for: Tofu Stir-fry with Brown Rice...
+2026-02-17 23:03:32,673 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:34,227 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:34,230 - \U0001f373 Generating instructions for: Oatmeal with Banana and Cinnamon...
+2026-02-17 23:03:34,230 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:35,427 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:35,429 - \U0001f373 Generating instructions for: Black Bean and Corn Salad with Avocado...
+2026-02-17 23:03:35,429 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:36,559 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:36,561 - \U0001f373 Generating instructions for: Lentil Shepherd's Pie with Sweet Potato Topping...
+2026-02-17 23:03:36,561 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:38,371 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:38,374 - \U0001f373 Generating instructions for: Yogurt with Blueberries and Cinnamon...
+2026-02-17 23:03:38,376 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:39,433 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:39,435 - \U0001f373 Generating instructions for: Spinach and Avocado Salad...
+2026-02-17 23:03:39,435 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:40,463 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:40,468 - \U0001f373 Generating instructions for: Brown Rice Bowl with Roasted Sweet Potatoes and Spinach...
+2026-02-17 23:03:40,468 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:03:42,371 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:03:42,374 - \u2705 3-Prompt plan complete.
+2026-02-17 23:03:43,250 - API queries_quota: 60
+2026-02-17 23:03:48,777 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:17:50,891 - 
+--------------------------------------------------
+2026-02-17 23:17:50,891 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:17:50,891 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:17:50,892 -    Fridge: eggs
+2026-02-17 23:17:50,892 - --------------------------------------------------
+2026-02-17 23:17:51,572 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:17:57,400 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:17:57,403 - \u2705 Sourcing Complete: 18 to buy, 1 from home.
+2026-02-17 23:17:57,403 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:17,629 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:17,637 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:18:17,637 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:17,637 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:18,617 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:18,620 - \U0001f373 Generating instructions for: Tuna Salad Sandwich...
+2026-02-17 23:18:18,620 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:19,799 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:19,804 - \U0001f373 Generating instructions for: Chicken and Black Bean Bowl...
+2026-02-17 23:18:19,804 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:21,145 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:21,147 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:21,147 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:22,066 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:22,066 - \U0001f373 Generating instructions for: Tuna Salad with Spinach...
+2026-02-17 23:18:22,066 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:23,075 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:23,079 - \U0001f373 Generating instructions for: Chicken and Sweet Potato...
+2026-02-17 23:18:23,079 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:24,504 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:24,507 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:24,507 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:25,454 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:25,456 - \U0001f373 Generating instructions for: Chicken Salad Sandwich...
+2026-02-17 23:18:25,456 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:26,792 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:26,796 - \U0001f373 Generating instructions for: Black Bean Burgers...
+2026-02-17 23:18:26,796 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:28,789 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:28,793 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:28,793 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:29,796 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:29,798 - \U0001f373 Generating instructions for: Tuna Salad Sandwich...
+2026-02-17 23:18:29,798 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:30,767 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:30,769 - \U0001f373 Generating instructions for: Chicken Stir-Fry...
+2026-02-17 23:18:30,770 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:32,043 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:32,048 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:32,048 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:33,301 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:33,304 - \U0001f373 Generating instructions for: Tuna and Spinach Salad...
+2026-02-17 23:18:33,304 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:34,160 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:34,165 - \U0001f373 Generating instructions for: Chicken and Black Bean Burrito Bowl...
+2026-02-17 23:18:34,165 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:35,469 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:35,469 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:35,469 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:36,403 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:36,406 - \U0001f373 Generating instructions for: Chicken Salad...
+2026-02-17 23:18:36,406 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:37,479 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:37,482 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Chili...
+2026-02-17 23:18:37,483 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:39,124 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:39,126 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:18:39,128 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:40,450 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:40,452 - \U0001f373 Generating instructions for: Tuna Salad Sandwich...
+2026-02-17 23:18:40,452 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:41,581 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:41,581 - \U0001f373 Generating instructions for: Chicken and Broccoli...
+2026-02-17 23:18:41,581 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:18:42,896 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:18:42,899 - \u2705 3-Prompt plan complete.
+2026-02-17 23:18:48,511 - API queries_quota: 60
+2026-02-17 23:18:54,600 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:20:46,766 - 
+--------------------------------------------------
+2026-02-17 23:20:46,766 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:20:46,766 -    Budget: $150.0 | Health: heart Disease, Hypertension
+2026-02-17 23:20:46,766 -    Fridge: Eggs
+2026-02-17 23:20:46,766 - --------------------------------------------------
+2026-02-17 23:20:47,466 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:20:55,175 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:20:55,177 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-02-17 23:20:55,179 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:19,558 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:19,565 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:21:19,565 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:19,565 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:20,727 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:20,730 - \U0001f373 Generating instructions for: Lentil Soup with Whole Wheat Bread...
+2026-02-17 23:21:20,730 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:22,470 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:22,474 - \U0001f373 Generating instructions for: Tofu Scramble with Spinach and Brown Rice...
+2026-02-17 23:21:22,474 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:23,875 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:23,878 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:23,878 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:25,046 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:25,054 - \U0001f373 Generating instructions for: Kidney Bean and Rice Bowl with Avocado...
+2026-02-17 23:21:25,056 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:26,139 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:26,142 - \U0001f373 Generating instructions for: Broccoli and Tofu Stir-fry...
+2026-02-17 23:21:26,143 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:27,729 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:27,734 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:27,736 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:28,881 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:28,885 - \U0001f373 Generating instructions for: Chickpea Salad Sandwich...
+2026-02-17 23:21:28,885 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:29,896 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:29,901 - \U0001f373 Generating instructions for: Sweet Potato and Lentil Curry...
+2026-02-17 23:21:29,901 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:31,707 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:31,709 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:31,709 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:32,966 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:32,972 - \U0001f373 Generating instructions for: Spinach Salad with Chickpeas and Avocado...
+2026-02-17 23:21:32,972 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:34,343 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:34,345 - \U0001f373 Generating instructions for: Tofu and Bell Pepper Stir-fry with Brown Rice...
+2026-02-17 23:21:34,345 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:35,979 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:35,979 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:35,979 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:37,202 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:37,206 - \U0001f373 Generating instructions for: Lentil Soup with Whole Wheat Bread...
+2026-02-17 23:21:37,206 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:39,107 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:39,109 - \U0001f373 Generating instructions for: Kidney Bean Stew with Brown Rice...
+2026-02-17 23:21:39,109 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:41,443 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:41,451 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:41,451 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:42,643 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:42,643 - \U0001f373 Generating instructions for: Chickpea Salad Sandwich...
+2026-02-17 23:21:42,643 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:43,751 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:43,753 - \U0001f373 Generating instructions for: Broccoli and Sweet Potato Curry...
+2026-02-17 23:21:43,753 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:45,429 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:45,436 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:21:45,436 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:46,568 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:46,573 - \U0001f373 Generating instructions for: Spinach Salad with Chickpeas and Avocado...
+2026-02-17 23:21:46,575 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:47,517 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:47,519 - \U0001f373 Generating instructions for: Tofu Scramble with Brown Rice and Vegetables...
+2026-02-17 23:21:47,519 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:21:48,966 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:21:48,972 - \u2705 3-Prompt plan complete.
+2026-02-17 23:21:50,979 - API queries_quota: 60
+2026-02-17 23:21:56,742 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:25,917 - 
+--------------------------------------------------
+2026-02-17 23:28:25,918 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:28:25,919 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:28:25,919 -    Fridge: Eggs
+2026-02-17 23:28:25,920 - --------------------------------------------------
+2026-02-17 23:28:26,007 - 
+--------------------------------------------------
+2026-02-17 23:28:26,008 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:28:26,008 -    Budget: $150.0 | Health: heart Disease, Hypertension
+2026-02-17 23:28:26,008 -    Fridge: Eggs
+2026-02-17 23:28:26,008 - --------------------------------------------------
+2026-02-17 23:28:26,798 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:26,874 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:33,329 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:33,333 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-02-17 23:28:33,333 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:34,222 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:34,222 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-02-17 23:28:34,223 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:53,089 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:53,093 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:28:53,093 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:28:53,093 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:54,107 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:54,109 - \U0001f373 Generating instructions for: Lentil Soup with Spinach and Tomato...
+2026-02-17 23:28:54,109 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:55,196 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:55,197 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:28:55,197 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:28:55,198 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:55,286 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:55,286 - \U0001f373 Generating instructions for: Black Bean and Corn Salad with Avocado...
+2026-02-17 23:28:55,286 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:56,308 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:56,312 - \U0001f373 Generating instructions for: Lentil Soup...
+2026-02-17 23:28:56,312 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:56,336 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:56,338 - \U0001f373 Generating instructions for: Oatmeal with Berries...
+2026-02-17 23:28:56,339 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:57,426 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:57,428 - \U0001f373 Generating instructions for: Tofu Scramble with Spinach and Tomatoes...
+2026-02-17 23:28:57,428 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:57,486 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:57,488 - \U0001f373 Generating instructions for: Spinach and Feta Salad...
+2026-02-17 23:28:57,489 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:58,633 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:58,634 - \U0001f373 Generating instructions for: Oatmeal with Peanut Butter...
+2026-02-17 23:28:58,635 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:58,706 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:58,708 - \U0001f373 Generating instructions for: Lentil and Brown Rice Bowl...
+2026-02-17 23:28:58,709 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:28:59,424 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:28:59,428 - \U0001f373 Generating instructions for: Black Bean and Rice Bowl...
+2026-02-17 23:28:59,429 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:00,152 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:00,154 - \U0001f373 Generating instructions for: Oatmeal with Almonds and Apple...
+2026-02-17 23:29:00,154 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:00,522 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:00,525 - \U0001f373 Generating instructions for: Sweet Potato and Lentil Curry...
+2026-02-17 23:29:00,525 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:01,178 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:01,180 - \U0001f373 Generating instructions for: Black Bean Burgers on Whole Wheat Bread...
+2026-02-17 23:29:01,180 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:02,147 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:02,149 - \U0001f373 Generating instructions for: Oatmeal with Berries...
+2026-02-17 23:29:02,150 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:02,417 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:02,421 - \U0001f373 Generating instructions for: Brown Rice and Veggie Stir-Fry...
+2026-02-17 23:29:02,421 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:03,250 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:03,251 - \U0001f373 Generating instructions for: Black Bean Soup...
+2026-02-17 23:29:03,251 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:03,844 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:03,849 - \U0001f373 Generating instructions for: Cottage Cheese with Berries...
+2026-02-17 23:29:03,849 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:04,562 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:04,563 - \U0001f373 Generating instructions for: Tofu and Vegetable Stir-fry...
+2026-02-17 23:29:04,563 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:04,686 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:04,686 - \U0001f373 Generating instructions for: Lentil Soup...
+2026-02-17 23:29:04,686 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:05,872 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:05,877 - \U0001f373 Generating instructions for: Black Bean Tacos...
+2026-02-17 23:29:05,878 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:06,112 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:06,115 - \U0001f373 Generating instructions for: Oatmeal with Almonds...
+2026-02-17 23:29:06,115 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:06,895 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:06,898 - \U0001f373 Generating instructions for: Oatmeal with Banana...
+2026-02-17 23:29:06,898 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:07,235 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:07,237 - \U0001f373 Generating instructions for: Lentil and Brown Rice Bowl...
+2026-02-17 23:29:07,237 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:08,143 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:08,145 - \U0001f373 Generating instructions for: Spinach Salad with Almonds and Apple...
+2026-02-17 23:29:08,145 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:09,174 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:09,176 - \U0001f373 Generating instructions for: Brown Rice Bowl with Corn and Avocado...
+2026-02-17 23:29:09,177 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:09,351 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:09,354 - \U0001f373 Generating instructions for: Baked Potatoes with Black Beans and Avocado...
+2026-02-17 23:29:09,354 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:10,337 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:10,340 - \U0001f373 Generating instructions for: Cottage Cheese with Apple...
+2026-02-17 23:29:10,340 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:10,875 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:10,877 - \U0001f373 Generating instructions for: Peanut Butter Toast...
+2026-02-17 23:29:10,877 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:11,286 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:11,286 - \U0001f373 Generating instructions for: Black Bean and Corn Salad...
+2026-02-17 23:29:11,286 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:11,765 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:11,765 - \U0001f373 Generating instructions for: Spinach Salad with Tomatoes and Almonds...
+2026-02-17 23:29:11,765 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:12,219 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:12,221 - \U0001f373 Generating instructions for: Lentil Soup with Brown Rice...
+2026-02-17 23:29:12,221 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:12,909 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:12,913 - \U0001f373 Generating instructions for: Brown Rice and Vegetable Bowl...
+2026-02-17 23:29:12,913 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:13,682 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:13,682 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:29:13,685 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:14,580 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:14,583 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:29:14,584 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:15,043 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:15,044 - \U0001f373 Generating instructions for: Whole Wheat Bread with Avocado and Tomato...
+2026-02-17 23:29:15,045 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:15,771 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:15,772 - \U0001f373 Generating instructions for: Lentil Soup with Whole Wheat Bread...
+2026-02-17 23:29:15,772 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:16,341 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:16,343 - \U0001f373 Generating instructions for: Spinach and Feta Pizza on Whole Wheat Bread...
+2026-02-17 23:29:16,344 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:17,014 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:17,020 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Chili...
+2026-02-17 23:29:17,021 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:17,789 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:17,791 - \u2705 3-Prompt plan complete.
+2026-02-17 23:29:18,455 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:18,457 - \U0001f373 Generating instructions for: Scrambled Eggs...
+2026-02-17 23:29:18,457 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:18,642 - API queries_quota: 60
+2026-02-17 23:29:19,837 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:19,842 - \U0001f373 Generating instructions for: Avocado Toast...
+2026-02-17 23:29:19,842 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:21,049 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:21,053 - \U0001f373 Generating instructions for: Roasted Potatoes with Spinach...
+2026-02-17 23:29:21,053 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:22,453 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:29:22,457 - \u2705 3-Prompt plan complete.
+2026-02-17 23:29:23,880 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:29:24,122 - API queries_quota: 60
+2026-02-17 23:29:25,390 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:40:38,350 - 
+--------------------------------------------------
+2026-02-17 23:40:38,350 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:40:38,352 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:40:38,352 -    Fridge: Empty
+2026-02-17 23:40:38,354 - --------------------------------------------------
+2026-02-17 23:40:40,615 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:40:46,615 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:40:46,636 - \u2705 Sourcing Complete: 20 to buy, 0 from home.
+2026-02-17 23:40:46,637 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:06,553 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:06,558 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:41:06,558 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:41:06,559 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:07,517 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:07,520 - \U0001f373 Generating instructions for: Spinach Salad with Avocado and Tomato...
+2026-02-17 23:41:07,521 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:08,672 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:08,674 - \U0001f373 Generating instructions for: Black Bean and Brown Rice Bowl with Bell Peppers...
+2026-02-17 23:41:08,674 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:09,961 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:09,966 - \U0001f373 Generating instructions for: Banana and Almond Butter Toast...
+2026-02-17 23:41:09,967 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:11,197 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:11,200 - \U0001f373 Generating instructions for: Lentil Soup with Spinach...
+2026-02-17 23:41:11,202 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:12,369 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:12,373 - \U0001f373 Generating instructions for: Tofu Stir-fry with Broccoli and Brown Rice...
+2026-02-17 23:41:12,373 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:13,945 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:13,950 - \U0001f373 Generating instructions for: Oatmeal with Apple and Almonds...
+2026-02-17 23:41:13,950 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:14,946 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:14,950 - \U0001f373 Generating instructions for: Egg Salad Sandwich...
+2026-02-17 23:41:14,951 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:16,234 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:16,237 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Tacos...
+2026-02-17 23:41:16,238 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:18,215 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:18,219 - \U0001f373 Generating instructions for: Berry and Banana Smoothie...
+2026-02-17 23:41:18,220 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:19,220 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:19,224 - \U0001f373 Generating instructions for: Cucumber and Tomato Salad with Whole Wheat Bread...
+2026-02-17 23:41:19,224 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:20,210 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:20,215 - \U0001f373 Generating instructions for: Lentil Curry with Brown Rice...
+2026-02-17 23:41:20,215 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:21,949 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:21,953 - \U0001f373 Generating instructions for: Apple Cinnamon Oatmeal...
+2026-02-17 23:41:21,953 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:23,194 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:23,197 - \U0001f373 Generating instructions for: Tofu and Avocado Sandwich...
+2026-02-17 23:41:23,197 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:24,052 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:24,058 - \U0001f373 Generating instructions for: Broccoli and Sweet Potato with Brown Rice...
+2026-02-17 23:41:24,058 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:26,258 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:26,262 - \U0001f373 Generating instructions for: Eggs with Spinach and Tomato...
+2026-02-17 23:41:26,262 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:27,414 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:27,420 - \U0001f373 Generating instructions for: Black Bean Salad...
+2026-02-17 23:41:27,421 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:28,487 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:28,491 - \U0001f373 Generating instructions for: Tofu Scramble with Brown Rice and Broccoli...
+2026-02-17 23:41:28,491 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:29,680 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:29,684 - \U0001f373 Generating instructions for: Oats with Berries and Banana...
+2026-02-17 23:41:29,684 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:30,918 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:30,922 - \U0001f373 Generating instructions for: Leftover Tofu Scramble...
+2026-02-17 23:41:30,924 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:32,261 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:32,265 - \U0001f373 Generating instructions for: Lentil Soup with Sweet Potato...
+2026-02-17 23:41:32,266 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:41:33,566 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:41:33,571 - \u2705 3-Prompt plan complete.
+2026-02-17 23:41:35,528 - API queries_quota: 60
+2026-02-17 23:41:40,857 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:14,194 - 
+--------------------------------------------------
+2026-02-17 23:45:14,195 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:45:14,196 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:45:14,197 -    Fridge: Eggs
+2026-02-17 23:45:14,198 - --------------------------------------------------
+2026-02-17 23:45:16,617 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:23,981 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:23,986 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-02-17 23:45:23,987 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:51,607 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:51,610 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:45:51,611 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:45:51,611 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:52,714 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:52,717 - \U0001f373 Generating instructions for: Tofu Scramble with Spinach and Whole Wheat Toast...
+2026-02-17 23:45:52,718 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:53,982 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:53,985 - \U0001f373 Generating instructions for: Lentil Soup with Whole Wheat Bread...
+2026-02-17 23:45:53,986 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:55,610 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:55,615 - \U0001f373 Generating instructions for: Oatmeal with Banana and Walnuts...
+2026-02-17 23:45:55,616 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:56,585 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:56,587 - \U0001f373 Generating instructions for: Avocado and Tomato Sandwich...
+2026-02-17 23:45:56,587 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:57,498 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:57,504 - \U0001f373 Generating instructions for: Black Bean Bowl with Brown Rice and Bell Peppers...
+2026-02-17 23:45:57,505 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:59,045 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:45:59,047 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:45:59,048 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:45:59,963 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:00,038 - \U0001f373 Generating instructions for: Spinach Salad with Cucumber and Tomato...
+2026-02-17 23:46:00,039 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:01,275 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:01,279 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Burgers (no bun)...
+2026-02-17 23:46:01,279 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:02,807 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:02,813 - \U0001f373 Generating instructions for: Oatmeal with Banana and Walnuts...
+2026-02-17 23:46:02,814 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:03,839 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:03,841 - \U0001f373 Generating instructions for: Tofu and Avocado Salad...
+2026-02-17 23:46:03,842 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:04,974 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:04,980 - \U0001f373 Generating instructions for: Broccoli and Brown Rice Stir-fry with Tofu...
+2026-02-17 23:46:04,981 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:06,731 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:06,735 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:46:06,736 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:07,861 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:07,865 - \U0001f373 Generating instructions for: Whole Wheat Toast with Avocado and Tomato...
+2026-02-17 23:46:07,865 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:09,071 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:09,075 - \U0001f373 Generating instructions for: Lentil and Vegetable Stew...
+2026-02-17 23:46:09,076 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:10,581 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:10,584 - \U0001f373 Generating instructions for: Oatmeal with Banana and Walnuts...
+2026-02-17 23:46:10,585 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:11,607 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:11,610 - \U0001f373 Generating instructions for: Black Bean and Bell Pepper Salad...
+2026-02-17 23:46:11,610 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:12,739 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:12,742 - \U0001f373 Generating instructions for: Brown Rice Bowl with Roasted Vegetables...
+2026-02-17 23:46:12,742 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:14,437 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:14,442 - \U0001f373 Generating instructions for: Oatmeal with Banana and Almonds...
+2026-02-17 23:46:14,442 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:15,418 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:15,421 - \U0001f373 Generating instructions for: Cucumber and Tomato Salad with Whole Wheat Bread...
+2026-02-17 23:46:15,421 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:16,465 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:16,470 - \U0001f373 Generating instructions for: Sweet Potato Lentil Curry with Brown Rice...
+2026-02-17 23:46:16,471 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:46:18,294 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:46:18,297 - \u2705 3-Prompt plan complete.
+2026-02-17 23:46:20,584 - API queries_quota: 60
+2026-02-17 23:46:25,542 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:47:54,985 - 
+--------------------------------------------------
+2026-02-17 23:47:54,986 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-17 23:47:54,986 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-17 23:47:54,987 -    Fridge: Eggs
+2026-02-17 23:47:54,987 - --------------------------------------------------
+2026-02-17 23:47:57,181 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:04,375 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:04,379 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-02-17 23:48:04,380 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:30,383 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:30,411 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-17 23:48:30,412 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:48:30,413 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:31,227 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:31,230 - \U0001f373 Generating instructions for: Black Bean and Brown Rice Bowl...
+2026-02-17 23:48:31,231 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:32,932 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:32,936 - \U0001f373 Generating instructions for: Tofu and Broccoli Stir-Fry...
+2026-02-17 23:48:32,937 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:34,801 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:34,808 - \U0001f373 Generating instructions for: Oatmeal with Berries and Walnuts...
+2026-02-17 23:48:34,809 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:36,083 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:36,088 - \U0001f373 Generating instructions for: Lentil Soup with Whole Wheat Bread...
+2026-02-17 23:48:36,088 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:37,860 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:37,868 - \U0001f373 Generating instructions for: Sweet Potato and Black Bean Burrito Bowl...
+2026-02-17 23:48:37,868 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:39,955 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:39,960 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:48:39,960 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:40,838 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:40,845 - \U0001f373 Generating instructions for: Tofu Scramble with Spinach and Tomatoes...
+2026-02-17 23:48:40,845 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:42,662 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:42,665 - \U0001f373 Generating instructions for: Broccoli and Brown Rice Bowl...
+2026-02-17 23:48:42,666 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:44,221 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:44,227 - \U0001f373 Generating instructions for: Oatmeal with Berries and Walnuts...
+2026-02-17 23:48:44,227 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:45,468 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:45,471 - \U0001f373 Generating instructions for: Black Bean Soup with Whole Wheat Bread...
+2026-02-17 23:48:45,472 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:47,082 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:47,085 - \U0001f373 Generating instructions for: Sweet Potato Lentil Curry...
+2026-02-17 23:48:47,086 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:48,852 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:48,855 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:48:48,855 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:49,683 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:49,686 - \U0001f373 Generating instructions for: Avocado Toast with Tomato and Spinach...
+2026-02-17 23:48:49,686 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:51,038 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:51,041 - \U0001f373 Generating instructions for: Tofu and Bell Pepper Fajitas...
+2026-02-17 23:48:51,042 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:53,005 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:53,010 - \U0001f373 Generating instructions for: Oatmeal with Berries and Walnuts...
+2026-02-17 23:48:53,012 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:54,167 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:54,171 - \U0001f373 Generating instructions for: Lentil and Spinach Salad...
+2026-02-17 23:48:54,172 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:55,470 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:55,473 - \U0001f373 Generating instructions for: Sweet Potato and Broccoli Hash...
+2026-02-17 23:48:55,473 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:56,753 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:56,756 - \U0001f373 Generating instructions for: Oatmeal with Berries and Almonds...
+2026-02-17 23:48:56,756 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:58,035 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:58,041 - \U0001f373 Generating instructions for: Brown Rice Bowl with Spinach, Tomatoes and Avocado...
+2026-02-17 23:48:58,043 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:48:59,723 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:48:59,728 - \U0001f373 Generating instructions for: Black Bean Burgers on Whole Wheat Bread...
+2026-02-17 23:48:59,728 - AFC is enabled with max remote calls: 10.
+2026-02-17 23:49:01,318 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-17 23:49:01,323 - \u2705 3-Prompt plan complete.
+2026-02-17 23:49:03,920 - API queries_quota: 60
+2026-02-17 23:49:08,778 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:09,810 - 
+--------------------------------------------------
+2026-02-18 00:00:09,813 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-02-18 00:00:09,813 -    Budget: $150.0 | Health: Heart Disease, Hypertension
+2026-02-18 00:00:09,815 -    Fridge: Eggs
+2026-02-18 00:00:09,816 - --------------------------------------------------
+2026-02-18 00:00:12,304 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:19,129 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:19,133 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-02-18 00:00:19,133 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:39,397 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:39,401 - \u2705 Scheduling Complete: 21 meals planned.
+2026-02-18 00:00:39,401 - \U0001f373 Generating instructions for: Oatmeal with Berries and Banana...
+2026-02-18 00:00:39,402 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:40,464 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:40,467 - \U0001f373 Generating instructions for: Lentil Soup with Spinach...
+2026-02-18 00:00:40,469 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:41,795 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:41,797 - \U0001f373 Generating instructions for: Black Bean and Corn Salad with Avocado...
+2026-02-18 00:00:41,797 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:43,512 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:43,517 - \U0001f373 Generating instructions for: Oatmeal with Apple and Banana...
+2026-02-18 00:00:43,517 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:44,848 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:44,849 - \U0001f373 Generating instructions for: Lentil Soup with Spinach...
+2026-02-18 00:00:44,851 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:46,041 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:46,043 - \U0001f373 Generating instructions for: Brown Rice with Black Beans and Feta...
+2026-02-18 00:00:46,044 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:47,325 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:47,328 - \U0001f373 Generating instructions for: Oatmeal with Berries and Banana...
+2026-02-18 00:00:47,329 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:48,630 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:48,633 - \U0001f373 Generating instructions for: Whole Wheat Bread Sandwich with Avocado and Spinach...
+2026-02-18 00:00:48,633 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:49,869 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:49,874 - \U0001f373 Generating instructions for: Lentil and Vegetable Stew...
+2026-02-18 00:00:49,874 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:51,255 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:51,260 - \U0001f373 Generating instructions for: Oatmeal with Apple...
+2026-02-18 00:00:51,261 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:52,457 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:52,461 - \U0001f373 Generating instructions for: Brown Rice and Black Bean Bowl...
+2026-02-18 00:00:52,462 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:53,576 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:53,579 - \U0001f373 Generating instructions for: Spinach and Feta Omelet with Tomato and Cucumber Salad...
+2026-02-18 00:00:53,579 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:55,418 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:55,422 - \U0001f373 Generating instructions for: Oatmeal with Berries and Banana...
+2026-02-18 00:00:55,423 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:56,706 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:56,709 - \U0001f373 Generating instructions for: Whole Wheat Bread Sandwich with Avocado and Spinach...
+2026-02-18 00:00:56,709 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:58,031 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:58,036 - \U0001f373 Generating instructions for: Black Bean Burgers on Whole Wheat Bread...
+2026-02-18 00:00:58,036 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:00:59,660 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:00:59,664 - \U0001f373 Generating instructions for: Scrambled Eggs with Spinach...
+2026-02-18 00:00:59,664 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:00,855 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:00,861 - \U0001f373 Generating instructions for: Lentil Soup with Spinach...
+2026-02-18 00:01:00,861 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:02,102 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:02,103 - \U0001f373 Generating instructions for: Brown Rice and Vegetable Stir-fry...
+2026-02-18 00:01:02,104 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:03,993 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:03,997 - \U0001f373 Generating instructions for: Banana Pancakes (using oats as flour)...
+2026-02-18 00:01:03,997 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:05,139 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:05,142 - \U0001f373 Generating instructions for: Salad with Feta, Tomato and Cucumber...
+2026-02-18 00:01:05,143 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:06,415 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:06,419 - \U0001f373 Generating instructions for: Lentil and Brown Rice Bowl...
+2026-02-18 00:01:06,421 - AFC is enabled with max remote calls: 10.
+2026-02-18 00:01:08,004 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-02-18 00:01:08,007 - \u2705 3-Prompt plan complete.
+2026-02-18 00:01:09,881 - API queries_quota: 60
+2026-02-18 00:01:14,989 - AFC is enabled with max remote calls: 10.

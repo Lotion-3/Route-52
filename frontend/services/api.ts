@@ -28,6 +28,7 @@ export interface ShoppingPlanRequest {
     days?: number;
     meals_per_day?: number;
     dietary_restrictions?: string;
+    health_issues?: string;
     cuisines?: string;
     experiment?: boolean;
     cook_time?: string;
@@ -70,11 +71,13 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
             body: JSON.stringify({
                 preferences: {
                     address: params.location,
+                    budget: params.budget,
                     shopping_time_hours: Number(params.time) || 1,
                     calorie_target: Number(params.calories) || 2000,
                     days_plan: Number(params.days) || 7,
                     meals_per_day: Number(params.meals_per_day) || 3,
                     dietary_restrictions: params.dietary_restrictions || "",
+                    health_issues: params.health_issues || "",
                     cuisines: params.cuisines || "",
                     experiment: params.experiment !== undefined ? params.experiment : true,
                     cook_time: params.cook_time || "30-45 minutes",

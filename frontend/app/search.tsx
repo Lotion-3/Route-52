@@ -30,6 +30,7 @@ export default function SearchScreen() {
     const [calories, setCalories] = useState('2000');
     const [fridgeItems, setFridgeItems] = useState('');
     const [hasFridgeItems, setHasFridgeItems] = useState(false);
+    const [healthIssues, setHealthIssues] = useState('');
 
     // Calorie Calculator states
     const [showCalculator, setShowCalculator] = useState(false);
@@ -88,7 +89,8 @@ export default function SearchScreen() {
                 days: daysPlan,
                 meals_per_day: mealsPerDay,
                 calories,
-                fridge_items: hasFridgeItems ? fridgeItems : ''
+                fridge_items: hasFridgeItems ? fridgeItems : '',
+                health_issues: healthIssues
             }
         });
     };
@@ -189,6 +191,26 @@ export default function SearchScreen() {
                                 onChangeText={setCuisines}
                             />
                         </View>
+                    </View>
+                </View>
+
+                {/* SECTION: Health Conditions */}
+                <View style={styles.section}>
+                    <View style={styles.card}>
+                        <Text style={styles.label}>Health Conditions</Text>
+                        <View style={styles.inputRow}>
+                            <Ionicons name="heart-outline" size={18} color="#9CA3AF" />
+                            <TextInput
+                                placeholder="Diabetes, Hypertension, etc."
+                                placeholderTextColor="#9CA3AF"
+                                style={styles.iconInput}
+                                value={healthIssues}
+                                onChangeText={setHealthIssues}
+                            />
+                        </View>
+                        <Text style={[styles.labelSmall, { marginTop: 8 }]}>
+                            Our AI will prioritize ingredients and recipes that support these needs.
+                        </Text>
                     </View>
                 </View>
 

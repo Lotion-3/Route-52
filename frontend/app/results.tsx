@@ -13,7 +13,7 @@ export default function ResultsScreen() {
   const router = useRouter();
   const {
     budget, time, location,
-    dietary_restrictions, cuisines, experiment,
+    dietary_restrictions, health_issues, cuisines, experiment,
     cook_time, days, meals_per_day, calories,
     savedIndex, fridge_items
   } = useLocalSearchParams();
@@ -49,7 +49,7 @@ export default function ResultsScreen() {
           }
         }
 
-        console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, cuisines });
+        console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, health_issues, cuisines });
 
         const data = await generatePlan({
           location: Array.isArray(location) ? location[0] : (location || 'Indianapolis, IN'),
@@ -59,6 +59,7 @@ export default function ResultsScreen() {
           days: parseInt(Array.isArray(days) ? days[0] : (days || '7')),
           meals_per_day: parseInt(Array.isArray(meals_per_day) ? meals_per_day[0] : (meals_per_day || '3')),
           dietary_restrictions: Array.isArray(dietary_restrictions) ? dietary_restrictions[0] : (dietary_restrictions || ''),
+          health_issues: Array.isArray(health_issues) ? health_issues[0] : (health_issues || ''),
           cuisines: Array.isArray(cuisines) ? cuisines[0] : (cuisines || ''),
           experiment: (Array.isArray(experiment) ? experiment[0] : experiment) === 'true',
           cook_time: Array.isArray(cook_time) ? cook_time[0] : (cook_time || '30-45 minutes'),
@@ -286,7 +287,7 @@ export default function ResultsScreen() {
       <View style={styles.brandHeader}>
         <Logo size={70} />
         <View style={{ height: 8 }} />
-        <Text style={styles.brandTitle}>BasketBuddies</Text>
+        <Text style={styles.brandTitle}>BasketBuddys</Text>
       </View>
 
       <FlatList
