@@ -25,13 +25,13 @@ print("       TESTING GEMINI API WITH genai.Client (DIRECT CALL)")
 print("============================================================")
 
 # Directly specify a generative model name that appeared in your list
-# We saw 'models/gemini-2.5-flash' in your previous output.
-chosen_model_name = 'models/gemini-3-flash-preview'
+# Using 'models/gemini-2.0-flash-exp' as requested.
+chosen_model_name = 'models/gemini-2.0-flash-exp'
 
 print(f"\nAttempting to generate content directly using model: {chosen_model_name}")
 
 try:
-    # This is the call that failed for 'gemini-3-flash' initially,
+    # This is the call that failed for earlier experimental versions,
     # and should be the correct way to use the low-level client.
     prompt_content = "Briefly explain the concept of a 'Mediterranean Quinoa Bowl' and its main ingredients. Keep it concise."
 

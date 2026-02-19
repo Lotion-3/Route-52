@@ -32,7 +32,7 @@ def analyze_fridge_image(image_path: str) -> str:
         )
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.0-flash-exp",
             contents=[prompt, pil_image],
             config=types.GenerateContentConfig(
                 response_mime_type="text/plain",

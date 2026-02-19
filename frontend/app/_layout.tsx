@@ -57,6 +57,8 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="search" options={{ title: 'New Meal Plan' }} />
+          <Stack.Screen name="results" options={{ title: 'Your Plan' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

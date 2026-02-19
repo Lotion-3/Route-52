@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useWindowDimensions, Platform } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -7,13 +7,15 @@ import { Feather } from '@expo/vector-icons';
 import { generatePlan, ShoppingPlanResponse, MealPlanItem } from '@/services/api';
 import ShoppingMap from '@/components/ShoppingMap';
 import Logo from '@/components/Logo';
+import { planStore } from '@/services/planStore';
 
 export default function ResultsScreen() {
   const router = useRouter();
   const {
     budget, time, location,
     dietary_restrictions, cuisines, experiment,
-    cook_time, days, meals_per_day, calories
+    cook_time, days, meals_per_day, calories,
+    savedIndex, fridge_items
   } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<ShoppingPlanResponse | null>(null);
@@ -33,6 +35,20 @@ export default function ResultsScreen() {
     async function fetchPlan() {
       try {
         setLoading(true);
+
+        // Check if we are loading a saved plan
+        if (savedIndex !== undefined) {
+          const idx = parseInt(Array.isArray(savedIndex) ? savedIndex[0] : savedIndex);
+          const savedPlan = planStore.getPlanByIndex(idx);
+          if (savedPlan) {
+            setPlan(savedPlan);
+            setLoading(false);
+            return;
+          } else {
+            throw new Error("Saved plan not found");
+          }
+        }
+
         console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, cuisines });
 
         const data = await generatePlan({
@@ -46,6 +62,7 @@ export default function ResultsScreen() {
           cuisines: Array.isArray(cuisines) ? cuisines[0] : (cuisines || ''),
           experiment: (Array.isArray(experiment) ? experiment[0] : experiment) === 'true',
           cook_time: Array.isArray(cook_time) ? cook_time[0] : (cook_time || '30-45 minutes'),
+          fridge_items: Array.isArray(fridge_items) ? fridge_items[0] : (fridge_items || ''),
           fake_data: true
         });
 
@@ -60,15 +77,70 @@ export default function ResultsScreen() {
     }
 
     fetchPlan();
-  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, calories]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, calories, savedIndex]);
+
+  const handleSave = () => {
+    if (plan) {
+      const success = planStore.savePlan(plan);
+      if (success) {
+        if (Platform.OS === 'web') {
+          alert("Meal plan saved!");
+          router.navigate('/');
+        } else {
+          Alert.alert("Success", "Meal plan saved!", [
+            { text: "OK", onPress: () => router.navigate('/') }
+          ]);
+        }
+      } else {
+        Alert.alert("Limit Reached", "You can only save up to 5 meal plans. Please discard an old one first.");
+      }
+    }
+  };
+
+  const handleDiscard = () => {
+    router.navigate('/');
+  };
+
+  const handleViewRecipe = (meal: MealPlanItem) => {
+    router.push({
+      pathname: '/recipe_details',
+      params: {
+        name: meal.name,
+        cook_time: meal.cook_time,
+        recipe_ingredients: JSON.stringify(meal.ingredients),
+        instructions: JSON.stringify(meal.instructions),
+        day: meal.day,
+        meal_type: meal.meal_type
+      }
+    });
+  };
 
   const ListFooter = () => (
-    <TouchableOpacity
-      style={styles.backButton}
-      onPress={() => router.replace('/')}
-    >
-      <Text style={styles.backButtonText}>Start New Plan</Text>
-    </TouchableOpacity>
+    <View style={styles.footerButtons}>
+      {savedIndex === undefined ? (
+        <>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.saveButton]}
+            onPress={handleSave}
+          >
+            <Text style={styles.actionButtonText}>Save Meal Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.discardButton]}
+            onPress={handleDiscard}
+          >
+            <Text style={[styles.actionButtonText, { color: Colors.text }]}>Discard</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.navigate('/')}
+        >
+          <Text style={styles.backButtonText}>Back to Home</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 
   const { width: windowWidth } = useWindowDimensions();
@@ -113,10 +185,15 @@ export default function ResultsScreen() {
               </View>
               <View style={styles.mealInfo}>
                 <Text style={styles.mealTypeSmall}>{meal.meal_type}</Text>
-                <Text style={styles.mealRecipeSmall} numberOfLines={1}>{meal.recipe}</Text>
+                <Text style={styles.mealRecipeSmall} numberOfLines={1}>{meal.name}</Text>
                 <View style={styles.mealFooterSmall}>
-                  <IconSymbol name="clock.fill" size={10} color={Colors.textLight} />
-                  <Text style={styles.mealTimeSmall}>{meal.cook_time}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <IconSymbol name="clock.fill" size={10} color={Colors.textLight} />
+                    <Text style={styles.mealTimeSmall}>{meal.cook_time}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleViewRecipe(meal)}>
+                    <Text style={styles.detailsLink}>Details →</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -261,9 +338,28 @@ export default function ResultsScreen() {
                 shoppingList={plan.shopping_list}
               />
             </View>
-            <Text style={{ marginLeft: 4, marginBottom: 16, color: Colors.textLight }}>
+            <Text style={{ marginLeft: 4, marginBottom: 24, color: Colors.textLight }}>
               Route: {plan.route.join(' → ')}
             </Text>
+
+            {plan.at_home_ingredients && plan.at_home_ingredients.length > 0 && (
+              <View style={{ marginBottom: 24 }}>
+                <Text style={styles.sectionTitle}>Used from Home</Text>
+                <View style={styles.homeCard}>
+                  {plan.at_home_ingredients.map((item, idx) => (
+                    <View key={idx} style={styles.homeItemRow}>
+                      <View style={styles.homeBullet} />
+                      <Text style={styles.homeItemText}>{item.name.charAt(0).toUpperCase() + item.name.slice(1)} ({item.qty} {item.unit})</Text>
+                      <View style={styles.homeTag}>
+                        <Text style={styles.homeTagText}>AT HOME</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            <Text style={styles.sectionTitle}>Shopping List</Text>
           </View>
         }
         ListFooterComponent={ListFooter}
@@ -406,6 +502,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  detailsLink: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   mealTimeSmall: {
     fontSize: 10,
     color: Colors.textLight,
@@ -440,6 +541,44 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 12,
     marginTop: 8,
+  },
+
+  homeCard: {
+    backgroundColor: '#F0FDF4', // Light green
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    marginBottom: 12,
+  },
+  homeItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  homeBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#15803D',
+    marginRight: 10,
+  },
+  homeItemText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#166534',
+    fontWeight: '500',
+  },
+  homeTag: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  homeTagText: {
+    fontSize: 10,
+    color: '#15803D',
+    fontWeight: 'bold',
   },
 
   storeCard: {
@@ -480,5 +619,29 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.text, padding: 16, borderRadius: 12,
     alignItems: 'center', marginTop: 10
   },
-  backButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  backButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+  footerButtons: {
+    gap: 12,
+    marginTop: 10,
+  },
+  actionButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButton: {
+    backgroundColor: '#1F2933',
+  },
+  discardButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  }
 });

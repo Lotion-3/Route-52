@@ -17,11 +17,11 @@ class GeminiClient:
         
         genai.configure(api_key=api_key)
         
-        # Using the Flash model as requested by the user ("Gemini 2.5 Flash")
-        # Currently the model name is usually 'gemini-1.5-flash' or 'gemini-flash' depending on release.
+        # Using the Flash model as requested by the user ("Gemini 2.0 Flash")
+        # Currently the model name is usually 'gemini-2.0-flash-exp' or 'gemini-flash' depending on release.
         # Fallback to 'gemini-pro' if flash isn't available, but let's try a standard flash alias.
-        # Note: 'gemini-1.5-flash-latest' is a common target for new apps.
-        self.model_name = 'gemini-1.5-flash' 
+        # Note: 'gemini-2.0-flash-exp' is a common target for new apps.
+        self.model_name = 'gemini-2.0-flash-exp' 
         self.model = genai.GenerativeModel(self.model_name)
 
     def refine_ingredients(self, raw_labels: List[str]) -> Dict:
