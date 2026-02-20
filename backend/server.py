@@ -188,7 +188,7 @@ def generate_plan(request: PlanRequest):
                     print(f"   Available keys in this store: {available_keys[:20]}")
                 
                 total_item_price = unit_price * item_qty
-                store_items.append({"name": f"{item_name} (x{item_qty})", "price": total_item_price})
+                store_items.append({"name": item_name, "qty": item_qty, "price": total_item_price})
             
             formatted_shopping_list.append({
                 "store": store,

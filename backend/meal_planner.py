@@ -83,10 +83,15 @@ def create_weekly_meal_plan(
         f"HEALTH/DIET: {health_issues}, {diet_restrictions}.\n\n"
         "Requirements:\n"
         "1. List every unique ingredient needed for the week.\n"
-        "2. FOR EACH ITEM, CHOOSE A STANDARD RETAIL UNIT (e.g., 'bottle', 'lb', 'dozen', 'kg', 'bunch') and a realistic quantity of THAT unit needed for the week.\n"
-        "3. FOR FRIDGE ITEMS, USE THE EXACT LABELS PROVIDED BY THE USER.\n"
-        "4. STAPLE SANITY CHECK: For pantry items (oil, spices, flour), do NOT suggest more than 1 unit (e.g., 1 bottle) unless the plan requires bulk amounts.\n"
-        "5. Ensure the 'buy_list' cost is within budget."
+        "   - CLEAN NAMES: The 'name' field must ONLY contain the name of the food (e.g., 'bananas', 'milk').\n"
+        "   - Do NOT include quantities, units, or '(x...)' in the name string itself.\n"
+        "2. YIELD AWARENESS: Calculate quantities based on RETAIL UNITS (e.g., '1 bunch of bananas', '1 bag of spinach', '1 carton of milk').\n"
+        "   - Do NOT suggest one unit per meal if one unit serves many (e.g., 1 bunch of bananas should last for multiple recipes).\n"
+        "   - Calculate the total aggregate amount needed for the ENTIRE week first, then convert to retail units.\n"
+        "3. FOR EACH ITEM, provide a realistic retail unit (e.g., 'bunch', 'bottle', 'lb', 'dozen', 'bag') and the minimum quantity of THAT unit required to cover the whole week.\n"
+        "4. FOR FRIDGE ITEMS, USE THE EXACT LABELS PROVIDED BY THE USER.\n"
+        "5. STAPLE SANITY CHECK: For pantry items (oil, spices, flour), do NOT suggest more than 1 unit (e.g., 1 bottle) unless the plan requires bulk amounts.\n"
+        "6. Ensure the 'buy_list' cost is within budget."
     )
 
     print(f"DEBUG: Explicit fridge list being sent to API: {repr(fridge_contents)}", flush=True)
@@ -116,8 +121,9 @@ def create_weekly_meal_plan(
             f"HOME LIST: {', '.join(home_pool)}\n\n"
             "Constraints:\n"
             "1. Assign specific ingredients and amounts to each meal.\n"
-            "2. Ensure the meal plan respects dietary goals: {diet_restrictions}, {cuisines}.\n"
-            "3. NO NEW INGREDIENTS. Assume ONLY water."
+            "2. FRACTIONAL USE: Since Step 1 defined large retail units (e.g., '1 bunch of bananas'), use fractions of those units for individual meals (e.g., '0.2 bunch' or '1 unit') to ensure the total used matches the pool.\n"
+            "3. Ensure the meal plan respects dietary goals: {diet_restrictions}, {cuisines}.\n"
+            "4. NO NEW INGREDIENTS. Assume ONLY water."
         )
 
         response2 = client.models.generate_content(

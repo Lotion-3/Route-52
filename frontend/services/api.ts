@@ -57,7 +57,7 @@ export interface ShoppingPlanResponse {
         store: string;
         address: string;
         coordinates: { lat: number; lng: number };
-        items: { name: string; price: number }[];
+        items: { name: string; qty: number; price: number }[];
     }[];
 }
 

@@ -3,10 +3,15 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useWindowDim
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { exportLinedShoppingListPdf } from '@/services/pdfExport';
+import { DownloadFab } from '@/components/DownloadFab';
 import { generatePlan, ShoppingPlanResponse, MealPlanItem } from '@/services/api';
 import ShoppingMap from '@/components/ShoppingMap';
 import Logo from '@/components/Logo';
+import BeigeLoadingDots from '@/components/BeigeLoadingDots';
+import GroupedCart, { CartItem } from '@/components/GroupedCart';
+import BasketBuddySavingsFooter from '@/components/BasketBuddySavingsFooter';
 import { planStore } from '@/services/planStore';
 
 export default function ResultsScreen() {
@@ -114,6 +119,42 @@ export default function ResultsScreen() {
         meal_type: meal.meal_type
       }
     });
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!plan || !plan.shopping_list) return;
+
+    try {
+      const stores = plan.shopping_list.map((s) => ({
+        storeName: s.store,
+        storeAddress: s.address,
+        mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`,
+        items: s.items.map((it) => {
+          const name = it.name.replace(/\s*\(x\d+(\.\d+)?\)\s*/g, '').trim();
+          const nameLower = name.toLowerCase();
+          let category: any = 'Other';
+          if (nameLower.includes('tomato') || nameLower.includes('onion') || nameLower.includes('potato') || nameLower.includes('carrot') || nameLower.includes('pepper') || nameLower.includes('apple') || nameLower.includes('banana')) category = 'Produce';
+          else if (nameLower.includes('chicken') || nameLower.includes('beef') || nameLower.includes('meat') || nameLower.includes('pork')) category = 'Meat';
+          else if (nameLower.includes('milk') || nameLower.includes('cheese') || nameLower.includes('yogurt') || nameLower.includes('egg')) category = 'Dairy';
+          else if (nameLower.includes('frozen') || nameLower.includes('ice cream')) category = 'Frozen';
+          else if (nameLower.includes('rice') || nameLower.includes('pasta') || nameLower.includes('bread') || nameLower.includes('oil') || nameLower.includes('salt') || nameLower.includes('oat')) category = 'Pantry';
+
+          return {
+            name,
+            qty: it.qty,
+            category
+          };
+        }),
+      }));
+
+      await exportLinedShoppingListPdf({
+        brandName: "BasketBuddy",
+        stores,
+      });
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      Alert.alert("Export Failed", "There was an error generating your shopping list PDF.");
+    }
   };
 
   const ListFooter = () => (
@@ -225,17 +266,43 @@ export default function ResultsScreen() {
 
         <View style={styles.divider} />
 
-        <View style={styles.itemList}>
-          {item.items.map((product, idx) => (
-            <View key={idx} style={styles.itemRow}>
-              <View style={styles.itemBullet} />
-              <Text style={styles.itemName}>{product.name}</Text>
-              {product.price > 0 && (
-                <Text style={styles.itemPrice}>${product.price.toFixed(2)}</Text>
-              )}
-            </View>
-          ))}
-        </View>
+        {/* Use the new GroupedCart component instead of manual itemList mapping */}
+        <GroupedCart
+          items={item.items.map((it, idx) => {
+            // Basic category inference
+            const rawName = it.name || '';
+            // Scrub any (x1.0) or similar baked-in strings
+            const name = rawName.replace(/\s*\(x\d+(\.\d+)?\)\s*/g, '').trim();
+            const qty = it.qty || 1;
+
+            let category: CartItem['category'] = 'Other';
+            const nameLower = name.toLowerCase();
+            if (nameLower.includes('tomato') || nameLower.includes('onion') || nameLower.includes('potato') || nameLower.includes('carrot') || nameLower.includes('pepper') || nameLower.includes('apple') || nameLower.includes('banana')) category = 'Produce';
+            else if (nameLower.includes('chicken') || nameLower.includes('beef') || nameLower.includes('meat') || nameLower.includes('pork')) category = 'Meat';
+            else if (nameLower.includes('milk') || nameLower.includes('cheese') || nameLower.includes('yogurt') || nameLower.includes('egg')) category = 'Dairy';
+            else if (nameLower.includes('frozen') || nameLower.includes('ice cream')) category = 'Frozen';
+            else if (nameLower.includes('rice') || nameLower.includes('pasta') || nameLower.includes('bread') || nameLower.includes('oil') || nameLower.includes('salt') || nameLower.includes('oat')) category = 'Pantry';
+
+            return {
+              id: `${item.store}-${idx}`,
+              name: name,
+              price: it.price,
+              qty: qty,
+              category
+            };
+          })}
+          cardStyle={styles.groupedCartContainer}
+        />
+
+        {/* Savings Footer with synthetic comparison data */}
+        <BasketBuddySavingsFooter
+          storeTotals={[
+            { storeName: item.store, total: storeTotal },
+            { storeName: 'Whole Foods', total: storeTotal * 1.35 },
+            { storeName: 'Kroger', total: storeTotal * 1.12 }
+          ]}
+          bestSplitLabel={`Optimized for ${item.store}`}
+        />
       </View>
     );
   };
@@ -245,8 +312,11 @@ export default function ResultsScreen() {
       <View style={[styles.container, styles.center, { backgroundColor: '#F7F2EA' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <Logo size={180} />
-        <View style={{ height: 12 }} />
-        <Text style={styles.loadingText}>Optimizing your shopping trip...</Text>
+        <View style={{ height: 24 }} />
+        <View style={styles.titleRow}>
+          <Text style={styles.loadingText}>Optimizing your shopping trip</Text>
+          <BeigeLoadingDots />
+        </View>
         <Text style={styles.loadingSub}>Checking prices & locations...</Text>
       </View>
     );
@@ -287,7 +357,7 @@ export default function ResultsScreen() {
       <View style={styles.brandHeader}>
         <Logo size={70} />
         <View style={{ height: 8 }} />
-        <Text style={styles.brandTitle}>BasketBuddys</Text>
+        <Text style={styles.brandTitle}>BasketBuddy</Text>
       </View>
 
       <FlatList
@@ -367,6 +437,7 @@ export default function ResultsScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       />
+      <DownloadFab label="Download list" onPress={handleDownloadPdf} />
     </View>
   );
 }
@@ -391,6 +462,14 @@ const styles = StyleSheet.create({
 
   loadingText: { fontSize: 40, fontWeight: '700', color: '#1F2933', fontFamily: 'Garamond-Bold' },
   loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
+
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
 
   mapContainer: {
     height: 300,
@@ -615,6 +694,13 @@ const styles = StyleSheet.create({
   itemBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.textLight, marginRight: 10 },
   itemName: { flex: 1, fontSize: 14, color: Colors.text },
   itemPrice: { fontSize: 14, fontWeight: '600', color: Colors.textLight },
+
+  groupedCartContainer: {
+    margin: 16,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
 
   backButton: {
     backgroundColor: Colors.text, padding: 16, borderRadius: 12,

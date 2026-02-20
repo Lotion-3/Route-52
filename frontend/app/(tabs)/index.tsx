@@ -12,8 +12,11 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const [savedPlans, setSavedPlans] = useState<ShoppingPlanResponse[]>([]);
 
-  // Update saved plans whenever the screen comes into focus
+  // Initial load and update whenever the screen comes into focus
   useEffect(() => {
+    // Initial load
+    setSavedPlans(planStore.getSavedPlans());
+
     const unsubscribe = navigation.addListener('focus', () => {
       setSavedPlans(planStore.getSavedPlans());
     });
@@ -35,7 +38,7 @@ export default function HomeScreen() {
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerSection}>
         <Logo size={120} />
-        <Text style={styles.title}>BasketBuddys</Text>
+        <Text style={styles.title}>BasketBuddy</Text>
         <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
       </View>
 
@@ -60,7 +63,7 @@ export default function HomeScreen() {
                 onPress={() => handleViewSaved(index)}
               >
                 <View style={styles.savedCardContent}>
-                  <Text style={styles.savedCardTitle}>Saved Meal {index + 1}</Text>
+                  <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
                   <Text style={styles.savedCardMeta}>
                     {plan.meal_plan.length} meals • ${plan.total_cost.toFixed(2)}
                   </Text>
