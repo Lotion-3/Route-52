@@ -245,8 +245,23 @@ export default function ResultsScreen() {
     );
   };
 
-  const renderStoreCard = ({ item }: { item: ShoppingPlanResponse['shopping_list'][0] }) => {
+  const renderStoreCard = ({ item, index }: { item: ShoppingPlanResponse['shopping_list'][0], index: number }) => {
     const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
+
+    // Niche requirement: alternate comparison stores so they aren't all Whole Foods
+    const comparisonStores = ["Whole Foods", "Trader Joe's", "Wegmans"];
+    const targetComparison = comparisonStores[index % comparisonStores.length];
+
+    // Higher-end stores usually cost more; use different multipliers for variety
+    const multipliers: Record<string, number> = {
+      "Whole Foods": 1.35,
+      "Trader Joe's": 1.22,
+      "Wegmans": 1.28
+    };
+    const multiplier = multipliers[targetComparison] || 1.3;
+
+    const savings = (storeTotal * multiplier) - storeTotal;
+    const showSavings = savings >= 1.0;
 
     return (
       <View style={styles.storeCard}>
@@ -294,15 +309,16 @@ export default function ResultsScreen() {
           cardStyle={styles.groupedCartContainer}
         />
 
-        {/* Savings Footer with synthetic comparison data */}
-        <BasketBuddySavingsFooter
-          storeTotals={[
-            { storeName: item.store, total: storeTotal },
-            { storeName: 'Whole Foods', total: storeTotal * 1.35 },
-            { storeName: 'Kroger', total: storeTotal * 1.12 }
-          ]}
-          bestSplitLabel={`Optimized for ${item.store}`}
-        />
+        {/* Savings Footer - only shown if savings >= $1.00 */}
+        {showSavings && (
+          <BasketBuddySavingsFooter
+            storeTotals={[
+              { storeName: item.store, total: storeTotal },
+              { storeName: targetComparison, total: storeTotal * multiplier },
+            ]}
+            bestSplitLabel={`Optimized for ${item.store}`}
+          />
+        )}
       </View>
     );
   };
@@ -363,7 +379,7 @@ export default function ResultsScreen() {
       <FlatList
         data={plan.shopping_list}
         keyExtractor={(item) => item.store}
-        renderItem={({ item }) => renderStoreCard({ item })}
+        renderItem={({ item, index }) => renderStoreCard({ item, index })}
         ListHeaderComponent={
           <View>
             <View style={styles.summaryCard}>

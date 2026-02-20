@@ -15,9 +15,9 @@ export type StorePlan = {
 };
 
 export type CombinedTripPlan = {
-  logoDataUri?: string; // data:image/png;base64,...
+  logoDataUri?: string;
   stores: StorePlan[];
-  brandName?: string;   // e.g. "BasketBuddy"
+  brandName?: string;
 };
 
 function esc(s: string) {
@@ -30,20 +30,7 @@ function esc(s: string) {
 }
 
 function renderStoreContent(store: StorePlan) {
-  // Group items by category
-  const categories: Record<string, TripItem[]> = {};
-  for (const it of store.items) {
-    const cat = it.category || "Other";
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push(it);
-  }
-
-  const order = ["Produce", "Meat", "Dairy", "Pantry", "Frozen", "Other"];
-  const sortedCats = Object.keys(categories).sort(
-    (a, b) => order.indexOf(a) - order.indexOf(b)
-  );
-
-  const qrUri = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(store.mapsUrl)}`;
+  const qrUri = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(store.mapsUrl)}`;
 
   return `
     <div class="store-section">
@@ -53,27 +40,20 @@ function renderStoreContent(store: StorePlan) {
                 <div class="store-addr">${esc(store.storeAddress)}</div>
             </div>
             <div class="store-qr-wrap">
-                <img src="${qrUri}" class="qr-small" />
-                <div class="qr-hint">Scan for Maps</div>
+                <img src="${qrUri}" class="qr-tiny" />
+                <div class="qr-hint">Maps</div>
             </div>
         </div>
 
-        <div class="categories">
-            ${sortedCats.map(cat => `
-                <div class="category-block">
-                    <div class="category-title">${esc(cat)}</div>
-                    <div class="item-list">
-                        ${categories[cat].map(it => `
-                            <div class="item-row">
-                                <div class="checkbox"></div>
-                                <div class="item-name">${esc(it.name)}</div>
-                                <div class="item-qty">${it.qty > 1 ? `x${it.qty}` : ''}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
+        <ul class="item-list">
+            ${store.items.map(it => `
+                <li class="item-row">
+                    <span class="bullet">&bull;</span>
+                    <span class="item-name">${esc(it.name)}</span>
+                    ${it.qty > 1 ? `<span class="item-qty">x${it.qty}</span>` : ""}
+                </li>
             `).join('')}
-        </div>
+        </ul>
     </div>
     `;
 }
@@ -84,135 +64,158 @@ export async function exportLinedShoppingListPdf(plan: CombinedTripPlan) {
 
   if (!stores.length) throw new Error("No store plans to export.");
 
+  // PDF generation using standardized Print-CSS for universal compatibility (Mobile & Desktop)
   const html = `
+  <!DOCTYPE html>
   <html>
     <head>
       <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <style>
-        @page { margin: 40px; }
+        /* CSS Print Standards */
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+
         body { 
             margin: 0; 
             padding: 0; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #fff;
             color: #111827;
+            font-size: 11pt; /* Use pt for consistent font sizing across OSs */
+            line-height: 1.4;
         }
 
         .main-header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #F3F4F6;
-            padding-bottom: 20px;
+            display: block;
+            border-bottom: 0.5pt solid #E5E7EB;
+            padding-bottom: 8pt;
+            margin-bottom: 20pt;
+            overflow: hidden; /* Clearfix */
         }
 
         .main-title {
-            font-size: 28px;
+            float: left;
+            font-size: 16pt;
             font-weight: 800;
             color: #111827;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .brand-name {
-            color: #4F46E5;
-            font-style: italic;
+            float: right;
+            color: #6B7280;
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+            margin-top: 5pt;
         }
 
         .store-section {
-            margin-bottom: 50px;
-            page-break-inside: avoid;
+            margin-bottom: 25pt;
+            page-break-inside: avoid; /* Standard print rule */
         }
 
         .store-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            background-color: #F9FAFB;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            display: block;
+            margin-bottom: 10pt;
+            background-color: #FDFBFA;
+            padding: 8pt 10pt;
+            border-radius: 4pt;
+            border-left: 2.5pt solid #E5E7EB;
+            overflow: hidden;
+        }
+
+        .store-info {
+            float: left;
+            width: 75%;
         }
 
         .store-name {
-            font-size: 20px;
+            font-size: 13pt;
             font-weight: 700;
             color: #111827;
         }
 
         .store-addr {
-            font-size: 13px;
+            font-size: 9pt;
             color: #6B7280;
-            margin-top: 4px;
+            margin-top: 2pt;
         }
 
         .store-qr-wrap {
-            text-align: center;
+            float: right;
+            text-align: right;
+            width: 20%;
         }
 
-        .qr-small {
-            width: 60px;
-            height: 60px;
-            border: 1px solid #E5E7EB;
-            border-radius: 6px;
+        .qr-tiny {
+            width: 35pt;
+            height: 35pt;
+            border-radius: 3pt;
         }
 
         .qr-hint {
-            font-size: 9px;
+            font-size: 7pt;
             color: #9CA3AF;
-            margin-top: 4px;
+            margin-top: 1pt;
             text-transform: uppercase;
         }
 
-        .category-block {
-            margin-bottom: 24px;
-        }
-
-        .category-title {
-            font-size: 14px;
-            font-weight: 800;
-            color: #4B5563;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #E5E7EB;
-            padding-bottom: 6px;
-            margin-bottom: 12px;
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            clear: both;
         }
 
         .item-row {
-            display: flex;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #F3F4F6;
+            display: block;
+            padding: 4pt 0;
+            border-bottom: 0.5pt solid #F9FAFB;
+            overflow: hidden;
         }
 
-        .checkbox {
-            width: 18px;
-            height: 18px;
-            border: 2px solid #D1D5DB;
-            border-radius: 4px;
-            margin-right: 12px;
+        .bullet {
+            float: left;
+            color: #D1D5DB;
+            margin-right: 6pt;
+            font-size: 14pt;
+            line-height: 1;
         }
 
         .item-name {
-            flex: 1;
-            font-size: 15px;
+            float: left;
             color: #374151;
+            max-width: 80%;
         }
 
         .item-qty {
+            float: right;
             font-weight: 700;
             color: #111827;
-            font-size: 14px;
+            font-size: 9pt;
             background-color: #F3F4F6;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 1pt 5pt;
+            border-radius: 2pt;
         }
 
         .footer {
-            margin-top: 40px;
+            margin-top: 30pt;
+            padding-top: 10pt;
+            border-top: 0.5pt solid #F3F4F6;
             text-align: center;
-            font-size: 12px;
+            font-size: 8pt;
             color: #9CA3AF;
+            clear: both;
+        }
+
+        /* Clearfix for Windows/Desktop Browsers */
+        .main-header::after, .store-header::after, .item-row::after {
+            content: "";
+            display: table;
+            clear: both;
         }
       </style>
     </head>
