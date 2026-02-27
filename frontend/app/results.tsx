@@ -19,7 +19,7 @@ export default function ResultsScreen() {
   const {
     budget, time, location,
     dietary_restrictions, health_issues, cuisines, experiment,
-    cook_time, days, meals_per_day, calories,
+    cook_time, days, meals_per_day, household_size, calories,
     savedIndex, fridge_items
   } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
@@ -61,6 +61,7 @@ export default function ResultsScreen() {
           budget: parseFloat(Array.isArray(budget) ? budget[0] : (budget || '150')),
           time: parseFloat(Array.isArray(time) ? time[0] : (time || '3')),
           calories: parseInt(Array.isArray(calories) ? calories[0] : (calories || '2000')),
+          household_size: parseInt(Array.isArray(household_size) ? household_size[0] : (household_size || '1')),
           days: parseInt(Array.isArray(days) ? days[0] : (days || '7')),
           meals_per_day: parseInt(Array.isArray(meals_per_day) ? meals_per_day[0] : (meals_per_day || '3')),
           dietary_restrictions: Array.isArray(dietary_restrictions) ? dietary_restrictions[0] : (dietary_restrictions || ''),
@@ -83,7 +84,7 @@ export default function ResultsScreen() {
     }
 
     fetchPlan();
-  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, calories, savedIndex]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex]);
 
   const handleSave = () => {
     if (plan) {

@@ -4,6 +4,7 @@ import time
 import os
 from typing import Dict, List, Tuple, Union, Any, Optional
 import config
+from cache_manager import cache
 
 import googlemaps
 from shapely.geometry import shape, Point
@@ -53,12 +54,14 @@ def get_travel_isochrone(start_location: Tuple[float, float], time_limit_seconds
         "units": "m"  # meters (default) or "km"
     }
     
+    cache_key = {"func": "get_travel_isochrone", "start": start_location, "limit": time_limit_seconds}
+    cached_result = cache.get(cache_key, max_age_seconds=86400 * 7) # 1 week cache
+    if cached_result:
+        print("Using cached isochrone.")
+        return cached_result
+
     try:
         response = requests.post(config.ORS_ISOCHRONE_URL, headers=headers, json=payload, timeout=15)
-        
-        # Debug: Print response details
-        # print(f"Request URL: {config.ORS_ISOCHRONE_URL}")
-        # print(f"Status Code: {response.status_code}")
         
         if response.status_code != 200:
             print(f"Response Text: {response.text[:200]}")
@@ -69,7 +72,9 @@ def get_travel_isochrone(start_location: Tuple[float, float], time_limit_seconds
         isochrone_feature = data.get('features', [{}])[0]
         if isochrone_feature and isochrone_feature.get('geometry'):
             print("Success! Reachable area calculated.")
-            return isochrone_feature.get('geometry')
+            geom = isochrone_feature.get('geometry')
+            cache.set(cache_key, geom)
+            return geom
         
         print("Error: Isochrone API returned no valid geometry.")
         return None
@@ -83,6 +88,12 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
     """Find grocery stores within isochrone using Google Places API."""
     print(f"\nSearching for stores via Google Places...")
     
+    cache_key = {"func": "find_eligible_stores_google", "center": center_point, "keywords": config.STORE_KEYWORDS}
+    cached_result = cache.get(cache_key, max_age_seconds=86400 * 7) # 1 week cache
+    if cached_result:
+        print("Using cached store search results.")
+        return cached_result[0], cached_result[1]
+
     gmaps = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
     iso_polygon = shape(isochrone_geometry)
     
@@ -145,6 +156,7 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
             print(f"Error searching for {keyword}: {e}")
 
     print(f"Found {len(stores)} eligible store(s).")
+    cache.set(cache_key, (stores, store_addresses))
     return stores, store_addresses
 
 # --- FUNCTION: Find Eligible Stores (Legacy Overpass) ---

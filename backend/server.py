@@ -46,6 +46,7 @@ class UserPreferences(BaseModel):
     shopping_time_hours: float = 3.0
     budget: float = 150.0
     calorie_target: int = 2000
+    household_size: int = 1
     days_plan: int = 7
     meals_per_day: int = 3
     dietary_restrictions: Optional[str] = None
@@ -68,17 +69,27 @@ def read_root():
 def generate_plan(request: PlanRequest):
     prefs = request.preferences
     
-    # 1. Geocode Address
-    geolocator = Nominatim(user_agent="basket_buddy_backend")
-    location = geolocator.geocode(prefs.address)
+    # 1. Geocode Address with Cache
+    from cache_manager import cache
+    cache_key = {"func": "geocode", "address": prefs.address}
+    cached_loc = cache.get(cache_key)
     
-    if not location:
-        raise HTTPException(status_code=400, detail="Address not found")
+    if cached_loc:
+        print(f"Using cached location for: {prefs.address}")
+        user_loc = (cached_loc['lat'], cached_loc['lon'])
+    else:
+        geolocator = Nominatim(user_agent="basket_buddy_backend")
+        location = geolocator.geocode(prefs.address)
         
-    user_loc = (location.latitude, location.longitude)
+        if not location:
+            raise HTTPException(status_code=400, detail="Address not found")
+            
+        user_loc = (location.latitude, location.longitude)
+        cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
     
     # 2. Update Config
-    config.TOTAL_WEEKLY_CALORIES = prefs.calorie_target * prefs.days_plan
+    # Each person needs calorie_target, so total is target * days * size
+    config.TOTAL_WEEKLY_CALORIES = prefs.calorie_target * prefs.days_plan * prefs.household_size
     
     # 3. Handle Fridge Items
     fridge_items = prefs.fridge_items or ""
@@ -88,11 +99,12 @@ def generate_plan(request: PlanRequest):
             fridge_items = f"{fridge_items}, {vision_items}"
     
     # 4. Generate Meal Plan
+    # Pass household_size so AI knows to scale ingredients
     print(f"\n📦 FINAL FRIDGE LIST FOR MEAL PLANNER: {repr(fridge_items)}", flush=True)
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
         prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
-        prefs.health_issues, prefs.budget
+        prefs.health_issues, prefs.budget, prefs.household_size
     )
     
     if not ingredient_data:
