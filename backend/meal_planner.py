@@ -30,7 +30,7 @@ class MealIngredientMapping(BaseModel):
 
 class MealBrief(BaseModel):
     day: str
-    meal_type: str = Field(description="Breakfast, Lunch, or Dinner")
+    meal_type: str = Field(description="Type of meal (e.g., Breakfast, Lunch, Dinner, Snack, Pre-workout, etc.)")
     name: str = Field(description="Full name of the recipe")
     ingredients: List[MealIngredientMapping] = Field(description="Ingredients mapped from the pool for this meal")
 
@@ -39,9 +39,13 @@ class MealPlanStructure(BaseModel):
 
 # Step 3: RecipeDetails (Instruction Generation)
 class RecipeExecution(BaseModel):
+    name: str = Field(description="Name of the recipe")
     calories: int
     cook_time: str = Field(description="e.g., '25 mins'")
     instructions: List[str]
+
+class BatchRecipeExecution(BaseModel):
+    recipes: List[RecipeExecution]
 
 def create_weekly_meal_plan(
     days: int, 
@@ -53,7 +57,8 @@ def create_weekly_meal_plan(
     experiment: bool = True,
     cook_time: str = "30-45 mins",
     health_issues: str = "",
-    budget: float = 150.0
+    budget: float = 150.0,
+    household_size: int = 1
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     logging.basicConfig(filename='meal_planner_debug.log', level=logging.INFO, 
                         format='%(asctime)s - %(message)s', force=True)
@@ -64,7 +69,7 @@ def create_weekly_meal_plan(
 
     log_step("\n" + "-"*50)
     log_step("🤖 3-PROMPT MEAL PLAN GENERATION STARTING...")
-    log_step(f"   Budget: ${budget} | Health: {health_issues}")
+    log_step(f"   Budget: ${budget} | Health: {health_issues} | People: {household_size}")
     log_step(f"   Fridge: {fridge_contents if fridge_contents else 'Empty'}")
     log_step("-"*50)
 
@@ -77,17 +82,18 @@ def create_weekly_meal_plan(
 
     # --- PROMPT 1: INGREDIENT SOURCING STRATEGY ---
     prompt_step1 = (
-        f"Step 1: Create a universal ingredient list for a {days}-day plan ({meals_per_day} meals/day).\n"
+        f"Step 1: Create a universal ingredient list for a {days}-day plan ({meals_per_day} meals/day) "
+        f"for a household of {household_size} people.\n"
         f"TOTAL BUDGET: ${budget} for the 'buy_list'.\n"
         f"USER FRIDGE: {fridge_contents}.\n"
         f"HEALTH/DIET: {health_issues}, {diet_restrictions}.\n\n"
         "Requirements:\n"
-        "1. List every unique ingredient needed for the week.\n"
+        "1. List every unique ingredient needed for the week. SCALE QUANTITIES for {household_size} people.\n"
         "   - CLEAN NAMES: The 'name' field must ONLY contain the name of the food (e.g., 'bananas', 'milk').\n"
         "   - Do NOT include quantities, units, or '(x...)' in the name string itself.\n"
         "2. YIELD AWARENESS: Calculate quantities based on RETAIL UNITS (e.g., '1 bunch of bananas', '1 bag of spinach', '1 carton of milk').\n"
         "   - Do NOT suggest one unit per meal if one unit serves many (e.g., 1 bunch of bananas should last for multiple recipes).\n"
-        "   - Calculate the total aggregate amount needed for the ENTIRE week first, then convert to retail units.\n"
+        "   - Calculate the total aggregate amount needed for the ENTIRE week first (multiplied by household size), then convert to retail units.\n"
         "3. FOR EACH ITEM, provide a realistic retail unit (e.g., 'bunch', 'bottle', 'lb', 'dozen', 'bag') and the minimum quantity of THAT unit required to cover the whole week.\n"
         "4. FOR FRIDGE ITEMS, USE THE EXACT LABELS PROVIDED BY THE USER.\n"
         "5. STAPLE SANITY CHECK: For pantry items (oil, spices, flour), do NOT suggest more than 1 unit (e.g., 1 bottle) unless the plan requires bulk amounts.\n"
@@ -116,11 +122,12 @@ def create_weekly_meal_plan(
         home_pool = [f"{ing.name} ({ing.qty} {ing.unit})" for ing in strategy.home_list]
         
         prompt_step2 = (
-            f"Step 2: Create a {days}-day meal plan schedule using ONLY these ingredients:\n"
+            f"Step 2: Create a {days}-day meal plan schedule for {household_size} people using ONLY these ingredients.\n"
+            f"REQUIRED: Generate EXACTLY {meals_per_day} meals per day (Total {days * meals_per_day} meals).\n"
             f"BUY LIST: {', '.join(buy_pool)}\n"
             f"HOME LIST: {', '.join(home_pool)}\n\n"
             "Constraints:\n"
-            "1. Assign specific ingredients and amounts to each meal.\n"
+            "1. Assign specific ingredients and amounts to each meal. Each meal should serve {household_size} people.\n"
             "2. FRACTIONAL USE: Since Step 1 defined large retail units (e.g., '1 bunch of bananas'), use fractions of those units for individual meals (e.g., '0.2 bunch' or '1 unit') to ensure the total used matches the pool.\n"
             "3. Ensure the meal plan respects dietary goals: {diet_restrictions}, {cuisines}.\n"
             "4. NO NEW INGREDIENTS. Assume ONLY water."
@@ -148,53 +155,71 @@ def create_weekly_meal_plan(
         for ing in strategy.home_list:
             master_lookup[ing.name.lower()] = {"is_at_home": True, "query": "", "strategy": ing.purchase_strategy}
 
-        # --- PROMPT 3: RECIPE EXECUTION (LOOPING) ---
+        # --- PROMPT 3: BATCH RECIPE EXECUTION ---
         final_meal_plan = []
+        all_meal_prompts = []
         for meal_brief in plan_structure.meals:
-            log_step(f"🍳 Generating instructions for: {meal_brief.name}...")
-            
             ing_strings = [f"{i.name} ({i.qty} {i.unit})" for i in meal_brief.ingredients]
-            prompt_step3 = (
-                f"Generate recipe instructions for '{meal_brief.name}'.\n"
-                f"INGREDIENTS: {', '.join(ing_strings)}\n"
-                "Constraints:\n"
-                "1. Provide realistic calories and cook time.\n"
-                "2. Instructions must clear and use the exact ingredient names provided."
-            )
+            all_meal_prompts.append(f"- Recipe: {meal_brief.name}. Ingredients: {', '.join(ing_strings)}")
 
-            try:
-                response3 = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=prompt_step3,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=RecipeExecution,
-                    )
+        log_step(f"🍳 Generating instructions for ALL {len(plan_structure.meals)} meals in one batch...")
+        prompt_step3 = (
+            "Generate detailed recipe instructions for each of the following meals.\n"
+            "MEALS TO GENERATE:\n" + "\n".join(all_meal_prompts) + "\n\n"
+            "Constraints:\n"
+            "1. Provide realistic calories and cook time for EACH.\n"
+            "2. Instructions must be clear and use the exact ingredient names provided.\n"
+            "3. Return a list of recipes matching the input list."
+        )
+
+        try:
+            response3 = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt_step3,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BatchRecipeExecution,
                 )
-                recipe = response3.parsed
-                if recipe:
-                    # Enrich ingredients with metadata for the UI
-                    enriched_ings = []
-                    for i in meal_brief.ingredients:
-                        meta = master_lookup.get(i.name.lower(), {"is_at_home": False, "query": "", "strategy": "unit"})
-                        enriched_ings.append({
-                            "name": i.name, "qty": i.qty, "unit": i.unit,
-                            "is_at_home": meta["is_at_home"],
-                            "search_query": meta["query"],
-                            "purchase_strategy": meta["strategy"]
-                        })
+            )
+            batch_result = response3.parsed
+            if batch_result and batch_result.recipes:
+                # Create a lookup for recipe results
+                recipe_lookup = {r.name.lower(): r for r in batch_result.recipes}
+                
+                for meal_brief in plan_structure.meals:
+                    recipe = recipe_lookup.get(meal_brief.name.lower())
+                    if not recipe:
+                        # Fallback search if name slightly changed
+                        for name, res in recipe_lookup.items():
+                            if meal_brief.name.lower() in name or name in meal_brief.name.lower():
+                                recipe = res
+                                break
+                    
+                    if recipe:
+                        # Enrich ingredients with metadata for the UI
+                        enriched_ings = []
+                        for i in meal_brief.ingredients:
+                            meta = master_lookup.get(i.name.lower(), {"is_at_home": False, "query": "", "strategy": "unit"})
+                            enriched_ings.append({
+                                "name": i.name, "qty": i.qty, "unit": i.unit,
+                                "is_at_home": meta["is_at_home"],
+                                "search_query": meta["query"],
+                                "purchase_strategy": meta["strategy"]
+                            })
 
-                    final_meal_plan.append({
-                        "day": meal_brief.day,
-                        "meal_type": meal_brief.meal_type,
-                        "name": meal_brief.name,
-                        "calories": recipe.calories,
-                        "cook_time": recipe.cook_time,
-                        "ingredients": enriched_ings,
-                        "instructions": recipe.instructions
-                    })
-            except Exception as e:
-                log_step(f"⚠️ Failed to generate recipe for {meal_brief.name}: {e}")
+                        final_meal_plan.append({
+                            "day": meal_brief.day,
+                            "meal_type": meal_brief.meal_type,
+                            "name": meal_brief.name,
+                            "calories": recipe.calories,
+                            "cook_time": recipe.cook_time,
+                            "ingredients": enriched_ings,
+                            "instructions": recipe.instructions
+                        })
+            else:
+                log_step("❌ STEP 3 FAILED (No recipes in response).")
+        except Exception as e:
+            log_step(f"⚠️ Failed to generate batch recipes: {e}")
 
         # Build aggregated ingredient data for mapping in main.py
         aggregated_ingredient_data = {}

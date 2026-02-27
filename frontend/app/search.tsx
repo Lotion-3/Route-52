@@ -28,6 +28,7 @@ export default function SearchScreen() {
     const [cookTime, setCookTime] = useState('30-45 minutes');
     const [daysPlan, setDaysPlan] = useState('7');
     const [mealsPerDay, setMealsPerDay] = useState('3');
+    const [householdSize, setHouseholdSize] = useState('1');
     const [calories, setCalories] = useState('2000');
     const [fridgeItems, setFridgeItems] = useState('');
     const [hasFridgeItems, setHasFridgeItems] = useState(false);
@@ -89,6 +90,7 @@ export default function SearchScreen() {
                 cook_time: cookTime,
                 days: daysPlan,
                 meals_per_day: mealsPerDay,
+                household_size: householdSize,
                 calories,
                 fridge_items: hasFridgeItems ? fridgeItems : '',
                 health_issues: healthIssues
@@ -248,6 +250,21 @@ export default function SearchScreen() {
                                             onChangeText={setMealsPerDay}
                                         />
                                     </View>
+                                </View>
+                            </View>
+
+                            <View style={{ marginTop: 16 }}>
+                                <Text style={styles.label}>People Cooking For</Text>
+                                <View style={styles.inputRow}>
+                                    <Ionicons name="people-outline" size={18} color="#9CA3AF" />
+                                    <TextInput
+                                        placeholder="1"
+                                        placeholderTextColor="#9CA3AF"
+                                        style={styles.iconInput}
+                                        keyboardType="numeric"
+                                        value={householdSize}
+                                        onChangeText={setHouseholdSize}
+                                    />
                                 </View>
                             </View>
 
