@@ -110,7 +110,7 @@ def generate_plan(request: PlanRequest):
     
     if not ingredient_data:
         raise HTTPException(status_code=500, detail="Failed to generate meal plan")
-
+ 
     # Separate items to buy from items at home
     to_buy_quantities = {}
     at_home_ingredients = []
@@ -261,4 +261,6 @@ def optimize_shopping_route(data: Dict):
     return {"message": "Optimization endpoint not fully implemented yet"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
