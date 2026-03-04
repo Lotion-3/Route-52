@@ -5,30 +5,22 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Build and Export Frontend
+      - name: Build Frontend
         working-directory: ./frontend
         run: |
           npm install
-          npm run lint || echo "Lint failed but continuing for diagnostics"
           npx expo export -p web
 
       - name: Authenticate to Google Cloud
@@ -58,10 +50,15 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars="GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}"
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROUTE52_C97A7 }}'
-          channelId: live
-          projectId: route52-c97a7
+        env:
+          # We'll use the service account key directly for the CLI
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          # Write the secret to a temporary file for the CLI to use
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=sa.json
+          firebase deploy --only hosting --non-interactive --project route52-c97a7
