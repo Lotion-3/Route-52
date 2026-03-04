@@ -6,12 +6,14 @@ const LAN_IP = '10.35.22.118'; // Found via ipconfig
 
 const getApiUrl = () => {
     if (Platform.OS === 'web') {
-        return 'http://localhost:8000';
+        // In production, Firebase Hosting rewrites /api/** to Cloud Run.
+        // In local dev (__DEV__ is true), use localhost directly.
+        if (typeof __DEV__ !== 'undefined' && __DEV__) {
+            return 'http://localhost:8000';
+        }
+        return ''; // Use relative URLs — /api/... routes via Firebase Hosting rewrite
     }
     if (Platform.OS === 'android') {
-        // Check if we are in an emulator (usually) or physical device
-        // 10.0.2.2 is the special alias for the host machine in Android Emulator
-        // However, using the LAN IP is often more reliable if the device is on the same network.
         return `http://${LAN_IP}:8000`;
     }
     // Default for iOS / Physical devices
