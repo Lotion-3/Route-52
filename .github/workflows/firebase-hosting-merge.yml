@@ -1,3 +1,4 @@
+# Version: 1.0.1 - Optimization and Logging
 name: Deploy to Firebase Hosting on merge
 'on':
   push:
@@ -8,8 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+        working-directory: frontend
+      - name: List directory structure (debug)
+        run: ls -R
         working-directory: frontend
       - name: Build web
         run: npm run build-web
