@@ -68,7 +68,7 @@ export default function SearchScreen() {
             const finalCal = Math.max(1200, Math.round(tdee));
             setCalories(finalCal.toString());
             setShowCalculator(false);
-        } catch (e) {
+        } catch {
             alert("Please fill in all calorie calculator fields correctly.");
         }
     };

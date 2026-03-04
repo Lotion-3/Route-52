@@ -14,8 +14,6 @@ export default function ShoppingMap({ userLocation, shoppingList }: ShoppingMapP
     const waypoints = shoppingList.map(s => `${s.coordinates.lat},${s.coordinates.lng}`).join('|');
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
 
-    const markers = shoppingList.map(s => `• ${s.store}: ${s.address}`).join('\n');
-
     // For web, since react-native-maps doesn't work without keys, 
     // we'll use a clean OpenStreetMap embed or a styled placeholder that's actually useful.
     // Here we use a better styled placeholder with the list of coordinates and a link.
