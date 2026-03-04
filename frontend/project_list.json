@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "result": [
+    {
+      "projectId": "route52-c97a7",
+      "projectNumber": "916077737368",
+      "displayName": "Route52",
+      "name": "projects/route52-c97a7",
+      "resources": {
+        "hostingSite": "route52-c97a7"
+      },
+      "state": "ACTIVE",
+      "etag": "1_cf7b9a1a-9a62-4cc8-b6c9-18c00b6521e7"
+    }
+  ]
+}
