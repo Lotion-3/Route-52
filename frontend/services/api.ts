@@ -9,15 +9,15 @@ const getApiUrl = () => {
         // In production, Firebase Hosting rewrites /api/** to Cloud Run.
         // In local dev (__DEV__ is true), use localhost directly.
         if (typeof __DEV__ !== 'undefined' && __DEV__) {
-            return 'http://localhost:8000';
+            return 'http://localhost:8000/api';
         }
-        return ''; // Use relative URLs — /api/... routes via Firebase Hosting rewrite
+        return '/api'; // Routed via Firebase Hosting rewrite to Cloud Run
     }
     if (Platform.OS === 'android') {
-        return `http://${LAN_IP}:8000`;
+        return `http://${LAN_IP}:8000/api`;
     }
     // Default for iOS / Physical devices
-    return `http://${LAN_IP}:8000`;
+    return `http://${LAN_IP}:8000/api`;
 };
 
 const DEV_API_URL = getApiUrl();

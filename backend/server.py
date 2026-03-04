@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware  # Added for CORS
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -19,6 +19,7 @@ import traceback
 logging.basicConfig(filename='server_error.log', level=logging.ERROR)
 
 app = FastAPI()
+router = APIRouter(prefix="/api")
 
 @app.middleware("http")
 async def catch_exceptions_middleware(request, call_next):
@@ -66,7 +67,11 @@ class PlanRequest(BaseModel):
 def read_root():
     return {"message": "Route 52 Backend is running!"}
 
-@app.post("/generate_plan")
+@router.get("/")
+def read_root_api():
+    return {"message": "Route 52 Backend is running!"}
+
+@router.post("/generate_plan")
 def generate_plan(request: PlanRequest):
     prefs = request.preferences
     
@@ -256,9 +261,11 @@ def generate_plan(request: PlanRequest):
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]}
     }
 
-@app.post("/optimize_shopping")
+@router.post("/optimize_shopping")
 def optimize_shopping_route(data: Dict):
     return {"message": "Optimization endpoint not fully implemented yet"}
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import os
