@@ -1,0 +1,35 @@
+name: Verify Build on PR
+on: pull_request
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+jobs:
+  build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build and Lint Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run lint
+          npx expo export -p web
+
+      - name: Build Backend (Dry Run)
+        run: |
+          cd backend
+          docker build -t test-build .
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROUTE52_C97A7 }}
+          projectId: route52-c97a7
