@@ -11,16 +11,23 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Debug - List Files
+        run: ls -R
+
       - name: Build Frontend
         working-directory: ./frontend
         run: |
           npm install
+          # We check if lint exists, but don't fail the build if it does
+          npm run lint --if-present || echo "Lint warnings found"
           npx expo export -p web
 
       - name: Authenticate to Google Cloud
@@ -55,10 +62,8 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         env:
-          # We'll use the service account key directly for the CLI
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
         run: |
-          # Write the secret to a temporary file for the CLI to use
           echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=sa.json
           firebase deploy --only hosting --non-interactive --project route52-c97a7
