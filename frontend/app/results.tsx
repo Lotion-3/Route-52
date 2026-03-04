@@ -130,7 +130,7 @@ export default function ResultsScreen() {
     }
 
     fetchPlan();
-  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex, has_costco_card]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex, has_costco_card, fridge_items, health_issues]);
 
   const handleSave = () => {
     if (plan) {

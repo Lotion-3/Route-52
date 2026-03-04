@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function BarcodeScreen() {

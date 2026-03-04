@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
-import { Colors } from '@/constants/theme';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
 import { planStore } from '@/services/planStore';

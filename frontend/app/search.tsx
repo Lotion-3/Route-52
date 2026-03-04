@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Switch } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { Colors } from '@/constants/theme';
 import Logo from '@/components/Logo';
 import { Ionicons } from '@expo/vector-icons';
 import GradientButton from '@/components/GradientButton';

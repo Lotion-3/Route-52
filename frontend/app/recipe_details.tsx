@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } fr
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import Logo from '@/components/Logo';
 
 export default function RecipeDetailsScreen() {
     const router = useRouter();

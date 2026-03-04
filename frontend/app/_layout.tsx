@@ -4,11 +4,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
 
 import { useFonts, EBGaramond_400Regular, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
 
