@@ -9,10 +9,10 @@ const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
 const baseColors = {
-  primary: '#0052FF',     // Vibrant Blue
-  primaryDark: '#0039B3', // Deep Blue
-  secondary: '#2cbd4d',   // Fresh Green (Groceries)
-  accent: '#F59E0B',      // Amber/Gold for highlights
+  primary: '#3B5DA1',     // Route 52 Blue
+  primaryDark: '#2D477A', // Darker Blue
+  secondary: '#EE7422',   // Route 52 Orange
+  accent: '#EE7422',      // Using the same orange for accent
   error: '#EF4444',
   success: '#10B981',
 };
@@ -20,37 +20,37 @@ const baseColors = {
 export const Colors = {
   ...baseColors,
   text: '#1E293B',
-  background: '#F8FAFC',
+  background: '#F3F0E9', // Deeper Warm Off-White
   tint: tintColorLight,
-  icon: '#687076',
-  tabIconDefault: '#687076',
-  tabIconSelected: tintColorLight,
+  icon: '#64748B',
+  tabIconDefault: '#64748B',
+  tabIconSelected: '#3B5DA1',
   card: '#FFFFFF',
   border: '#E2E8F0',
   textLight: '#64748B',
   light: {
     ...baseColors,
     text: '#1E293B',
-    background: '#F8FAFC',
+    background: '#F3F0E9',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    icon: '#64748B',
+    tabIconDefault: '#64748B',
+    tabIconSelected: '#3B5DA1',
     card: '#FFFFFF',
     border: '#E2E8F0',
     textLight: '#64748B',
   },
   dark: {
     ...baseColors,
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#1E293B',
+    background: '#F3F0E9',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-    card: '#1E293B',
-    border: '#334155',
-    textLight: '#94A3B8',
+    icon: '#64748B',
+    tabIconDefault: '#64748B',
+    tabIconSelected: '#3B5DA1',
+    card: '#FFFFFF',
+    border: '#E2E8F0',
+    textLight: '#64748B',
   },
 };
 

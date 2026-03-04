@@ -37,8 +37,7 @@ export default function HomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerSection}>
-        <Logo size={120} />
-        <Text style={styles.title}>BasketBuddy</Text>
+        <Logo size={144} />
         <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
       </View>
 
@@ -93,7 +92,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F7F2EA',
+    backgroundColor: '#F3F0E9',
     padding: 24,
     paddingTop: 80,
   },

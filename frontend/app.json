@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BasketBuddys",
-    "slug": "frontend",
+    "name": "Route 52",
+    "slug": "route-52",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Screenshot 2026-01-21 132808.png",
-    "scheme": "basketbuddyfrontend",
+    "icon": "./assets/images/logo.png",
+    "scheme": "route52",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

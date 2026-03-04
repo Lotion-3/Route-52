@@ -155,71 +155,89 @@ def create_weekly_meal_plan(
         for ing in strategy.home_list:
             master_lookup[ing.name.lower()] = {"is_at_home": True, "query": "", "strategy": ing.purchase_strategy}
 
-        # --- PROMPT 3: BATCH RECIPE EXECUTION ---
+        # --- PROMPT 3: BATCH RECIPE EXECUTION (BATCHED BY 6) ---
         final_meal_plan = []
-        all_meal_prompts = []
-        for meal_brief in plan_structure.meals:
-            ing_strings = [f"{i.name} ({i.qty} {i.unit})" for i in meal_brief.ingredients]
-            all_meal_prompts.append(f"- Recipe: {meal_brief.name}. Ingredients: {', '.join(ing_strings)}")
+        
+        # Split meals into batches of 6
+        meal_batches = [plan_structure.meals[i:i + 6] for i in range(0, len(plan_structure.meals), 6)]
+        
+        log_step(f"🍳 Generating instructions for {len(plan_structure.meals)} meals in {len(meal_batches)} batches...")
+        
+        import time 
 
-        log_step(f"🍳 Generating instructions for ALL {len(plan_structure.meals)} meals in one batch...")
-        prompt_step3 = (
-            "Generate detailed recipe instructions for each of the following meals.\n"
-            "MEALS TO GENERATE:\n" + "\n".join(all_meal_prompts) + "\n\n"
-            "Constraints:\n"
-            "1. Provide realistic calories and cook time for EACH.\n"
-            "2. Instructions must be clear and use the exact ingredient names provided.\n"
-            "3. Return a list of recipes matching the input list."
-        )
+        for batch_idx, batch in enumerate(meal_batches):
+            log_step(f"   - Processing Batch {batch_idx + 1}/{len(meal_batches)} ({len(batch)} meals)...")
+            
+            batch_prompts = []
+            for meal_brief in batch:
+                ing_strings = [f"{i.name} ({i.qty} {i.unit})" for i in meal_brief.ingredients]
+                batch_prompts.append(f"- Recipe: {meal_brief.name}. Ingredients: {', '.join(ing_strings)}")
 
-        try:
-            response3 = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt_step3,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=BatchRecipeExecution,
-                )
+            prompt_step3 = (
+                "Generate detailed recipe instructions for each of the following meals.\n"
+                "MEALS TO GENERATE:\n" + "\n".join(batch_prompts) + "\n\n"
+                "Constraints:\n"
+                "1. Provide realistic calories and cook time for EACH.\n"
+                "2. Instructions must be clear and use the exact ingredient names provided.\n"
+                "3. Return a list of recipes matching the input list."
             )
-            batch_result = response3.parsed
-            if batch_result and batch_result.recipes:
-                # Create a lookup for recipe results
-                recipe_lookup = {r.name.lower(): r for r in batch_result.recipes}
-                
-                for meal_brief in plan_structure.meals:
-                    recipe = recipe_lookup.get(meal_brief.name.lower())
-                    if not recipe:
-                        # Fallback search if name slightly changed
-                        for name, res in recipe_lookup.items():
-                            if meal_brief.name.lower() in name or name in meal_brief.name.lower():
-                                recipe = res
-                                break
-                    
-                    if recipe:
-                        # Enrich ingredients with metadata for the UI
-                        enriched_ings = []
-                        for i in meal_brief.ingredients:
-                            meta = master_lookup.get(i.name.lower(), {"is_at_home": False, "query": "", "strategy": "unit"})
-                            enriched_ings.append({
-                                "name": i.name, "qty": i.qty, "unit": i.unit,
-                                "is_at_home": meta["is_at_home"],
-                                "search_query": meta["query"],
-                                "purchase_strategy": meta["strategy"]
-                            })
 
-                        final_meal_plan.append({
-                            "day": meal_brief.day,
-                            "meal_type": meal_brief.meal_type,
-                            "name": meal_brief.name,
-                            "calories": recipe.calories,
-                            "cook_time": recipe.cook_time,
-                            "ingredients": enriched_ings,
-                            "instructions": recipe.instructions
-                        })
-            else:
-                log_step("❌ STEP 3 FAILED (No recipes in response).")
-        except Exception as e:
-            log_step(f"⚠️ Failed to generate batch recipes: {e}")
+            try:
+                response3 = client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=prompt_step3,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=BatchRecipeExecution,
+                    )
+                )
+                batch_result = response3.parsed
+                if batch_result and batch_result.recipes:
+                    # Create a lookup for recipe results in this batch
+                    recipe_lookup = {r.name.lower(): r for r in batch_result.recipes}
+                    
+                    for meal_brief in batch:
+                        recipe = recipe_lookup.get(meal_brief.name.lower())
+                        if not recipe:
+                            # Fallback search if name slightly changed
+                            for name, res in recipe_lookup.items():
+                                if meal_brief.name.lower() in name or name in meal_brief.name.lower():
+                                    recipe = res
+                                    break
+                        
+                        if recipe:
+                            # Enrich ingredients with metadata for the UI
+                            enriched_ings = []
+                            for i in meal_brief.ingredients:
+                                meta = master_lookup.get(i.name.lower(), {"is_at_home": False, "query": "", "strategy": "unit"})
+                                enriched_ings.append({
+                                    "name": i.name, "qty": i.qty, "unit": i.unit,
+                                    "is_at_home": meta["is_at_home"],
+                                    "search_query": meta["query"],
+                                    "purchase_strategy": meta["strategy"]
+                                })
+
+                            final_meal_plan.append({
+                                "day": meal_brief.day,
+                                "meal_type": meal_brief.meal_type,
+                                "name": meal_brief.name,
+                                "calories": recipe.calories,
+                                "cook_time": recipe.cook_time,
+                                "ingredients": enriched_ings,
+                                "instructions": recipe.instructions
+                            })
+                else:
+                    log_step(f"⚠️ Batch {batch_idx + 1} returned no recipes.")
+                
+                # Small pause to avoid hitting Rpm limits on free tier
+                if batch_idx < len(meal_batches) - 1:
+                    time.sleep(2)
+
+            except Exception as e:
+                log_step(f"⚠️ Failed to generate batch {batch_idx + 1}: {e}")
+                if "429" in str(e):
+                    log_step("   - Rate limit hit, sleeping for 10s before next batch...")
+                    time.sleep(10)
 
         # Build aggregated ingredient data for mapping in main.py
         aggregated_ingredient_data = {}

@@ -56,6 +56,7 @@ class UserPreferences(BaseModel):
     cook_time: str = "30-45 minutes"
     fridge_image_path: Optional[str] = None 
     fridge_items: Optional[str] = None
+    has_costco_card: bool = False
     dev_mode: int = 1
 
 class PlanRequest(BaseModel):
@@ -63,7 +64,7 @@ class PlanRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "BasketBuddy Backend is running!"}
+    return {"message": "Route 52 Backend is running!"}
 
 @app.post("/generate_plan")
 def generate_plan(request: PlanRequest):
@@ -147,9 +148,30 @@ def generate_plan(request: PlanRequest):
         # Fallback: create a small circle or handle error
         raise HTTPException(status_code=500, detail="Could not calculate reachable area. Check API keys.")
     
+    # --- STORE FILTERING ---
     STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.find_eligible_stores_google(isochrone_geometry, user_loc)
-    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, user_loc)
+    print(f"DEBUG: Found {len(STORE_LOCATIONS)} raw stores: {list(STORE_LOCATIONS.keys())}")
     
+    # Costco Membership Filter
+    print(f"DEBUG: Costco Card Preference = {prefs.has_costco_card}")
+    if not prefs.has_costco_card:
+        print("🚫 Filtering out Costco stores...")
+        filtered_locations = {}
+        filtered_addresses = {}
+        for k, v in STORE_LOCATIONS.items():
+            k_lower = k.lower()
+            if "costco" not in k_lower:
+                filtered_locations[k] = v
+                filtered_addresses[k] = STORE_ADDRESSES.get(k, "")
+            else:
+                print(f"   - Removed Costco store: {k}")
+        STORE_LOCATIONS = filtered_locations
+        STORE_ADDRESSES = filtered_addresses
+
+    # Filter to unique chains closest to user
+    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, user_loc)
+    print(f"DEBUG: Stores after chain filtering: {list(STORE_LOCATIONS.keys())}")
+
     if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
         distances = []
         for name, (lat, lon) in STORE_LOCATIONS.items():

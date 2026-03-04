@@ -2351,3 +2351,492 @@ geopy.exc.GeocoderUnavailable: HTTPSConnectionPool(host='nominatim.openstreetmap
 2026-02-26 23:27:12,188 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
 2026-02-26 23:27:12,194 - \u2705 3-Prompt plan complete.
 2026-02-26 23:27:13,529 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:19:51,395 - 
+--------------------------------------------------
+2026-03-03 19:19:51,396 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 19:19:51,398 -    Budget: $150.0 | Health: diabetes | People: 2
+2026-03-03 19:19:51,398 -    Fridge: eggs
+2026-03-03 19:19:51,398 - --------------------------------------------------
+2026-03-03 19:19:53,459 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:20:00,182 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:20:00,200 - \u2705 Sourcing Complete: 19 to buy, 1 from home.
+2026-03-03 19:20:00,203 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:20:12,264 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:20:12,272 - \u2705 Scheduling Complete: 12 meals planned.
+2026-03-03 19:20:12,274 - \U0001f373 Generating instructions for ALL 12 meals in one batch...
+2026-03-03 19:20:12,275 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:20:22,400 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:20:22,407 - \u2705 3-Prompt plan complete.
+2026-03-03 19:20:25,507 - API queries_quota: 60
+2026-03-03 19:20:32,594 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:22:29,310 - 
+--------------------------------------------------
+2026-03-03 19:22:29,311 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 19:22:29,311 -    Budget: $150.0 | Health: diabetes | People: 2
+2026-03-03 19:22:29,313 -    Fridge: eggs
+2026-03-03 19:22:29,314 - --------------------------------------------------
+2026-03-03 19:22:31,635 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:22:38,163 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:22:38,171 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-03-03 19:22:38,171 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:22:51,684 - 
+--------------------------------------------------
+2026-03-03 19:22:51,684 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 19:22:51,684 -    Budget: $150.0 | Health: diabetes | People: 2
+2026-03-03 19:22:51,684 -    Fridge: eggs
+2026-03-03 19:22:51,686 - --------------------------------------------------
+2026-03-03 19:22:52,824 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:22:52,827 - \u2705 Scheduling Complete: 12 meals planned.
+2026-03-03 19:22:52,828 - \U0001f373 Generating instructions for ALL 12 meals in one batch...
+2026-03-03 19:22:52,828 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:22:52,855 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:22:58,972 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:22:58,977 - \u2705 Sourcing Complete: 19 to buy, 1 from home.
+2026-03-03 19:22:58,980 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:23:01,236 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:23:01,244 - \u2705 3-Prompt plan complete.
+2026-03-03 19:23:02,191 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:23:10,110 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:23:10,140 - \u2705 Scheduling Complete: 12 meals planned.
+2026-03-03 19:23:10,140 - \U0001f373 Generating instructions for ALL 12 meals in one batch...
+2026-03-03 19:23:10,142 - AFC is enabled with max remote calls: 10.
+2026-03-03 19:23:18,691 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 19:23:18,693 - \u2705 3-Prompt plan complete.
+2026-03-03 19:23:19,564 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:48:30,406 - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\laksh\anaconda3\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\laksh\anaconda3\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-03-03 21:48:32,219 - 
+--------------------------------------------------
+2026-03-03 21:48:32,219 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:48:32,220 -    Budget: $150.0 | Health: diabetes | People: 2
+2026-03-03 21:48:32,221 -    Fridge: eggs
+2026-03-03 21:48:32,221 - --------------------------------------------------
+2026-03-03 21:48:34,411 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:48:39,392 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:48:39,399 - \u2705 Sourcing Complete: 14 to buy, 1 from home.
+2026-03-03 21:48:39,400 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:48:39,487 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-03-03 21:48:39,591 - \u274c Error in 3-Prompt planner: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\nPlease retry in 20.58559661s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '20s'}]}}
+Traceback (most recent call last):
+  File "C:\Users\laksh\OneDrive\Desktop\basketBuddy\backend\meal_planner.py", line 136, in create_weekly_meal_plan
+    response2 = client.models.generate_content(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 5215, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 3997, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1375, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1211, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 379, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 325, in iter
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 158, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 382, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1188, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 121, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 146, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\nPlease retry in 20.58559661s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_input_token_count', 'quotaId': 'GenerateContentInputTokensPerModelPerMinute-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash', 'location': 'global'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.0-flash'}}, {'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.0-flash', 'location': 'global'}}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '20s'}]}}
+
+2026-03-03 21:51:49,053 - 
+--------------------------------------------------
+2026-03-03 21:51:49,054 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:51:49,054 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:51:49,054 -    Fridge: Eggs
+2026-03-03 21:51:49,056 - --------------------------------------------------
+2026-03-03 21:51:51,171 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:51:56,428 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:51:56,431 - \u2705 Sourcing Complete: 15 to buy, 1 from home.
+2026-03-03 21:51:56,431 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:52:06,889 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:52:06,891 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:52:06,891 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:52:06,895 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:52:15,814 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:52:15,845 - \u2705 3-Prompt plan complete.
+2026-03-03 21:52:16,680 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:24,977 - 
+--------------------------------------------------
+2026-03-03 21:58:24,978 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:58:24,979 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:58:24,979 -    Fridge: Eggs
+2026-03-03 21:58:24,980 - --------------------------------------------------
+2026-03-03 21:58:26,650 - 
+--------------------------------------------------
+2026-03-03 21:58:26,650 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:58:26,651 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:58:26,651 -    Fridge: Eggs
+2026-03-03 21:58:26,652 - --------------------------------------------------
+2026-03-03 21:58:27,315 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:28,948 - 
+--------------------------------------------------
+2026-03-03 21:58:28,952 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:58:28,954 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:58:28,955 -    Fridge: Eggs
+2026-03-03 21:58:28,957 - --------------------------------------------------
+2026-03-03 21:58:29,015 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:29,776 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:32,915 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:32,915 - \u2705 Sourcing Complete: 15 to buy, 1 from home.
+2026-03-03 21:58:32,915 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:34,832 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:34,834 - \u2705 Sourcing Complete: 16 to buy, 1 from home.
+2026-03-03 21:58:34,834 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:35,539 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:35,546 - \u2705 Sourcing Complete: 16 to buy, 1 from home.
+2026-03-03 21:58:35,546 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:42,431 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:42,435 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:58:42,435 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:58:42,435 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:43,518 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:43,526 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:58:43,527 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:58:43,529 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:45,725 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:45,729 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:58:45,730 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:58:45,731 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:49,762 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:49,763 - \u2705 3-Prompt plan complete.
+2026-03-03 21:58:50,343 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:50,345 - \u2705 3-Prompt plan complete.
+2026-03-03 21:58:50,405 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:50,979 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:53,775 - 
+--------------------------------------------------
+2026-03-03 21:58:53,775 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:58:53,776 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:58:53,776 -    Fridge: Eggs
+2026-03-03 21:58:53,777 - --------------------------------------------------
+2026-03-03 21:58:53,855 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:53,855 - \u2705 3-Prompt plan complete.
+2026-03-03 21:58:54,455 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:54,683 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:55,788 - 
+--------------------------------------------------
+2026-03-03 21:58:55,788 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 21:58:55,788 -    Budget: $150.0 | Health: Hypertension | People: 2
+2026-03-03 21:58:55,788 -    Fridge: Eggs
+2026-03-03 21:58:55,788 - --------------------------------------------------
+2026-03-03 21:58:56,475 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:58:59,924 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:58:59,926 - \u2705 Sourcing Complete: 14 to buy, 1 from home.
+2026-03-03 21:58:59,926 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:59:03,095 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:59:03,099 - \u2705 Sourcing Complete: 18 to buy, 1 from home.
+2026-03-03 21:59:03,099 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:59:09,781 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:59:09,785 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:59:09,786 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:59:09,787 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:59:11,123 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:59:11,128 - \u2705 Scheduling Complete: 6 meals planned.
+2026-03-03 21:59:11,129 - \U0001f373 Generating instructions for ALL 6 meals in one batch...
+2026-03-03 21:59:11,130 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:59:15,842 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:59:15,847 - \u2705 3-Prompt plan complete.
+2026-03-03 21:59:16,534 - AFC is enabled with max remote calls: 10.
+2026-03-03 21:59:16,747 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 21:59:16,752 - \u2705 3-Prompt plan complete.
+2026-03-03 21:59:17,411 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:03:17,750 - 
+--------------------------------------------------
+2026-03-03 22:03:17,750 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:03:17,751 -    Budget: $150.0 | Health: Hypertension | People: 4
+2026-03-03 22:03:17,751 -    Fridge: eggs
+2026-03-03 22:03:17,752 - --------------------------------------------------
+2026-03-03 22:03:19,743 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:03:26,304 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:03:26,305 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-03-03 22:03:26,306 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:03:49,052 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:03:49,057 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:03:49,060 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:03:49,060 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:04:11,851 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:04:11,885 - \u2705 3-Prompt plan complete.
+2026-03-03 22:04:15,506 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:05:12,588 - 
+--------------------------------------------------
+2026-03-03 22:05:12,589 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:05:12,589 -    Budget: $150.0 | Health: Diabetes | People: 4
+2026-03-03 22:05:12,590 -    Fridge: eggs
+2026-03-03 22:05:12,591 - --------------------------------------------------
+2026-03-03 22:05:14,722 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:05:21,249 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:05:21,253 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-03-03 22:05:21,253 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:05:51,152 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:05:51,156 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:05:51,157 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:05:51,158 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:06:06,420 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:06:06,424 - \u2705 3-Prompt plan complete.
+2026-03-03 22:06:07,133 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:40,560 - 
+--------------------------------------------------
+2026-03-03 22:07:40,560 - 
+--------------------------------------------------
+2026-03-03 22:07:40,562 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:07:40,562 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:07:40,562 -    Budget: $150.0 | Health: Hypertension | People: 4
+2026-03-03 22:07:40,562 -    Budget: $150.0 | Health: Diabetes | People: 4
+2026-03-03 22:07:40,563 -    Fridge: eggs
+2026-03-03 22:07:40,563 -    Fridge: eggs
+2026-03-03 22:07:40,563 - --------------------------------------------------
+2026-03-03 22:07:40,564 - --------------------------------------------------
+2026-03-03 22:07:41,511 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:41,514 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:41,646 - 
+--------------------------------------------------
+2026-03-03 22:07:41,648 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:07:41,649 -    Budget: $150.0 | Health: Hypertension | People: 4
+2026-03-03 22:07:41,649 -    Fridge: eggs
+2026-03-03 22:07:41,650 - --------------------------------------------------
+2026-03-03 22:07:41,958 - 
+--------------------------------------------------
+2026-03-03 22:07:41,959 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:07:41,959 -    Budget: $150.0 | Health: Diabetes | People: 4
+2026-03-03 22:07:41,959 -    Fridge: eggs
+2026-03-03 22:07:41,959 - --------------------------------------------------
+2026-03-03 22:07:42,498 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:42,780 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:47,917 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:07:47,917 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-03-03 22:07:47,917 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:47,934 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:07:47,938 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-03-03 22:07:47,939 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:49,076 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:07:49,076 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-03-03 22:07:49,076 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:07:49,155 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:07:49,160 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-03-03 22:07:49,160 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:09,037 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:09,040 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:08:09,040 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:08:09,040 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:13,254 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:13,256 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:08:13,257 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:08:13,257 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:14,065 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:14,065 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:08:14,065 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:08:14,065 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:15,260 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:15,289 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:08:15,289 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:08:15,289 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:26,276 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:26,276 - \u2705 3-Prompt plan complete.
+2026-03-03 22:08:26,987 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:31,546 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:31,577 - \u2705 3-Prompt plan complete.
+2026-03-03 22:08:32,288 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:33,663 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:33,665 - \u2705 3-Prompt plan complete.
+2026-03-03 22:08:34,326 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:08:38,565 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:08:38,596 - \u2705 3-Prompt plan complete.
+2026-03-03 22:08:39,279 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:11:05,666 - 
+--------------------------------------------------
+2026-03-03 22:11:05,667 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:11:05,667 -    Budget: $150.0 | Health: Diabetes | People: 5
+2026-03-03 22:11:05,668 -    Fridge: Eggs
+2026-03-03 22:11:05,668 - --------------------------------------------------
+2026-03-03 22:11:07,782 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:11:14,309 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:11:14,314 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-03-03 22:11:14,314 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:11:42,343 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:11:42,348 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:11:42,348 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:11:42,349 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:11:55,171 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:11:55,176 - \u2705 3-Prompt plan complete.
+2026-03-03 22:11:55,872 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:13,327 - 
+--------------------------------------------------
+2026-03-03 22:15:13,327 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:15:13,327 -    Budget: $150.0 | Health: Diabetes | People: 5
+2026-03-03 22:15:13,327 -    Fridge: Eggs
+2026-03-03 22:15:13,327 - --------------------------------------------------
+2026-03-03 22:15:14,081 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:20,415 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:15:20,417 - \u2705 Sourcing Complete: 21 to buy, 1 from home.
+2026-03-03 22:15:20,417 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:25,652 - 
+--------------------------------------------------
+2026-03-03 22:15:25,652 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:15:25,652 -    Budget: $150.0 | Health: Diabetes | People: 5
+2026-03-03 22:15:25,652 -    Fridge: Eggs
+2026-03-03 22:15:25,652 - --------------------------------------------------
+2026-03-03 22:15:26,361 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:32,220 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:15:32,222 - \u2705 Sourcing Complete: 18 to buy, 1 from home.
+2026-03-03 22:15:32,222 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:40,017 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:15:40,029 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:15:40,029 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:15:40,029 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:40,095 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 503 Service Unavailable"
+2026-03-03 22:15:40,097 - \u26a0\ufe0f Failed to generate batch recipes: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}
+2026-03-03 22:15:40,097 - \u2705 3-Prompt plan complete.
+2026-03-03 22:15:40,834 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:15:51,585 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:15:51,590 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:15:51,590 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:15:51,590 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:16:08,963 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:16:08,967 - \u2705 3-Prompt plan complete.
+2026-03-03 22:16:14,770 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:17:49,263 - 
+--------------------------------------------------
+2026-03-03 22:17:49,265 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:17:49,265 -    Budget: $150.0 | Health: Diabetes | People: 1
+2026-03-03 22:17:49,268 -    Fridge: eggs
+2026-03-03 22:17:49,269 - --------------------------------------------------
+2026-03-03 22:17:51,672 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:17:59,014 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:17:59,017 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-03-03 22:17:59,017 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:18:17,641 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:18:17,646 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:18:17,647 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:18:17,648 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:18:33,349 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:18:33,353 - \u2705 3-Prompt plan complete.
+2026-03-03 22:18:34,175 - API queries_quota: 60
+2026-03-03 22:18:40,092 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:29,545 - 
+--------------------------------------------------
+2026-03-03 22:21:29,545 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:21:29,546 -    Budget: $150.0 | Health: Diabetes | People: 5
+2026-03-03 22:21:29,546 -    Fridge: Eggs
+2026-03-03 22:21:29,546 - --------------------------------------------------
+2026-03-03 22:21:29,566 - 
+--------------------------------------------------
+2026-03-03 22:21:29,566 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:21:29,567 -    Budget: $150.0 | Health: Diabetes | People: 1
+2026-03-03 22:21:29,567 -    Fridge: eggs
+2026-03-03 22:21:29,567 - --------------------------------------------------
+2026-03-03 22:21:30,476 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:30,488 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:37,264 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:21:37,265 - \u2705 Sourcing Complete: 20 to buy, 1 from home.
+2026-03-03 22:21:37,265 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:38,755 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:21:38,758 - \u2705 Sourcing Complete: 23 to buy, 1 from home.
+2026-03-03 22:21:38,758 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:41,656 - 
+--------------------------------------------------
+2026-03-03 22:21:41,656 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:21:41,657 -    Budget: $150.0 | Health: Diabetes | People: 5
+2026-03-03 22:21:41,657 -    Fridge: Eggs
+2026-03-03 22:21:41,657 - --------------------------------------------------
+2026-03-03 22:21:41,971 - 
+--------------------------------------------------
+2026-03-03 22:21:41,974 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:21:41,974 -    Budget: $150.0 | Health: Diabetes | People: 1
+2026-03-03 22:21:41,974 -    Fridge: eggs
+2026-03-03 22:21:41,974 - --------------------------------------------------
+2026-03-03 22:21:42,481 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:42,788 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:49,987 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:21:49,988 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-03-03 22:21:49,988 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:21:50,634 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:21:50,634 - \u2705 Sourcing Complete: 26 to buy, 1 from home.
+2026-03-03 22:21:50,634 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:00,614 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:00,615 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:22:00,615 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:22:00,615 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:02,451 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:02,455 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:22:02,455 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:22:02,455 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:13,301 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:13,310 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:22:13,311 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:22:13,312 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:16,082 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:16,088 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:22:16,088 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:22:16,089 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:21,836 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:21,862 - \u2705 3-Prompt plan complete.
+2026-03-03 22:22:22,563 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:23,651 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:23,657 - \u2705 3-Prompt plan complete.
+2026-03-03 22:22:24,487 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:34,501 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:34,505 - \u2705 3-Prompt plan complete.
+2026-03-03 22:22:35,185 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:22:37,238 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:22:37,242 - \u2705 3-Prompt plan complete.
+2026-03-03 22:22:38,031 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:23:29,683 - 
+--------------------------------------------------
+2026-03-03 22:23:29,685 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:23:29,687 -    Budget: $150.0 | Health: Hypertension, Heart Disease | People: 1
+2026-03-03 22:23:29,688 -    Fridge: Eggs
+2026-03-03 22:23:29,694 - --------------------------------------------------
+2026-03-03 22:23:32,101 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:23:40,616 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:23:40,623 - \u2705 Sourcing Complete: 24 to buy, 1 from home.
+2026-03-03 22:23:40,623 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:24:07,860 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:24:07,866 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:24:07,867 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:24:07,868 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:24:25,790 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:24:25,794 - \u2705 3-Prompt plan complete.
+2026-03-03 22:24:26,434 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:33:35,269 - 
+--------------------------------------------------
+2026-03-03 22:33:35,270 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-03-03 22:33:35,270 -    Budget: $150.0 | Health: Diabetes | People: 1
+2026-03-03 22:33:35,271 -    Fridge: Eggs
+2026-03-03 22:33:35,271 - --------------------------------------------------
+2026-03-03 22:33:37,432 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:33:44,183 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:33:44,187 - \u2705 Sourcing Complete: 22 to buy, 1 from home.
+2026-03-03 22:33:44,188 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:34:06,003 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:34:06,009 - \u2705 Scheduling Complete: 21 meals planned.
+2026-03-03 22:34:06,009 - \U0001f373 Generating instructions for ALL 21 meals in one batch...
+2026-03-03 22:34:06,009 - AFC is enabled with max remote calls: 10.
+2026-03-03 22:34:26,354 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 200 OK"
+2026-03-03 22:34:26,797 - \u2705 3-Prompt plan complete.
+2026-03-03 22:34:27,471 - AFC is enabled with max remote calls: 10.

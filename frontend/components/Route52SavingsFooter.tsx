@@ -22,7 +22,7 @@ function getCheapVsExpensive(stores: StoreTotal[]) {
     return { cheapest, mostExpensive, savings };
 }
 
-export default function BasketBuddySavingsFooter({
+export default function Route52SavingsFooter({
     storeTotals,
     bestSplitLabel,
 }: {
@@ -45,13 +45,13 @@ export default function BasketBuddySavingsFooter({
 
                     <View style={styles.textBlock}>
                         <Text style={styles.headline} numberOfLines={2}>
-                            BasketBuddy saves you {formatMoney(savings)} here versus{" "}
+                            You save {formatMoney(savings)} here versus{" "}
                             {mostExpensive.storeName}
                         </Text>
 
                         {!!bestSplitLabel && (
-                            <Text style={styles.subline} numberOfLines={1}>
-                                {bestSplitLabel}
+                            <Text style={styles.context} numberOfLines={1}>
+                                Using optimized pricing & logic
                             </Text>
                         )}
                     </View>
@@ -74,12 +74,12 @@ const styles = StyleSheet.create({
         borderTopColor: "#EEF2F7",
     },
     footerBar: {
-        backgroundColor: "#F7F4EE", // beige-tint
+        backgroundColor: "#EFECE5", // subtle warm contrast
         borderRadius: 14,
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: "#EAE4DA",
+        borderColor: "#E5E7EB",
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: "#111827",
+        backgroundColor: "#3B5DA1", // Route 52 blue
     },
     badgeText: {
         color: "#FFFFFF",
@@ -109,16 +109,15 @@ const styles = StyleSheet.create({
         minWidth: 0,
     },
     headline: {
-        color: "#111827",
-        fontWeight: "800",
-        fontSize: 13,
-        lineHeight: 18,
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#1F2937",
+        flexShrink: 1,
     },
-    subline: {
-        marginTop: 2,
-        color: "#6B7280",
-        fontWeight: "600",
+    context: {
         fontSize: 12,
+        color: "#6B7280",
+        marginTop: 2,
     },
     right: {
         alignItems: "flex-end",

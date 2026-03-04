@@ -44,15 +44,15 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerStyle: {
-              backgroundColor: 'transparent', // Transparent header to show gradient
+              backgroundColor: '#3B5DA1', // Blue header
             },
             headerShadowVisible: false,
-            headerTintColor: Colors.text,
+            headerTintColor: '#FFFFFF', // White tint for contrast
             headerTitleStyle: {
               fontWeight: 'bold',
             },
             contentStyle: {
-              backgroundColor: 'transparent', // Transparent content to show gradient
+              backgroundColor: '#F3F0E9', // Warmer background
             }
           }}
         >

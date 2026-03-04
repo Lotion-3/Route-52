@@ -33,6 +33,7 @@ export default function SearchScreen() {
     const [fridgeItems, setFridgeItems] = useState('');
     const [hasFridgeItems, setHasFridgeItems] = useState(false);
     const [healthIssues, setHealthIssues] = useState('');
+    const [hasCostcoCard, setHasCostcoCard] = useState(false);
 
     // Calorie Calculator states
     const [showCalculator, setShowCalculator] = useState(false);
@@ -78,23 +79,26 @@ export default function SearchScreen() {
             alert("Please enter at least one of: Location, Budget, or Time.");
             return;
         }
+        const params = {
+            budget,
+            time,
+            location,
+            dietary_restrictions: dietaryRestrictions,
+            cuisines,
+            experiment: experiment ? 'true' : 'false',
+            cook_time: cookTime,
+            days: daysPlan,
+            meals_per_day: mealsPerDay,
+            household_size: householdSize,
+            calories,
+            fridge_items: hasFridgeItems ? fridgeItems : '',
+            health_issues: healthIssues,
+            has_costco_card: hasCostcoCard ? 'true' : 'false'
+        };
+        console.log('DEBUG: Navigating from Search with params:', params);
         router.push({
             pathname: '/results',
-            params: {
-                budget,
-                time,
-                location,
-                dietary_restrictions: dietaryRestrictions,
-                cuisines,
-                experiment: experiment ? 'true' : 'false',
-                cook_time: cookTime,
-                days: daysPlan,
-                meals_per_day: mealsPerDay,
-                household_size: householdSize,
-                calories,
-                fridge_items: hasFridgeItems ? fridgeItems : '',
-                health_issues: healthIssues
-            }
+            params: params
         });
     };
 
@@ -302,6 +306,16 @@ export default function SearchScreen() {
                                 />
                             </View>
 
+                            <View style={[styles.switchGroup, { marginTop: 16 }]}>
+                                <Text style={styles.label}>Do you have a Costco card?</Text>
+                                <Switch
+                                    value={hasCostcoCard}
+                                    onValueChange={setHasCostcoCard}
+                                    trackColor={{ false: '#CBD5E1', true: '#1F2933' }}
+                                    thumbColor={'#FFFFFF'}
+                                />
+                            </View>
+
                             {hasFridgeItems && (
                                 <View style={{ marginTop: 16 }}>
                                     <Text style={styles.label}>Enter items (comma separated)</Text>
@@ -461,8 +475,8 @@ const styles = StyleSheet.create({
     inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderWidth: 1.5,
+        borderColor: '#ee7422',
         borderRadius: 12,
         paddingHorizontal: 12,
         backgroundColor: '#FAFAFA',
@@ -521,8 +535,8 @@ const styles = StyleSheet.create({
     calcInput: {
         backgroundColor: '#FAFAFA',
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderWidth: 1.5,
+        borderColor: '#ee7422',
         height: 40,
         paddingHorizontal: 10,
         fontSize: 14,

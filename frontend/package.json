@@ -1,5 +1,5 @@
 {
-  "name": "basketbuddyfrontend",
+  "name": "route-52",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -8,7 +8,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build-web": "npx expo export --platform web",
+    "deploy-web": "npm run build-web && firebase deploy --only hosting"
   },
   "dependencies": {
     "@expo-google-fonts/eb-garamond": "^0.4.2",

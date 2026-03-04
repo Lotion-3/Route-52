@@ -6,7 +6,7 @@ Go to cmd, navigate to the directory and execute
 
 ".venv\Scripts\activate"
 
-after running that command, you will use "(basketBuddy)" on the left hadn side of each line in cmd
+after running that command, you will use "(route52)" on the left hadn side of each line in cmd
 
 THEN
 

@@ -35,6 +35,7 @@ export interface ShoppingPlanRequest {
     cook_time?: string;
     fridge_items?: string;
     fake_data?: boolean;
+    has_costco_card?: boolean;
 }
 
 export interface MealPlanItem {
@@ -83,7 +84,8 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
                     cuisines: params.cuisines || "",
                     experiment: params.experiment !== undefined ? params.experiment : true,
                     cook_time: params.cook_time || "30-45 minutes",
-                    fridge_items: params.fridge_items || ""
+                    fridge_items: params.fridge_items || "",
+                    has_costco_card: params.has_costco_card !== undefined ? params.has_costco_card : false
                 }
             }),
         });

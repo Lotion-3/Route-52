@@ -6,25 +6,67 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { exportLinedShoppingListPdf } from '@/services/pdfExport';
 import { DownloadFab } from '@/components/DownloadFab';
-import { generatePlan, ShoppingPlanResponse, MealPlanItem } from '@/services/api';
+import { generatePlan, ShoppingPlanResponse, MealPlanItem, ShoppingPlanRequest } from '@/services/api';
 import ShoppingMap from '@/components/ShoppingMap';
 import Logo from '@/components/Logo';
 import BeigeLoadingDots from '@/components/BeigeLoadingDots';
 import GroupedCart, { CartItem } from '@/components/GroupedCart';
-import BasketBuddySavingsFooter from '@/components/BasketBuddySavingsFooter';
+import Route52SavingsFooter from '@/components/Route52SavingsFooter';
 import { planStore } from '@/services/planStore';
 
 export default function ResultsScreen() {
-  const router = useRouter();
   const {
     budget, time, location,
-    dietary_restrictions, health_issues, cuisines, experiment,
-    cook_time, days, meals_per_day, household_size, calories,
-    savedIndex, fridge_items
-  } = useLocalSearchParams();
+    dietary_restrictions, cuisines, experiment, cook_time,
+    days, meals_per_day, household_size, calories,
+    fridge_items, health_issues,
+    has_costco_card,
+    savedIndex
+  } = useLocalSearchParams<{
+    budget?: string, time?: string, location?: string,
+    dietary_restrictions?: string, cuisines?: string, experiment?: string, cook_time?: string,
+    days?: string, meals_per_day?: string, household_size?: string, calories?: string,
+    fridge_items?: string, health_issues?: string,
+    has_costco_card?: string,
+    savedIndex?: string
+  }>();
+
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<ShoppingPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [coupons, setCoupons] = useState<Record<string, { discount: number }>>({});
+
+  // Memoize random coupon assignment to prevent regeneration on every render
+  useEffect(() => {
+    if (plan && plan.shopping_list) {
+      const allItems: { storeIndex: number; itemIndex: number; id: string; storeName: string }[] = [];
+      plan.shopping_list.forEach((store, sIdx) => {
+        store.items.forEach((item, iIdx) => {
+          allItems.push({
+            storeIndex: sIdx,
+            itemIndex: iIdx,
+            id: `${sIdx}-${iIdx}`,
+            storeName: store.store || ''
+          });
+        });
+      });
+
+      // Randomly pick 4-5 items, EXCLUDING Costco
+      const eligibleItems = allItems.filter(item => !item.storeName.toLowerCase().includes('costco'));
+      const count = Math.min(eligibleItems.length, Math.floor(Math.random() * 2) + 4); // 4 or 5
+      const shuffled = [...eligibleItems].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, count);
+
+      const newCoupons: Record<string, { discount: number }> = {};
+      selected.forEach(item => {
+        newCoupons[item.id] = {
+          discount: Math.floor(Math.random() * 16 + 5) / 100 // 0.05 to 0.20
+        };
+      });
+      setCoupons(newCoupons);
+    }
+  }, [plan]);
 
   const dayIcons: Record<string, string> = {
     "Monday": "calendar",
@@ -53,10 +95,10 @@ export default function ResultsScreen() {
             throw new Error("Saved plan not found");
           }
         }
+        const costcoParam = Array.isArray(has_costco_card) ? has_costco_card[0] : has_costco_card;
+        console.log('DEBUG: has_costco_card param value:', costcoParam);
 
-        console.log('Fetching plan with:', { budget, time, location, dietary_restrictions, health_issues, cuisines });
-
-        const data = await generatePlan({
+        const requestParams: ShoppingPlanRequest = {
           location: Array.isArray(location) ? location[0] : (location || 'Indianapolis, IN'),
           budget: parseFloat(Array.isArray(budget) ? budget[0] : (budget || '150')),
           time: parseFloat(Array.isArray(time) ? time[0] : (time || '3')),
@@ -70,8 +112,12 @@ export default function ResultsScreen() {
           experiment: (Array.isArray(experiment) ? experiment[0] : experiment) === 'true',
           cook_time: Array.isArray(cook_time) ? cook_time[0] : (cook_time || '30-45 minutes'),
           fridge_items: Array.isArray(fridge_items) ? fridge_items[0] : (fridge_items || ''),
+          has_costco_card: costcoParam === 'true',
           fake_data: true
-        });
+        };
+
+        console.log('DEBUG: Final request parameters:', requestParams);
+        const data = await generatePlan(requestParams);
 
         setPlan(data);
       } catch (err: any) {
@@ -84,7 +130,7 @@ export default function ResultsScreen() {
     }
 
     fetchPlan();
-  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex, has_costco_card]);
 
   const handleSave = () => {
     if (plan) {
@@ -149,7 +195,7 @@ export default function ResultsScreen() {
       }));
 
       await exportLinedShoppingListPdf({
-        brandName: "BasketBuddy",
+        brandName: "",
         stores,
       });
     } catch (error) {
@@ -247,7 +293,12 @@ export default function ResultsScreen() {
   };
 
   const renderStoreCard = ({ item, index }: { item: ShoppingPlanResponse['shopping_list'][0], index: number }) => {
-    const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
+    const storeHasCoupon = item.items.some((_, iIdx) => coupons[`${index}-${iIdx}`]);
+    const storeTotal = item.items.reduce((sum, prod, iIdx) => {
+      const coupon = coupons[`${index}-${iIdx}`];
+      const price = coupon ? prod.price * (1 - coupon.discount) : prod.price;
+      return sum + price;
+    }, 0);
 
     // Niche requirement: alternate comparison stores so they aren't all Whole Foods
     const comparisonStores = ["Whole Foods", "Trader Joe's", "Wegmans"];
@@ -266,6 +317,12 @@ export default function ResultsScreen() {
 
     return (
       <View style={styles.storeCard}>
+        {storeHasCoupon && (
+          <View style={styles.couponBanner}>
+            <Ionicons name="pricetag" size={14} color="#166534" />
+            <Text style={styles.couponBannerText}>COUPON AVAILABLE</Text>
+          </View>
+        )}
         <View style={styles.storeHeader}>
           <View style={[styles.storeIcon, { backgroundColor: Colors.primary + '20' }]}>
             <Text style={[styles.storeInitial, { color: Colors.primary }]}>{item.store?.[0] || '?'}</Text>
@@ -284,7 +341,8 @@ export default function ResultsScreen() {
 
         {/* Use the new GroupedCart component instead of manual itemList mapping */}
         <GroupedCart
-          items={item.items.map((it, idx) => {
+          items={item.items.map((it, iIdx) => {
+            const coupon = coupons[`${index}-${iIdx}`];
             // Basic category inference
             const rawName = it.name || '';
             // Scrub any (x1.0) or similar baked-in strings
@@ -300,11 +358,14 @@ export default function ResultsScreen() {
             else if (nameLower.includes('rice') || nameLower.includes('pasta') || nameLower.includes('bread') || nameLower.includes('oil') || nameLower.includes('salt') || nameLower.includes('oat')) category = 'Pantry';
 
             return {
-              id: `${item.store}-${idx}`,
-              name: name,
+              id: `${index}-${iIdx}`,
+              name,
+              qty,
               price: it.price,
-              qty: qty,
-              category
+              category,
+              hasCoupon: !!coupon,
+              couponDiscount: coupon?.discount,
+              onUseCoupon: () => router.push('/barcode')
             };
           })}
           cardStyle={styles.groupedCartContainer}
@@ -312,7 +373,7 @@ export default function ResultsScreen() {
 
         {/* Savings Footer - only shown if savings >= $1.00 */}
         {showSavings && (
-          <BasketBuddySavingsFooter
+          <Route52SavingsFooter
             storeTotals={[
               { storeName: item.store, total: storeTotal },
               { storeName: targetComparison, total: storeTotal * multiplier },
@@ -372,9 +433,7 @@ export default function ResultsScreen() {
       />
 
       <View style={styles.brandHeader}>
-        <Logo size={70} />
-        <View style={{ height: 8 }} />
-        <Text style={styles.brandTitle}>BasketBuddy</Text>
+        <Logo size={84} />
       </View>
 
       <FlatList
@@ -460,14 +519,14 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F2EA' },
+  container: { flex: 1, backgroundColor: '#F3F0E9' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
   brandHeader: {
     paddingTop: 60,
     paddingBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#F7F2EA',
+    backgroundColor: '#F3F0E9',
   },
   brandTitle: {
     fontSize: 24,
@@ -494,8 +553,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: '#ee7422',
     backgroundColor: Colors.card,
   },
 
@@ -506,6 +565,8 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: '#ee7422',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -523,6 +584,23 @@ const styles = StyleSheet.create({
   },
   mealListContainer: {
     paddingBottom: 8,
+  },
+  couponBanner: {
+    backgroundColor: '#DCFCE7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginHorizontal: -20,
+    marginTop: -20,
+    marginBottom: 20,
+    gap: 8,
+  },
+  couponBannerText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#166534',
+    letterSpacing: 0.5,
   },
   mealCard: {
     backgroundColor: Colors.card,
@@ -644,8 +722,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4', // Light green
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
+    borderWidth: 1.5,
+    borderColor: '#ee7422',
     marginBottom: 12,
   },
   homeItemRow: {
@@ -666,6 +744,11 @@ const styles = StyleSheet.create({
     color: '#166534',
     fontWeight: '500',
   },
+  emptyText: {
+    color: '#9CA3AF',
+    fontSize: 16,
+    textAlign: 'center',
+  },
   homeTag: {
     backgroundColor: '#DCFCE7',
     paddingHorizontal: 8,
@@ -677,14 +760,19 @@ const styles = StyleSheet.create({
     color: '#15803D',
     fontWeight: 'bold',
   },
+  loaderText: {
+    marginTop: 12,
+    color: '#64748B',
+    fontSize: 14,
+  },
 
   storeCard: {
     backgroundColor: Colors.card,
     borderRadius: 16,
     marginBottom: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: '#ee7422',
   },
   storeHeader: {
     flexDirection: 'row',
@@ -740,8 +828,8 @@ const styles = StyleSheet.create({
   },
   discardButton: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 1.5,
+    borderColor: '#ee7422',
   },
   actionButtonText: {
     color: '#fff',

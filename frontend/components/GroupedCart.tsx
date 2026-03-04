@@ -14,6 +14,9 @@ export type CartItem = {
     qty: number;
     price: number; // total price for this line item (already multiplied by qty)
     category: "Produce" | "Dairy" | "Meat" | "Pantry" | "Frozen" | "Other";
+    hasCoupon?: boolean;
+    couponDiscount?: number; // e.g. 0.15 for 15% off
+    onUseCoupon?: () => void;
 };
 
 type SectionData = {
@@ -110,24 +113,59 @@ export default function GroupedCart({
                         <View style={styles.gridWrap}>
                             {rows.map((row, idx) => (
                                 <View key={`${section.title}-row-${idx}`} style={styles.gridRow}>
-                                    {row.map((it) => (
-                                        <View key={it.id} style={styles.gridItem}>
-                                            <View style={styles.itemTop}>
-                                                <Text numberOfLines={1} style={styles.itemName}>
-                                                    {it.name}
-                                                </Text>
-                                                <View style={styles.qtyPill}>
-                                                    <Text style={styles.qtyText}>x{it.qty}</Text>
-                                                </View>
-                                            </View>
+                                    {row.map((it) => {
+                                        const discountedPrice = it.hasCoupon && it.couponDiscount
+                                            ? it.price * (1 - it.couponDiscount)
+                                            : it.price;
 
-                                            <View style={styles.priceRow}>
-                                                <View style={styles.priceCol}>
-                                                    <Text style={styles.itemPrice}>{formatMoney(it.price)}</Text>
+                                        return (
+                                            <View key={it.id} style={styles.gridItem}>
+                                                <View style={styles.itemTop}>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text numberOfLines={1} style={styles.itemName}>
+                                                            {it.name}
+                                                        </Text>
+                                                        {it.hasCoupon && (
+                                                            <View style={styles.couponBadge}>
+                                                                <Text style={styles.couponBadgeText}>
+                                                                    {(it.couponDiscount! * 100).toFixed(0)}% OFF
+                                                                </Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <View style={styles.qtyPill}>
+                                                        <Text style={styles.qtyText}>x{it.qty}</Text>
+                                                    </View>
                                                 </View>
+
+                                                <View style={styles.priceRow}>
+                                                    <View style={styles.priceCol}>
+                                                        {it.hasCoupon ? (
+                                                            <>
+                                                                <Text style={styles.originalPrice}>
+                                                                    {formatMoney(it.price)}
+                                                                </Text>
+                                                                <Text style={[styles.itemPrice, { color: '#166534' }]}>
+                                                                    {formatMoney(discountedPrice)}
+                                                                </Text>
+                                                            </>
+                                                        ) : (
+                                                            <Text style={styles.itemPrice}>{formatMoney(it.price)}</Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+
+                                                {it.hasCoupon && (
+                                                    <TouchableOpacity
+                                                        style={styles.useCouponButton}
+                                                        onPress={it.onUseCoupon}
+                                                    >
+                                                        <Text style={styles.useCouponText}>USE COUPON</Text>
+                                                    </TouchableOpacity>
+                                                )}
                                             </View>
-                                        </View>
-                                    ))}
+                                        );
+                                    })}
 
                                     {row.length < columns &&
                                         Array.from({ length: columns - row.length }).map((_, k) => (
@@ -184,12 +222,12 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14,
         fontWeight: "700",
-        color: "#111827",
+        color: "#1E293B",
     },
     sectionTotal: {
         fontSize: 13,
         fontWeight: "800",
-        color: "#111827",
+        color: "#1E293B",
         fontVariant: ["tabular-nums"],
         width: PRICE_COL_WIDTH,
         textAlign: "right",
@@ -269,5 +307,37 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         color: "#111827",
         fontVariant: ["tabular-nums"],
+    },
+    couponBadge: {
+        backgroundColor: '#DCFCE7',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginTop: 4,
+    },
+    couponBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#166534',
+    },
+    originalPrice: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        textDecorationLine: 'line-through',
+        marginBottom: 2,
+    },
+    useCouponButton: {
+        marginTop: 12,
+        backgroundColor: '#166534',
+        paddingVertical: 6,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    useCouponText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
 });

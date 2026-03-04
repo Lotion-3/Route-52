@@ -59,7 +59,7 @@ function renderStoreContent(store: StorePlan) {
 }
 
 export async function exportLinedShoppingListPdf(plan: CombinedTripPlan) {
-  const brandName = plan.brandName?.trim() || "BasketBuddy";
+  const brandName = plan.brandName?.trim() || "Route 52";
   const stores = (plan.stores ?? []).filter((s) => s && Array.isArray(s.items));
 
   if (!stores.length) throw new Error("No store plans to export.");
