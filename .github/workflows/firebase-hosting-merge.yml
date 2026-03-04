@@ -55,7 +55,7 @@ jobs:
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
-            --set-env-vars="GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}"
+            --set-env-vars="GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},ORS_API_KEY=${{ secrets.ORS_API_KEY }},GEMINI_API_KEY_V=${{ secrets.GEMINI_API_KEY_V }},GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}"
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
