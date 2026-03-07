@@ -33,7 +33,7 @@ export default function RecipeDetailsScreen() {
                 headerShown: true,
                 headerTransparent: false,
                 headerShadowVisible: false,
-                headerStyle: { backgroundColor: '#F7F2EA' },
+                headerStyle: { backgroundColor: '#F9F9F9' },
             }} />
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -110,7 +110,7 @@ export default function RecipeDetailsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F7F2EA',
+        backgroundColor: '#F9F9F9',
     },
     scrollContent: {
         padding: 24,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     dayBadge: {
-        backgroundColor: '#1F2933',
+        backgroundColor: '#1A1A1A',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 6,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#1F2933',
+        color: '#1A1A1A',
         fontFamily: 'Garamond-Bold',
         lineHeight: 34,
     },
@@ -165,14 +165,16 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#1F2933',
+        color: '#1A1A1A',
         marginBottom: 16,
         fontFamily: 'Garamond-Bold',
     },
     card: {
-        backgroundColor: '#FEFEFC',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 16,
+        borderWidth: 1,
+        borderColor: '#1A1A1A',
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -202,11 +204,13 @@ const styles = StyleSheet.create({
         color: Colors.textLight,
     },
     instructionCard: {
-        backgroundColor: '#FEFEFC',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 20,
         marginBottom: 12,
         flexDirection: 'row',
+        borderWidth: 1,
+        borderColor: '#1A1A1A',
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -217,7 +221,7 @@ const styles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#1F2933',
+        backgroundColor: '#1A1A1A',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -236,15 +240,15 @@ const styles = StyleSheet.create({
     },
     backButton: {
         marginTop: 8,
-        backgroundColor: '#FEFEFC',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#1A1A1A',
         borderRadius: 12,
         padding: 16,
         alignItems: 'center',
     },
     backButtonText: {
-        color: '#1F2933',
+        color: '#1A1A1A',
         fontWeight: '600',
         fontSize: 15,
     },

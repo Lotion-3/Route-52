@@ -18,6 +18,9 @@ import traceback
 # Setup logging
 logging.basicConfig(filename='server_error.log', level=logging.ERROR)
 
+SERVER_VERSION = "2.1.0-STRICT-BENCHMARK"
+print(f"\n🚀 BASKET BUDDY SERVER STARTING - VERSION: {SERVER_VERSION}", flush=True)
+
 app = FastAPI()
 
 @app.middleware("http")
@@ -68,6 +71,7 @@ def read_root():
 
 @app.post("/generate_plan")
 def generate_plan(request: PlanRequest):
+    print(f"\n📥 RECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request.preferences
     
     # 1. Geocode Address with Cache
@@ -169,8 +173,13 @@ def generate_plan(request: PlanRequest):
         STORE_ADDRESSES = filtered_addresses
 
     # Filter to unique chains closest to user
-    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, user_loc)
-    print(f"DEBUG: Stores after chain filtering: {list(STORE_LOCATIONS.keys())}")
+    STORE_LOCATIONS_RAW, STORE_ADDRESSES_RAW = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, user_loc)
+    
+    # Strip all keys to prevent mismatches between matrix, price db, and optimizer
+    STORE_LOCATIONS = {k.strip(): v for k, v in STORE_LOCATIONS_RAW.items()}
+    STORE_ADDRESSES = {k.strip(): v for k, v in STORE_ADDRESSES_RAW.items()}
+    
+    print(f"DEBUG: Stores after chain filtering & stripping: {list(STORE_LOCATIONS.keys())}")
 
     if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
         distances = []
@@ -195,7 +204,7 @@ def generate_plan(request: PlanRequest):
     )
     
     config.MAX_TIME_SECONDS = MAX_TIME_SECS 
-    optimal_route, item_cost, total_time_seconds, item_assignments = optimizer.find_optimal_store(
+    optimal_route, item_cost, total_time_seconds, item_assignments, cheapest_single_store_cost, cheapest_single_store_name = optimizer.find_optimal_store(
         durations_matrix, price_database, location_names, shopping_list
     )
     
@@ -246,15 +255,19 @@ def generate_plan(request: PlanRequest):
             u_price = item_unit_prices.get(l_key, 0.0)
             ing['price'] = u_price * ing['qty']
 
-    return {
+    res = {
         "meal_plan": meal_plan,
         "shopping_list": formatted_shopping_list,
         "at_home_ingredients": at_home_ingredients,
         "total_cost": item_cost if item_cost != float('inf') else 0,
+        "cheapest_single_store_cost": cheapest_single_store_cost if cheapest_single_store_cost != float('inf') else 0,
+        "cheapest_single_store_name": cheapest_single_store_name,
         "total_time_minutes": total_time_seconds / 60 if total_time_seconds else 0,
         "route": optimal_route if optimal_route else [],
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]}
     }
+    print(f"DEBUG SERVER: Sending benchmark {cheapest_single_store_name} to frontend", flush=True)
+    return res
 
 @app.post("/optimize_shopping")
 def optimize_shopping_route(data: Dict):

@@ -52,6 +52,8 @@ export interface ShoppingPlanResponse {
     meal_plan: MealPlanItem[];
     route: string[];
     total_cost: number;
+    cheapest_single_store_cost: number;
+    cheapest_single_store_name: string;
     total_time_minutes: number;
     user_location: { lat: number; lng: number };
     at_home_ingredients: { name: string; qty: number; unit: string }[];

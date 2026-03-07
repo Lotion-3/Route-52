@@ -21,9 +21,9 @@ const styles = StyleSheet.create({
         borderRadius: 999, // pill shape
         alignItems: 'center',
         marginTop: 20,
-        backgroundColor: '#3B5DA1', // Solid primary color
+        backgroundColor: '#ee7422',
 
-        shadowColor: '#3B5DA1',
+        shadowColor: '#ee7422',
         shadowOpacity: 0.35,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 6 },

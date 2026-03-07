@@ -35,6 +35,9 @@ export default function SearchScreen() {
     const [healthIssues, setHealthIssues] = useState('');
     const [hasCostcoCard, setHasCostcoCard] = useState(false);
 
+    // Shopping mode state
+    const [shoppingMode, setShoppingMode] = useState<'order_online' | 'delivery' | 'shop_in_person'>('shop_in_person');
+
     // Calorie Calculator states
     const [showCalculator, setShowCalculator] = useState(false);
     const [weight, setWeight] = useState('');
@@ -93,7 +96,8 @@ export default function SearchScreen() {
             calories,
             fridge_items: hasFridgeItems ? fridgeItems : '',
             health_issues: healthIssues,
-            has_costco_card: hasCostcoCard ? 'true' : 'false'
+            has_costco_card: hasCostcoCard ? 'true' : 'false',
+            shopping_mode: shoppingMode
         };
         console.log('DEBUG: Navigating from Search with params:', params);
         router.push({
@@ -107,7 +111,7 @@ export default function SearchScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
         >
-            <View style={{ flex: 1, backgroundColor: '#F7F2EA' }}>
+            <View style={{ flex: 1, backgroundColor: '#F9F9F9' }}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <TopBanner />
                 <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -131,6 +135,68 @@ export default function SearchScreen() {
                                     value={location}
                                     onChangeText={setLocation}
                                 />
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* SECTION: Shopping Mode */}
+                    <View style={styles.section}>
+                        <View style={styles.card}>
+                            <Text style={styles.label}>How would you like to shop?</Text>
+                            <View style={styles.modeRow}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeTile,
+                                        shoppingMode === 'order_online' && styles.modeTileSelected
+                                    ]}
+                                    onPress={() => setShoppingMode('order_online')}
+                                >
+                                    <Ionicons
+                                        name="basket-outline"
+                                        size={24}
+                                        color={shoppingMode === 'order_online' ? '#ee7422' : '#9CA3AF'}
+                                    />
+                                    <Text style={[styles.modeTileLabel, shoppingMode === 'order_online' && styles.modeTileLabelSelected]}>
+                                        Order Online
+                                    </Text>
+                                    <Text style={styles.modeTileSub}>Pick up</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeTile,
+                                        shoppingMode === 'delivery' && styles.modeTileSelected
+                                    ]}
+                                    onPress={() => setShoppingMode('delivery')}
+                                >
+                                    <Ionicons
+                                        name="car-outline"
+                                        size={24}
+                                        color={shoppingMode === 'delivery' ? '#ee7422' : '#9CA3AF'}
+                                    />
+                                    <Text style={[styles.modeTileLabel, shoppingMode === 'delivery' && styles.modeTileLabelSelected]}>
+                                        Delivery
+                                    </Text>
+                                    <Text style={styles.modeTileSub}>At home</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeTile,
+                                        shoppingMode === 'shop_in_person' && styles.modeTileSelected
+                                    ]}
+                                    onPress={() => setShoppingMode('shop_in_person')}
+                                >
+                                    <Ionicons
+                                        name="storefront-outline"
+                                        size={24}
+                                        color={shoppingMode === 'shop_in_person' ? '#ee7422' : '#9CA3AF'}
+                                    />
+                                    <Text style={[styles.modeTileLabel, shoppingMode === 'shop_in_person' && styles.modeTileLabelSelected]}>
+                                        Shop
+                                    </Text>
+                                    <Text style={styles.modeTileSub}>In person</Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     </View>
@@ -291,7 +357,7 @@ export default function SearchScreen() {
                                 <Switch
                                     value={experiment}
                                     onValueChange={setExperiment}
-                                    trackColor={{ false: '#CBD5E1', true: '#1F2933' }}
+                                    trackColor={{ false: '#CBD5E1', true: '#ee7422' }}
                                     thumbColor={'#FFFFFF'}
                                 />
                             </View>
@@ -301,7 +367,7 @@ export default function SearchScreen() {
                                 <Switch
                                     value={hasFridgeItems}
                                     onValueChange={setHasFridgeItems}
-                                    trackColor={{ false: '#CBD5E1', true: '#1F2933' }}
+                                    trackColor={{ false: '#CBD5E1', true: '#ee7422' }}
                                     thumbColor={'#FFFFFF'}
                                 />
                             </View>
@@ -311,7 +377,7 @@ export default function SearchScreen() {
                                 <Switch
                                     value={hasCostcoCard}
                                     onValueChange={setHasCostcoCard}
-                                    trackColor={{ false: '#CBD5E1', true: '#1F2933' }}
+                                    trackColor={{ false: '#CBD5E1', true: '#ee7422' }}
                                     thumbColor={'#FFFFFF'}
                                 />
                             </View>
@@ -426,7 +492,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
     page: {
-        backgroundColor: '#F7F2EA',
+        backgroundColor: '#F9F9F9',
         padding: 20,
         paddingTop: 20,
         flexGrow: 1,
@@ -440,7 +506,7 @@ const styles = StyleSheet.create({
     header: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#1F2933',
+        color: '#1A1A1A',
         fontFamily: 'Garamond-Bold',
         marginTop: 16,
     },
@@ -450,10 +516,12 @@ const styles = StyleSheet.create({
     },
 
     card: {
-        backgroundColor: '#FEFEFC',
+        backgroundColor: '#FFFFFF',
         borderRadius: 18,
         padding: 18,
         marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#1A1A1A',
 
         // soft shadow (iOS)
         shadowColor: '#000',
@@ -475,11 +543,9 @@ const styles = StyleSheet.create({
     inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#ee7422',
         borderRadius: 12,
         paddingHorizontal: 12,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#F9F9F9',
     },
 
     iconInput: {
@@ -487,7 +553,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         paddingVertical: 14,
         fontSize: 16,
-        color: '#111827',
+        color: '#1A1A1A',
     },
 
     // Additional styles needed for functionality
@@ -507,7 +573,7 @@ const styles = StyleSheet.create({
     },
 
     linkText: {
-        color: '#1F2933',
+        color: '#ee7422',
         fontWeight: '600',
         fontSize: 12,
         textDecorationLine: 'underline',
@@ -523,7 +589,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2933',
+        color: '#1A1A1A',
         marginBottom: 12,
     },
     labelSmall: {
@@ -533,16 +599,14 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     calcInput: {
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#F9F9F9',
         borderRadius: 8,
-        borderWidth: 1.5,
-        borderColor: '#ee7422',
         height: 40,
         paddingHorizontal: 10,
         fontSize: 14,
     },
     calcButton: {
-        backgroundColor: '#1F2933',
+        backgroundColor: '#ee7422',
         height: 44,
         borderRadius: 10,
         justifyContent: 'center',
@@ -573,16 +637,52 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     radioButtonSelected: {
-        borderColor: '#1F2933',
+        borderColor: '#ee7422',
     },
     radioButtonInner: {
         height: 10,
         width: 10,
         borderRadius: 5,
-        backgroundColor: '#1F2933',
+        backgroundColor: '#ee7422',
     },
     radioLabel: {
         fontSize: 14,
         color: '#4B5563',
+    },
+
+    // Shopping Mode Styles
+    modeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    modeTile: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#F9F9F9',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+    },
+    modeTileSelected: {
+        borderColor: '#ee7422',
+        backgroundColor: '#FFF5E6',
+    },
+    modeTileLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    modeTileLabelSelected: {
+        color: '#ee7422',
+    },
+    modeTileSub: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        marginTop: 2,
     },
 });

@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
         zIndex: 999, // Ensure it stays above other content
     },
     button: {
-        backgroundColor: "#2563EB", // modern blue (Tailwind blue-600)
+        backgroundColor: "#ee7422",
         paddingHorizontal: 24,
         paddingVertical: 14,
         borderRadius: 999,

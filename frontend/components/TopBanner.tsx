@@ -19,12 +19,12 @@ export default function TopBanner() {
 const styles = StyleSheet.create({
     header: {
         height: 56,
-        backgroundColor: "#3B5DA1", // Route 52 blue
+        backgroundColor: "#ee7422",
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#3B5DA1",
+        borderBottomColor: "#ee7422",
     },
     back: {
         paddingRight: 12,

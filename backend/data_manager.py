@@ -5,7 +5,7 @@ import os
 from typing import List, Dict, Any
 from google import genai
 from google.genai import types
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # Initialize Gemini Client (using existing env var pattern)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY_V")
@@ -24,23 +24,27 @@ def load_csv_prices(csv_path: str = "alanVeggies.csv") -> List[Dict[str, Any]]:
     return data
 
 class PriceResponse(BaseModel):
-    prices: Dict[str, float]
+    model_config = ConfigDict(extra='forbid')
+    prices: List[float]
 
-def get_gemini_synthetic_prices(missing_items_with_units: List[str]) -> Dict[str, float]:
-    """Asks Gemini for reasonable fresh produce/grocery prices for specific units."""
+def get_gemini_synthetic_prices(missing_items_with_units: List[str]) -> List[float]:
+    """Asks Gemini for reasonable fresh produce/grocery prices for items in the exact order requested."""
     if not missing_items_with_units:
-        return {}
+        return []
     
     prompt = (
-        f"Provide reasonable average retail prices (in USD) for ALL items below. "
-        "Each price must be for the EXACT unit specified:\n"
+        "Provide reasonable average retail prices (in USD) for the items below. "
+        "Return ONLY a JSON list of numbers where each number corresponds to the item at that index.\n"
+        "ITEM LIST:\n"
         f"{', '.join(missing_items_with_units)}\n\n"
-        "Return the response as a JSON object where keys are the ingredient names (strip the unit from the key) and values are float prices."
+        "Requirements:\n"
+        "1. Return EXACTLY as many prices as items listed.\n"
+        "2. Each price must be a float for the unit specified (e.g. per lb, per bag)."
     )
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -50,8 +54,8 @@ def get_gemini_synthetic_prices(missing_items_with_units: List[str]) -> Dict[str
         return response.parsed.prices
     except Exception as e:
         print(f"Gemini Price Fetch Error: {e}")
-        # Fallback to random prices (parsing name from "Name (Unit)")
-        return {item.split(' (')[0]: round(random.uniform(2.0, 8.0), 2) for item in missing_items_with_units}
+        # Fallback to random prices
+        return [round(random.uniform(2.5, 7.5), 2) for _ in missing_items_with_units]
 
 def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_names: List[str]):
     csv_data = load_csv_prices()
@@ -82,9 +86,16 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
             
     # 2. Get missing prices from Gemini
     if missing_items_with_units:
-        print(f"Fetching base prices for missing items from Gemini: {missing_items_with_units}")
+        print(f"Fetching base prices for {len(missing_items_with_units)} missing items from Gemini.")
         gemini_prices = get_gemini_synthetic_prices(missing_items_with_units)
-        matched_base_prices.update(gemini_prices)
+        
+        # Map prices by index - guaranteed order, no name matching required
+        for i, missing_raw in enumerate(missing_items_with_units):
+            pure_name = missing_raw.split(' (')[0].strip()
+            
+            # Use return value if index exists, else random fallback
+            price = gemini_prices[i] if i < len(gemini_prices) else round(random.uniform(2.5, 7.5), 2)
+            matched_base_prices[pure_name] = price
     
     # 3. Generate store-specific variations
     price_database = {}
@@ -121,7 +132,9 @@ def generate_synthetic_market(ingredient_data: Dict[str, Dict[str, Any]], store_
     with open("market_data.json", "w") as f:
         json.dump(price_database, f, indent=4)
         
-    # Return format compatible with optimizer: price_database, removed_items (empty), shopping_list
+    print(f"DEBUG DATA_MANAGER: Generated market data for {len(price_database)} stores", flush=True)
+        
+    # Return: price_database, removed_items (empty), shopping_list
     return price_database, [], shopping_list
 
 if __name__ == "__main__":

@@ -21,14 +21,16 @@ export default function ResultsScreen() {
     days, meals_per_day, household_size, calories,
     fridge_items, health_issues,
     has_costco_card,
-    savedIndex
+    savedIndex,
+    shopping_mode
   } = useLocalSearchParams<{
     budget?: string, time?: string, location?: string,
     dietary_restrictions?: string, cuisines?: string, experiment?: string, cook_time?: string,
     days?: string, meals_per_day?: string, household_size?: string, calories?: string,
     fridge_items?: string, health_issues?: string,
     has_costco_card?: string,
-    savedIndex?: string
+    savedIndex?: string,
+    shopping_mode?: string
   }>();
 
   const router = useRouter();
@@ -118,6 +120,8 @@ export default function ResultsScreen() {
 
         console.log('DEBUG: Final request parameters:', requestParams);
         const data = await generatePlan(requestParams);
+        console.log('DEBUG FRONTEND: Received plan data:', JSON.stringify(data, null, 2));
+        console.log('DEBUG FRONTEND: Cheapest Store Name:', data.cheapest_single_store_name);
 
         setPlan(data);
       } catch (err: any) {
@@ -317,18 +321,20 @@ export default function ResultsScreen() {
 
     return (
       <View style={styles.storeCard}>
-        {storeHasCoupon && (
-          <View style={styles.couponBanner}>
-            <Ionicons name="pricetag" size={14} color="#166534" />
-            <Text style={styles.couponBannerText}>COUPON AVAILABLE</Text>
-          </View>
-        )}
         <View style={styles.storeHeader}>
           <View style={[styles.storeIcon, { backgroundColor: Colors.primary + '20' }]}>
             <Text style={[styles.storeInitial, { color: Colors.primary }]}>{item.store?.[0] || '?'}</Text>
           </View>
           <View style={styles.storeInfo}>
-            <Text style={styles.storeName}>{item.store}</Text>
+            <View style={styles.storeNameRow}>
+              <Text style={styles.storeName}>{item.store}</Text>
+              {storeHasCoupon && (
+                <View style={styles.couponBadge}>
+                  <Ionicons name="pricetag" size={11} color="#166534" />
+                  <Text style={styles.couponBadgeText}>Coupon</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.storeAddress}>{item.address}</Text>
           </View>
           <View style={styles.storeMeta}>
@@ -371,23 +377,29 @@ export default function ResultsScreen() {
           cardStyle={styles.groupedCartContainer}
         />
 
-        {/* Savings Footer - only shown if savings >= $1.00 */}
-        {showSavings && (
-          <Route52SavingsFooter
-            storeTotals={[
-              { storeName: item.store, total: storeTotal },
-              { storeName: targetComparison, total: storeTotal * multiplier },
-            ]}
-            bestSplitLabel={`Optimized for ${item.store}`}
-          />
+        {/* Store Action Button based on shopping mode */}
+        {shopping_mode === 'order_online' && (
+          <View style={styles.storeActionContainer}>
+            <TouchableOpacity style={styles.storeActionButton}>
+              <Text style={styles.storeActionButtonText}>Order</Text>
+            </TouchableOpacity>
+          </View>
         )}
+        {shopping_mode === 'delivery' && (
+          <View style={styles.storeActionContainer}>
+            <TouchableOpacity style={styles.storeActionButton}>
+              <Text style={styles.storeActionButtonText}>Start Delivery</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </View>
     );
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: '#F7F2EA' }]}>
+      <View style={[styles.container, styles.center, { backgroundColor: '#F9F9F9' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <Logo size={180} />
         <View style={{ height: 24 }} />
@@ -402,7 +414,7 @@ export default function ResultsScreen() {
 
   if (error || !plan) {
     return (
-      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#F7F2EA' }]}>
+      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#F9F9F9' }]}>
         <Stack.Screen options={{ title: 'Error' }} />
         <IconSymbol name="exclamationmark.circle.fill" size={60} color={Colors.error} />
         <Text style={[styles.loadingText, { marginTop: 20 }]}>Planning Failed</Text>
@@ -453,6 +465,33 @@ export default function ResultsScreen() {
                 <Text style={styles.summaryValue}>{Math.round(plan.total_time_minutes)} min</Text>
               </View>
             </View>
+
+            {shopping_mode && (
+              <View style={styles.shoppingModeContainer}>
+                <Text style={styles.shoppingModeLabel}>
+                  {shopping_mode === 'order_online' && '🛒 Order Online (Pick Up)'}
+                  {shopping_mode === 'delivery' && '🚗 Delivery'}
+                  {shopping_mode === 'shop_in_person' && '🏪 Shop In Person'}
+                </Text>
+              </View>
+            )}
+
+            {plan.cheapest_single_store_cost > 0 && (
+              <View style={styles.cheapestSection}>
+                <View style={styles.cheapestIconBadge}>
+                  <Ionicons name="pricetag" size={14} color="#ee7422" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cheapestText}>
+                    Cheapest single store is <Text style={styles.cheapestHighlight}>{plan.cheapest_single_store_name || 'MISSING NAME'}</Text> for <Text style={styles.cheapestHighlight}>${(plan.cheapest_single_store_cost * 1.35).toFixed(2)}</Text>
+                  </Text>
+                  {/* FORCED DEBUG OVERLAY */}
+                  <Text style={{ fontSize: 8, color: '#999', marginTop: 2 }}>
+                    Raw Name: "{String(plan.cheapest_single_store_name)}" | Cost: {plan.cheapest_single_store_cost}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <Text style={styles.sectionTitle}>Your Weekly Menu</Text>
             <View style={styles.mealGridContainer}>
@@ -519,24 +558,24 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F0E9' },
+  container: { flex: 1, backgroundColor: '#F9F9F9' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
   brandHeader: {
     paddingTop: 60,
     paddingBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#F3F0E9',
+    backgroundColor: '#F9F9F9',
   },
   brandTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1F2933',
+    color: '#1A1A1A',
     fontFamily: 'Garamond-Bold',
     marginTop: 8,
   },
 
-  loadingText: { fontSize: 40, fontWeight: '700', color: '#1F2933', fontFamily: 'Garamond-Bold' },
+  loadingText: { fontSize: 40, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold' },
   loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
 
   titleRow: {
@@ -554,7 +593,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: '#ee7422',
+    borderColor: '#1A1A1A',
     backgroundColor: Colors.card,
   },
 
@@ -566,17 +605,46 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'space-between',
     borderWidth: 1.5,
-    borderColor: '#ee7422',
-    shadowColor: Colors.primary,
+    borderColor: '#1A1A1A',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
   },
-  summaryItem: { alignItems: 'center', flex: 1 },
-  summaryLabel: { fontSize: 12, color: Colors.textLight, textTransform: 'uppercase', marginBottom: 4, fontWeight: '600' },
-  summaryValue: { fontSize: 18, fontWeight: 'bold', color: Colors.text },
-  verticalLine: { width: 1, backgroundColor: Colors.border },
+  summaryItem: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  summaryLabel: { fontSize: 12, color: Colors.textLight, textTransform: 'uppercase', marginBottom: 2, fontWeight: '600' },
+  summaryValue: { fontSize: 20, fontWeight: 'bold', color: Colors.text },
+  verticalLine: { width: 1, backgroundColor: Colors.border, marginHorizontal: 10 },
+
+  cheapestSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+  },
+  cheapestIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F9F9F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  cheapestText: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    flex: 1,
+  },
+  cheapestHighlight: {
+    fontWeight: '700',
+    color: '#ee7422',
+  },
 
   mealGridContainer: {
     width: '100%',
@@ -585,29 +653,12 @@ const styles = StyleSheet.create({
   mealListContainer: {
     paddingBottom: 8,
   },
-  couponBanner: {
-    backgroundColor: '#DCFCE7',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    marginHorizontal: -20,
-    marginTop: -20,
-    marginBottom: 20,
-    gap: 8,
-  },
-  couponBannerText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#166534',
-    letterSpacing: 0.5,
-  },
   mealCard: {
     backgroundColor: Colors.card,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#1A1A1A',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -623,7 +674,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -652,7 +703,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -719,11 +770,11 @@ const styles = StyleSheet.create({
   },
 
   homeCard: {
-    backgroundColor: '#F0FDF4', // Light green
+    backgroundColor: '#F9F9F9',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: '#ee7422',
+    borderColor: '#1A1A1A',
     marginBottom: 12,
   },
   homeItemRow: {
@@ -770,9 +821,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: 16,
     marginBottom: 20,
-    overflow: 'hidden',
+    overflow: 'visible',
     borderWidth: 1.5,
-    borderColor: '#ee7422',
+    borderColor: '#1A1A1A',
   },
   storeHeader: {
     flexDirection: 'row',
@@ -786,7 +837,26 @@ const styles = StyleSheet.create({
   },
   storeInitial: { fontSize: 20, fontWeight: 'bold' },
   storeInfo: { flex: 1 },
+  storeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   storeName: { fontSize: 16, fontWeight: 'bold', color: Colors.text },
+  couponBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  couponBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
+  },
   storeAddress: { fontSize: 12, color: Colors.textLight },
   storeMeta: { alignItems: 'flex-end' },
   storeCost: { fontSize: 16, fontWeight: 'bold', color: Colors.text },
@@ -824,16 +894,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButton: {
-    backgroundColor: '#1F2933',
+    backgroundColor: '#ee7422',
   },
   discardButton: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: '#ee7422',
+    borderColor: '#1A1A1A',
   },
   actionButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
-  }
+  },
+
+  shoppingModeContainer: {
+    backgroundColor: '#FFF5E6',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#ee7422',
+    alignItems: 'center',
+  },
+  shoppingModeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ee7422',
+  },
+
+  storeActionContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  storeActionButton: {
+    backgroundColor: '#ee7422',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeActionButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });

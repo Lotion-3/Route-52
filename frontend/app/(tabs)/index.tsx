@@ -92,7 +92,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F3F0E9',
+    backgroundColor: '#F9F9F9',
     padding: 24,
     paddingTop: 80,
   },
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1F2933',
+    color: '#1A1A1A',
     fontFamily: 'Garamond-Bold',
     marginTop: 16,
   },
@@ -122,17 +122,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2933',
+    color: '#1A1A1A',
     marginBottom: 16,
     fontFamily: 'Garamond-Bold',
   },
   emptyCard: {
-    backgroundColor: '#FEFEFC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 30,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1A1A1A',
     borderStyle: 'dashed',
   },
   emptyText: {
@@ -146,13 +146,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   savedCard: {
-    backgroundColor: '#FEFEFC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -179,7 +181,7 @@ const styles = StyleSheet.create({
   savedCardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2933',
+    color: '#1A1A1A',
   },
   savedCardMeta: {
     fontSize: 12,
@@ -187,7 +189,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   viewLink: {
-    color: '#1F2933',
+    color: '#1A1A1A',
     fontWeight: '700',
     fontSize: 14,
   },
