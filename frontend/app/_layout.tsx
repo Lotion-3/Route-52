@@ -69,47 +69,49 @@ export default function RootLayout() {
   }
 
   return (
-    <LinearGradient
-      colors={['#FFFFFF', '#F3EDE4']} // white → soft beige
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
-    >
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#3B5DA1', // Blue header
-            },
-            headerShadowVisible: false,
-            headerTintColor: '#FFFFFF', // White tint for contrast
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            contentStyle: {
-              backgroundColor: '#F3F0E9', // Warmer background
-            }
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="search" options={{ title: 'New Meal Plan' }} />
-          <Stack.Screen name="results" options={{ title: 'Your Plan' }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
+    <View style={{ flex: 1, position: 'relative' }}>
+      <LinearGradient
+        colors={['#FFFFFF', '#F3EDE4']} // white → soft beige
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ flex: 1 }}
+      >
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#3B5DA1', // Blue header
+              },
+              headerShadowVisible: false,
+              headerTintColor: '#FFFFFF', // White tint for contrast
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+              contentStyle: {
+                backgroundColor: '#F3F0E9', // Warmer background
+              }
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="search" options={{ title: 'New Meal Plan' }} />
+            <Stack.Screen name="results" options={{ title: 'Your Plan' }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
 
-        {/* Backend Status Indicator - REMOVE: Set ENABLE_BACKEND_STATUS to false to hide */}
-        {ENABLE_BACKEND_STATUS && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && (
-          <View style={styles.statusIndicator}>
-            <View style={[styles.statusDot, { backgroundColor: backendReady ? '#4CAF50' : '#FF9800' }]} />
-            <Text style={styles.statusText}>
-              {backendReady ? 'Ready' : 'Not Ready'}
-            </Text>
-          </View>
-        )}
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </LinearGradient>
 
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </LinearGradient>
+      {/* Backend Status Indicator - REMOVE: Set ENABLE_BACKEND_STATUS to false to hide */}
+      {ENABLE_BACKEND_STATUS && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && (
+        <View style={styles.statusIndicator}>
+          <View style={[styles.statusDot, { backgroundColor: backendReady ? '#4CAF50' : '#FF9800' }]} />
+          <Text style={styles.statusText}>
+            {backendReady ? 'Ready' : 'Not Ready'}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 
