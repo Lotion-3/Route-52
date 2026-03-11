@@ -20,7 +20,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [backendReady, setBackendReady] = useState<boolean | null>(null);
+  const [backendReady, setBackendReady] = useState<boolean>(false); // Start with false, not null
 
   const [loaded] = useFonts({
     'Garamond-Regular': EBGaramond_400Regular,
@@ -98,7 +98,7 @@ export default function RootLayout() {
         </Stack>
 
         {/* Backend Status Indicator - REMOVE: Set ENABLE_BACKEND_STATUS to false to hide */}
-        {ENABLE_BACKEND_STATUS && backendReady !== null && typeof window !== 'undefined' && (
+        {ENABLE_BACKEND_STATUS && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && (
           <View style={styles.statusIndicator}>
             <View style={[styles.statusDot, { backgroundColor: backendReady ? '#4CAF50' : '#FF9800' }]} />
             <Text style={styles.statusText}>
