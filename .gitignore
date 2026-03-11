@@ -1,1 +1,40 @@
 RAW_recipes.csv
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+config.env
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+pip-log.txt
+.coverage
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.cache/
+archive/
+*.csv
+node_modules/
+.next/
+dist/
+build/
