@@ -20,7 +20,7 @@ const getApiUrl = () => {
         return `http://${LAN_IP}:8000`;
     }
     // Default for iOS / Physical devices
-    return `http://${LAN_IP}:8000/api`;
+    return `http://${LAN_IP}:8000`;
 };
 
 const DEV_API_URL = getApiUrl();
@@ -72,7 +72,7 @@ export interface ShoppingPlanResponse {
 
 export const generatePlan = async (params: ShoppingPlanRequest): Promise<ShoppingPlanResponse> => {
     try {
-        const response = await fetch(`${DEV_API_URL}/generate_plan`, {
+        const response = await fetch(`${DEV_API_URL}/api/generate_plan`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
