@@ -74,12 +74,12 @@ const styles = StyleSheet.create({
         borderTopColor: "#EEF2F7",
     },
     footerBar: {
-        backgroundColor: "#EFECE5", // subtle warm contrast
+        backgroundColor: "#FFFFFF",
         borderRadius: 14,
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: "#E5E7EB",
+        borderColor: "#1A1A1A",
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: "#3B5DA1", // Route 52 blue
+        backgroundColor: "#ee7422",
     },
     badgeText: {
         color: "#FFFFFF",
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     headline: {
         fontSize: 14,
         fontWeight: "700",
-        color: "#1F2937",
+        color: "#1A1A1A",
         flexShrink: 1,
     },
     context: {
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     },
     rightValue: {
         marginTop: 1,
-        color: "#111827",
+        color: "#ee7422",
         fontSize: 13,
         fontWeight: "900",
         fontVariant: ["tabular-nums"],

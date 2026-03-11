@@ -1,0 +1,120 @@
+{
+    "timestamp": 1772742526.6620343,
+    "data": [
+        {
+            "Walmart Supercenter": [
+                40.0063234,
+                -86.1241976
+            ],
+            "ALDI": [
+                40.042187,
+                -86.159088
+            ],
+            "Kroger": [
+                40.040955,
+                -86.1054915
+            ],
+            "Kroger 1": [
+                40.021923,
+                -86.1614531
+            ],
+            "Kroger 2": [
+                39.9626944,
+                -86.12543389999999
+            ],
+            "Target": [
+                39.9365776,
+                -86.2327651
+            ],
+            "Target 1": [
+                40.0087598,
+                -86.1288962
+            ],
+            "Target 2": [
+                39.9151414,
+                -86.1390558
+            ],
+            "Target Grocery": [
+                40.0087598,
+                -86.12965559999999
+            ],
+            "Target Grocery 1": [
+                39.9154119,
+                -86.1396061
+            ],
+            "Target Grocery 2": [
+                39.9365776,
+                -86.2327651
+            ],
+            "Meijer": [
+                39.9733317,
+                -86.15266640000002
+            ],
+            "Meijer 1": [
+                40.0402755,
+                -86.1626739
+            ],
+            "Whole Foods Market": [
+                39.999211,
+                -86.13122179999999
+            ],
+            "Whole Foods Market 1": [
+                39.9140929,
+                -86.137221
+            ],
+            "Whole Foods Bakery": [
+                39.9991998,
+                -86.1311636
+            ],
+            "Whole Foods Bakery 1": [
+                39.9140453,
+                -86.13714759999999
+            ],
+            "Nora Plaza Shopping Center": [
+                39.9141085,
+                -86.13732929999999
+            ],
+            "CozySuites Stunning 4BR next to Whole Foods": [
+                39.911026,
+                -86.13499449999999
+            ],
+            "Cozysuites Spacious 2BR next to Whole Foods": [
+                39.9114837,
+                -86.1359253
+            ],
+            "Costco Wholesale": [
+                39.9172744,
+                -86.22788849999999
+            ],
+            "Costco Food Court": [
+                39.9173631,
+                -86.227131
+            ]
+        },
+        {
+            "Walmart Supercenter": "2001 E 151st St, Carmel",
+            "ALDI": "54 E Spring Mill Pointe Dr, Westfield",
+            "Kroger": "17447 Carey Rd, Westfield",
+            "Kroger 1": "150 W 161st St, Westfield",
+            "Kroger 2": "1217 S Rangeline Rd, Carmel",
+            "Target": "10401 N Michigan Rd, Carmel",
+            "Target 1": "1600 E 151st St, Carmel",
+            "Target 2": "1300 E 86th St #35, Indianapolis",
+            "Target Grocery": "1600 E 151st St, Carmel",
+            "Target Grocery 1": "1300 E 86th St #35, Indianapolis",
+            "Target Grocery 2": "10401 N Michigan Rd, Carmel",
+            "Meijer": "1424 W Carmel Dr, Carmel",
+            "Meijer 1": "225 W Spring Mill Pointe Dr, Westfield",
+            "Whole Foods Market": "14598 Clay Terrace Blvd, Carmel",
+            "Whole Foods Market 1": "1300 E 86th St, Indianapolis",
+            "Whole Foods Bakery": "14598 Clay Terrace Blvd, Carmel",
+            "Whole Foods Bakery 1": "1300 E 86th St, Indianapolis",
+            "Nora Plaza Shopping Center": "1340 E 86th St, Indianapolis",
+            "CozySuites Stunning 4BR next to Whole Foods": "Indianapolis",
+            "Cozysuites Spacious 2BR next to Whole Foods": "Indianapolis",
+            "Costco Wholesale": "9010 Michigan Rd, Indianapolis",
+            "Costco Food Court": "9010 N Michigan Rd #347b, Indianapolis"
+        }
+    ],
+    "key_ref": "{\"center\": [39.9758811, -86.1638926], \"func\": \"find_eligible_stores_google\", \"keywords\": [\"Walmart\", \"Aldi\", \"Kroger\", \"Target\", \"Meijer\", \"Whole Foods\", \"Trader Joe's\", \"Trader Joes\", \"Costco\", \"Jewel Osco\"]}"
+}

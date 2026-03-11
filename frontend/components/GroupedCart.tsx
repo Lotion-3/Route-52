@@ -145,7 +145,7 @@ export default function GroupedCart({
                                                                 <Text style={styles.originalPrice}>
                                                                     {formatMoney(it.price)}
                                                                 </Text>
-                                                                <Text style={[styles.itemPrice, { color: '#166534' }]}>
+                                                                <Text style={[styles.itemPrice, { color: '#ee7422' }]}>
                                                                     {formatMoney(discountedPrice)}
                                                                 </Text>
                                                             </>
@@ -193,6 +193,8 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingVertical: 10,
         paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: "#1A1A1A",
         shadowColor: "#000",
         shadowOpacity: 0.06,
         shadowRadius: 12,
@@ -222,12 +224,12 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14,
         fontWeight: "700",
-        color: "#1E293B",
+        color: "#1A1A1A",
     },
     sectionTotal: {
         fontSize: 13,
         fontWeight: "800",
-        color: "#1E293B",
+        color: "#1A1A1A",
         fontVariant: ["tabular-nums"],
         width: PRICE_COL_WIDTH,
         textAlign: "right",
@@ -236,12 +238,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 999,
-        backgroundColor: "#EEF2FF",
+        backgroundColor: "#F0F0F0",
     },
     countText: {
         fontSize: 12,
         fontWeight: "700",
-        color: "#374151",
+        color: "#1A1A1A",
     },
     chevron: {
         fontSize: 16,
@@ -259,12 +261,12 @@ const styles = StyleSheet.create({
     },
     gridItem: {
         flex: 1,
-        backgroundColor: "#F9FAFB",
+        backgroundColor: "#F9F9F9",
         borderRadius: 14,
         paddingVertical: 10,
         paddingHorizontal: 10,
         borderWidth: 1,
-        borderColor: "#EEF2F7",
+        borderColor: "#1A1A1A",
     },
     gridItemSpacer: {
         backgroundColor: "transparent",
@@ -280,13 +282,13 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 13,
         fontWeight: "600",
-        color: "#374151",
+        color: "#1A1A1A",
     },
     qtyPill: {
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 999,
-        backgroundColor: "#111827",
+        backgroundColor: "#1A1A1A",
     },
     qtyText: {
         fontSize: 11,
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
     itemPrice: {
         fontSize: 13,
         fontWeight: "800",
-        color: "#111827",
+        color: "#1A1A1A",
         fontVariant: ["tabular-nums"],
     },
     couponBadge: {
@@ -329,7 +331,7 @@ const styles = StyleSheet.create({
     },
     useCouponButton: {
         marginTop: 12,
-        backgroundColor: '#166534',
+        backgroundColor: '#ee7422',
         paddingVertical: 6,
         borderRadius: 8,
         alignItems: 'center',

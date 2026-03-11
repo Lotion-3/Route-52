@@ -1,5 +1,5 @@
 from itertools import combinations, permutations
-from typing import List, Dict, Tuple, Union, Optional, Set
+from typing import List, Dict, Tuple, Union, Optional, Set, Any
 import re
 import config
 
@@ -26,7 +26,8 @@ def calculate_split_shopping_price(
         
         # Find the cheapest price for this item among the selected stores
         for store_id in store_ids:
-            unit_price = price_database.get(store_id, {}).get(item, float('inf'))
+            s_id = store_id.strip() # Standardize inside lookup
+            unit_price = price_database.get(s_id, {}).get(item, float('inf'))
             if unit_price != float('inf'):
                 cost = unit_price * quantity
                 if cost < min_item_cost:
@@ -82,7 +83,7 @@ def find_optimal_store(
     price_database: Dict[str, Dict[str, float]],
     location_names: List[str],
     shopping_list: List[Dict[str, Union[str, int]]]
-) -> Tuple[List[str], float, float, Dict[str, List[str]]]:
+) -> Tuple[List[str], float, float, Dict[str, List[Dict[str, Any]]], float, str]:
     """
     Finds the route (1 to N stores) with the lowest combined shopping price 
     that meets the total time constraint.
@@ -95,7 +96,7 @@ def find_optimal_store(
     # Check if there are any items to shop for
     if not shopping_list:
         print("No items to shop for. Cannot run optimization.")
-        return [], 0.0, 0.0, {}
+        return [], 0.0, 0.0, {}, 0.0, ""
     
     print(f"\n=== OPTIMIZER: CRUNCHING PRE-FETCHED PRICES ===")
     print(f"Items to buy: {len(shopping_list)}")
@@ -111,11 +112,13 @@ def find_optimal_store(
     # --- Phase 1: Calculate Baseline (k=1) Costs and Find Best Single Stop ---
     print("\nPhase 1: Calculating Baseline (k=1) Costs ---")
     k = 1 
+    cheapest_single_store_cost = float('inf')
+    cheapest_single_store_name = ""
     
     for store_indices_subset in combinations(store_indices, k):
         current_store_index = store_indices_subset[0]
         route_store_ids = [location_names[current_store_index]]
-        store_id = route_store_ids[0]
+        store_id = route_store_ids[0].strip() # Standardize stripping
 
         # 1. Calculate Optimal Item Assignment and Cost
         item_cost, item_quantity_counts = calculate_split_shopping_price(
@@ -139,6 +142,11 @@ def find_optimal_store(
         
         # 3. Calculate Full Time 
         total_time_seconds = min_travel_time + total_shopping_time_seconds
+
+        # --- BENCHMARK CALCULATION (Independent of Time) ---
+        if item_cost < cheapest_single_store_cost:
+            cheapest_single_store_cost = item_cost
+            cheapest_single_store_name = store_id
 
         # 4. Update Optimal
         if total_time_seconds <= config.MAX_TIME_SECONDS:
@@ -269,4 +277,5 @@ def find_optimal_store(
         if best_s:
             final_assignments[best_s].append({"name": item, "qty": quantity})
 
-    return optimal_route, min_cost, best_total_time, final_assignments
+    print(f"DEBUG OPTIMIZER: Found cheapest single store as {cheapest_single_store_name} for ${cheapest_single_store_cost:.2f}", flush=True)
+    return optimal_route, min_cost, best_total_time, final_assignments, cheapest_single_store_cost, cheapest_single_store_name

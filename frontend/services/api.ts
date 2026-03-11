@@ -1,20 +1,23 @@
 import { Platform } from 'react-native';
 
-// Use localhost for web/iOS simulator, 10.0.2.2 for Android Emulator
-// For physical devices, you must use your computer's LAN IP (e.g., http://192.168.1.5:8000)
+// Production backend URL (deployed on Render)
+const PRODUCTION_API_URL = 'https://route52.onrender.com';
+
+// Local development URL
+const LOCAL_API_URL = 'http://localhost:8000';
 const LAN_IP = '10.35.22.118'; // Found via ipconfig
 
 const getApiUrl = () => {
-    if (Platform.OS === 'web') {
-        // In production, Firebase Hosting rewrites /api/** to Cloud Run.
-        // In local dev (__DEV__ is true), use localhost directly.
-        if (typeof __DEV__ !== 'undefined' && __DEV__) {
-            return 'http://localhost:8000/api';
+    // Check if running in web on Firebase (production)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // If NOT on localhost, use production backend
+        if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+            return PRODUCTION_API_URL;
         }
-        return '/api'; // Routed via Firebase Hosting rewrite to Cloud Run
+        return LOCAL_API_URL;
     }
     if (Platform.OS === 'android') {
-        return `http://${LAN_IP}:8000/api`;
+        return `http://${LAN_IP}:8000`;
     }
     // Default for iOS / Physical devices
     return `http://${LAN_IP}:8000/api`;
@@ -54,6 +57,8 @@ export interface ShoppingPlanResponse {
     meal_plan: MealPlanItem[];
     route: string[];
     total_cost: number;
+    cheapest_single_store_cost: number;
+    cheapest_single_store_name: string;
     total_time_minutes: number;
     user_location: { lat: number; lng: number };
     at_home_ingredients: { name: string; qty: number; unit: string }[];
