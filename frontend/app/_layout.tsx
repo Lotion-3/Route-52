@@ -8,7 +8,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
 
 import { useFonts, EBGaramond_400Regular, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
 
@@ -105,7 +104,7 @@ export default function RootLayout() {
       {/* Backend Status Indicator - REMOVE: Set ENABLE_BACKEND_STATUS to false to hide */}
       {ENABLE_BACKEND_STATUS && typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && (
         <View style={styles.statusIndicator}>
-          <View style={[styles.statusDot, { backgroundColor: backendReady ? '#4CAF50' : '#FF9800' }]} />
+          <View style={[styles.statusDot, { backgroundColor: backendReady ? '#4CAF50' : '#FF5252' }]} />
           <Text style={styles.statusText}>
             {backendReady ? 'Ready' : 'Not Ready'}
           </Text>
