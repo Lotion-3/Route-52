@@ -5,7 +5,7 @@ import os
 from typing import List, Dict, Any
 from google import genai
 from google.genai import types
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 # Initialize Gemini Client (using existing env var pattern)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY_V")
@@ -24,7 +24,6 @@ def load_csv_prices(csv_path: str = "alanVeggies.csv") -> List[Dict[str, Any]]:
     return data
 
 class PriceResponse(BaseModel):
-    model_config = ConfigDict(extra='forbid')
     prices: List[float]
 
 def get_gemini_synthetic_prices(missing_items_with_units: List[str]) -> List[float]:

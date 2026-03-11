@@ -29,8 +29,14 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
+  // On web, render even if fonts aren't loaded to avoid blank page
+  const isWeb = typeof window !== 'undefined';
+  if (!loaded && !isWeb) {
     return null;
+  }
+
+  if (!loaded && isWeb) {
+    SplashScreen.hideAsync().catch(() => {});
   }
 
   return (

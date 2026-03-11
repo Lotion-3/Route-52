@@ -33,7 +33,7 @@ Thumbs.db
 # Project specific
 .cache/
 archive/
-*.csv
+RAW_recipes.csv
 node_modules/
 .next/
 dist/
