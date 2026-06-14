@@ -2,9 +2,9 @@ fastapi
 uvicorn
 pydantic
 requests
+aiohttp
 python-dotenv
 geopy
-google-genai
 googlemaps
 shapely
 pillow

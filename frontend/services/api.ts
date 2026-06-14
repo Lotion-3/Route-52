@@ -5,7 +5,7 @@ const PRODUCTION_API_URL = 'https://route52.onrender.com';
 
 // Local development URL
 const LOCAL_API_URL = 'http://localhost:8000';
-const LAN_IP = '10.35.22.118'; // Found via ipconfig
+const LAN_IP = '192.168.1.138'; // Found via ipconfig
 
 const getApiUrl = () => {
     // Check if running in web on Firebase (production)
@@ -66,7 +66,19 @@ export interface ShoppingPlanResponse {
         store: string;
         address: string;
         coordinates: { lat: number; lng: number };
-        items: { name: string; qty: number; price: number }[];
+        items: {
+            name: string;
+            qty: number;
+            price: number;
+            original_price?: number;
+            coupon?: {
+                type: string;
+                label: string;
+                savings: number;
+                image_url: string;
+                valid_to: string;
+            };
+        }[];
     }[];
 }
 

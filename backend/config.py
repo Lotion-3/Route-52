@@ -9,6 +9,8 @@ load_dotenv('config.env')
 # --- 1. API KEY SETUP AND CONFIGURATION ---
 ORS_API_KEY = os.getenv("ORS_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+BING_SEARCH_KEY = os.getenv("BING_SEARCH_KEY")
+SEARCHAPI_API_KEY = os.getenv("SEARCHAPI_API_KEY")
 
 if not ORS_API_KEY:
     print("FATAL ERROR: ORS_API_KEY missing in 'config.env'.")
@@ -39,14 +41,20 @@ EXCLUDED_STORE_TERMS = [
     'liquor', 'wine', 'spirits',
     'photo', 'market' # Be careful with market? "Boston Market" vs "Whole Foods Market".
 ]
-# Refined list to avoid false positives:
 EXCLUDED_STORE_TERMS = [
     'gas station', 'fuel center', 'fuel station',
     'tire center', 'tire shop', 'auto center',
     'optical', 'vision center',
     'hearing aid', 'hearing center',
-    'pharmacy', 
-    'liquor store' 
+    'pharmacy',
+    'liquor store',
+    # professional services — catches "William S Kroger Attorney", "Karim Meijer MD", etc.
+    'attorney', 'law firm', ' law ', 'criminal defense', 'legal',
+    ', md', ', do', ', pa', ', dds', ' m.d.', ' d.o.',
+    'clinic', 'hospital', 'urgent care', 'medical center',
+    'dentist', 'dental', 'orthodont',
+    'insurance', 'financial', 'accounting', 'realtor', 'realty',
+    'health:', 'health center',  # "Kroger Health:" is a clinic brand
 ]
 
 # --- API LIMIT CONSTANT ---

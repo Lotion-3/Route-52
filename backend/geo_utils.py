@@ -9,9 +9,6 @@ from cache_manager import cache
 import googlemaps
 from shapely.geometry import shape, Point
 
-# Gemini Imports
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
 
 # --- HELPER FUNCTION: Get the GeoJSON Bounding Box ---
@@ -131,12 +128,14 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
                         # print(f"Skipping {name} (Excluded term)")
                         continue
 
-                    # Check 2: Exclude if it's primarily a gas station/repair shop without being a main store
+                    # Check 2: Must be a retail/grocery type — filters attorneys, doctors, clinics, etc.
                     place_types = place.get('types', [])
+                    GROCERY_TYPES = {'grocery_or_supermarket', 'supermarket', 'store', 'department_store', 'shopping_mall', 'food'}
+                    if not any(t in place_types for t in GROCERY_TYPES):
+                        continue
+
                     if 'gas_station' in place_types or 'car_repair' in place_types:
-                        # Allow if it is ALSO a supermarket or department store (e.g. big box stores)
                         if not any(t in place_types for t in ['supermarket', 'grocery_or_supermarket', 'department_store', 'shopping_mall']):
-                            # print(f"Skipping {name} (Type: {place_types})")
                             continue
 
                     # Ensure name uniqueness

@@ -37,38 +37,6 @@ export default function ResultsScreen() {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<ShoppingPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [coupons, setCoupons] = useState<Record<string, { discount: number }>>({});
-
-  // Memoize random coupon assignment to prevent regeneration on every render
-  useEffect(() => {
-    if (plan && plan.shopping_list) {
-      const allItems: { storeIndex: number; itemIndex: number; id: string; storeName: string }[] = [];
-      plan.shopping_list.forEach((store, sIdx) => {
-        store.items.forEach((item, iIdx) => {
-          allItems.push({
-            storeIndex: sIdx,
-            itemIndex: iIdx,
-            id: `${sIdx}-${iIdx}`,
-            storeName: store.store || ''
-          });
-        });
-      });
-
-      // Randomly pick 4-5 items, EXCLUDING Costco
-      const eligibleItems = allItems.filter(item => !item.storeName.toLowerCase().includes('costco'));
-      const count = Math.min(eligibleItems.length, Math.floor(Math.random() * 2) + 4); // 4 or 5
-      const shuffled = [...eligibleItems].sort(() => 0.5 - Math.random());
-      const selected = shuffled.slice(0, count);
-
-      const newCoupons: Record<string, { discount: number }> = {};
-      selected.forEach(item => {
-        newCoupons[item.id] = {
-          discount: Math.floor(Math.random() * 16 + 5) / 100 // 0.05 to 0.20
-        };
-      });
-      setCoupons(newCoupons);
-    }
-  }, [plan]);
 
   const dayIcons: Record<string, string> = {
     "Monday": "calendar",
@@ -297,12 +265,8 @@ export default function ResultsScreen() {
   };
 
   const renderStoreCard = ({ item, index }: { item: ShoppingPlanResponse['shopping_list'][0], index: number }) => {
-    const storeHasCoupon = item.items.some((_, iIdx) => coupons[`${index}-${iIdx}`]);
-    const storeTotal = item.items.reduce((sum, prod, iIdx) => {
-      const coupon = coupons[`${index}-${iIdx}`];
-      const price = coupon ? prod.price * (1 - coupon.discount) : prod.price;
-      return sum + price;
-    }, 0);
+    const storeHasCoupon = item.items.some((it) => !!it.coupon);
+    const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
 
     // Niche requirement: alternate comparison stores so they aren't all Whole Foods
     const comparisonStores = ["Whole Foods", "Trader Joe's", "Wegmans"];
@@ -348,7 +312,6 @@ export default function ResultsScreen() {
         {/* Use the new GroupedCart component instead of manual itemList mapping */}
         <GroupedCart
           items={item.items.map((it, iIdx) => {
-            const coupon = coupons[`${index}-${iIdx}`];
             // Basic category inference
             const rawName = it.name || '';
             // Scrub any (x1.0) or similar baked-in strings
@@ -363,14 +326,20 @@ export default function ResultsScreen() {
             else if (nameLower.includes('frozen') || nameLower.includes('ice cream')) category = 'Frozen';
             else if (nameLower.includes('rice') || nameLower.includes('pasta') || nameLower.includes('bread') || nameLower.includes('oil') || nameLower.includes('salt') || nameLower.includes('oat')) category = 'Pantry';
 
+            // Use real coupon data from backend; compute discount fraction from savings
+            const hasCoupon = !!it.coupon;
+            const couponDiscount = (hasCoupon && it.coupon.savings && it.price > 0)
+              ? it.coupon.savings / (it.original_price ?? it.price)
+              : undefined;
+
             return {
               id: `${index}-${iIdx}`,
               name,
               qty,
               price: it.price,
               category,
-              hasCoupon: !!coupon,
-              couponDiscount: coupon?.discount,
+              hasCoupon,
+              couponDiscount,
               onUseCoupon: () => router.push('/barcode')
             };
           })}
