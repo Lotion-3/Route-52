@@ -1,0 +1,1236 @@
+[
+  {
+    "op": "CurrentUserFields",
+    "url": "https://www.aldi.us/graphql?operationName=CurrentUserFields&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d7d1050d8a8efb9a24d2fd0d9c39f58d852ab84ea709370bcbedbca790112952%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ViewLayoutRetailerLocationChooser",
+    "url": "https://www.aldi.us/graphql?operationName=ViewLayoutRetailerLocationChooser&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e591165998e30d56e979707e095164fd0d391867f76aff7fe0dc9b4b71be43f6%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartTotals",
+    "url": "https://www.aldi.us/graphql?operationName=CartTotals&variables=%7B%22cartId%22%3A%2217308956141%22%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22cc3d2c58ba6740427430c987171ae0c5a0cece1b2e0d9b28a17fd5c3b213d0a1%22%7D%7D",
+    "variables": {
+      "cartId": "17308956141",
+      "shopId": "30279",
+      "postalCode": "46032"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json",
+      "x-ic-orders": "true"
+    }
+  },
+  {
+    "op": "StoreFulfillmentPromptLayout",
+    "url": "https://www.aldi.us/graphql?operationName=StoreFulfillmentPromptLayout&variables=%7B%22retailerId%22%3A%2212%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2200dd0ec1f10b1f78cb7f49af71b7de69d9fb5ad5df20aaebe7042ab4825d73fc%22%7D%7D",
+    "variables": {
+      "retailerId": "12"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartItemCount",
+    "url": "https://www.aldi.us/graphql?operationName=CartItemCount&variables=%7B%22id%22%3A%2217308956141%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%222a89f7495cfb8c1ffcb61158b561ee503fed5d0ad40e076720763c2eb806b8f6%22%7D%7D",
+    "variables": {
+      "id": "17308956141"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "FloatingCartMessages",
+    "url": "https://www.aldi.us/graphql?operationName=FloatingCartMessages&variables=%7B%22cartId%22%3A%2217308956141%22%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22fetchMode%22%3A%22initFetch%22%2C%22utmTreatmentOfferId%22%3Anull%2C%22isUserClick%22%3Afalse%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22edeed8a3450c0a21e129611a07647e38231ff5c182b00dd3bd819224f47dc104%22%7D%7D",
+    "variables": {
+      "cartId": "17308956141",
+      "shopId": "30279",
+      "postalCode": "46032",
+      "fetchMode": "initFetch",
+      "utmTreatmentOfferId": null,
+      "isUserClick": false
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "FeesDisclosureLayout",
+    "url": "https://www.aldi.us/graphql?operationName=FeesDisclosureLayout&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2216e92aaab6983257f6803c6f25d4e6904725099c31f5610729f29635fa6177aa%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "AuthEntrypointConfiguration",
+    "url": "https://www.aldi.us/graphql?operationName=AuthEntrypointConfiguration&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%228ecd69fd33e02fcbf5a1112777868172b32e3caba983e6db0c2dbbc541a4f5a0%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "Coachmarks",
+    "url": "https://www.aldi.us/graphql?operationName=Coachmarks&variables=%7B%22layout%22%3A%22storefront_coachmark%22%2C%22postalCode%22%3A%2246032%22%2C%22shopId%22%3A%2230279%22%2C%22addressId%22%3Anull%2C%22coordinates%22%3A%7B%22latitude%22%3A39.972736%2C%22longitude%22%3A-86.175858%7D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a82b17b14d9ddbefd985c5403804bd0cb886bdd8e797927c794c209e0fdd45c3%22%7D%7D",
+    "variables": {
+      "layout": "storefront_coachmark",
+      "postalCode": "46032",
+      "shopId": "30279",
+      "addressId": null,
+      "coordinates": {
+        "latitude": 39.972736,
+        "longitude": -86.175858
+      }
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "VisitShop",
+    "url": "https://www.aldi.us/graphql?operationName=VisitShop",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "DefaultShop",
+    "url": "https://www.aldi.us/graphql?operationName=DefaultShop&variables=%7B%22postalCode%22%3A%2246032%22%2C%22coordinates%22%3A%7B%22latitude%22%3A39.972736%2C%22longitude%22%3A-86.175858%7D%2C%22addressId%22%3Anull%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d389a8d33d63801f1ce5c4929fb181dd10c57b49c3a2dcb6a6baa44212e8e069%22%7D%7D",
+    "variables": {
+      "postalCode": "46032",
+      "coordinates": {
+        "latitude": 39.972736,
+        "longitude": -86.175858
+      },
+      "addressId": null
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "AccountSwitcherNoticesLayout",
+    "url": "https://www.aldi.us/graphql?operationName=AccountSwitcherNoticesLayout&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a603dfb660c07e866960b01cfa1505be62d94746626735e9c40fc1faa41a0c4b%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ConfirmBackupPaymentMethodModal",
+    "url": "https://www.aldi.us/graphql?operationName=ConfirmBackupPaymentMethodModal&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a7dd10410463e4dffd746443e22739086715449919a99368fab85bb1af0e6857%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "RestaurantClientAuth",
+    "url": "https://www.aldi.us/graphql?operationName=RestaurantClientAuth&variables=%7B%22postalCode%22%3A%2246032%22%2C%22source%22%3A%22appOpen%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22b47eaa31c0f6cf453232dee6de4f10052b9241ea355995910428a8ec3c39af81%22%7D%7D",
+    "variables": {
+      "postalCode": "46032",
+      "source": "appOpen"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "DataPollingQuery",
+    "url": "https://www.aldi.us/graphql?operationName=DataPollingQuery&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%220969c660c46025bc74394c1f8f5126bc214de966e07da994b1f3f93866956118%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "GetRetailerOperatingHours",
+    "url": "https://www.aldi.us/graphql?operationName=GetRetailerOperatingHours&variables=%7B%22shopIds%22%3A%5B%22517406%22%5D%2C%22startDate%22%3A%222026-06-13%22%2C%22endDate%22%3A%222026-06-13%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2261ccf8998e8185a1489ce1536ba49c9986b6e20da7f329c431b2da98acb834ce%22%7D%7D",
+    "variables": {
+      "shopIds": [
+        "517406"
+      ],
+      "startDate": "2026-06-13",
+      "endDate": "2026-06-13"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "LandingFeatureVariant",
+    "url": "https://www.aldi.us/graphql?operationName=LandingFeatureVariant&variables=%7B%22featureVariantType%22%3A%22userMarketplaceWeb%22%2C%22rouletteDependency%22%3A%7B%22featureName%22%3A%22activation_storefront_address_modal_country_chooser%22%2C%22variants%22%3A%5B%22variant%22%5D%7D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a0f82382d1d01631f3a0744ae0b34c0790154550e11b8c5b08f194c46fb0c02f%22%7D%7D",
+    "variables": {
+      "featureVariantType": "userMarketplaceWeb",
+      "rouletteDependency": {
+        "featureName": "activation_storefront_address_modal_country_chooser",
+        "variants": [
+          "variant"
+        ]
+      }
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "UserAddressManagerViewLayout",
+    "url": "https://www.aldi.us/graphql?operationName=UserAddressManagerViewLayout&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%221c5936f06d96df8c7929b9762f73c8f82aafea632ba1378ba1df3c1799eb1c95%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ConfirmationViewLayout",
+    "url": "https://www.aldi.us/graphql?operationName=ConfirmationViewLayout&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22066e03a924cf18aaf99af236c158ebdbf94498179984f8bfc2efcc556d5e2b9f%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "GetRetailerNameByID",
+    "url": "https://www.aldi.us/graphql?operationName=GetRetailerNameByID&variables=%7B%22id%22%3A%2212%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d6e8237844f7b75fbd04422244111aac6625a433ed844d0e63123b8082985557%22%7D%7D",
+    "variables": {
+      "id": "12"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "DeliveryLocationLanding",
+    "url": "https://www.aldi.us/graphql?operationName=DeliveryLocationLanding&variables=%7B%22retailerId%22%3A%2212%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a99ac5e825a85404d31c469e797ad8eec160a2a6688dae155b0b5c43350d0cf9%22%7D%7D",
+    "variables": {
+      "retailerId": "12"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ViewLayoutPickupChooser",
+    "url": "https://www.aldi.us/graphql?operationName=ViewLayoutPickupChooser&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22c2e3938aca82eadcc3921d1f5e3b5797acf674c25fe8dfe3e75d529182b41098%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ViewLayoutInstoreChooser",
+    "url": "https://www.aldi.us/graphql?operationName=ViewLayoutInstoreChooser&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22ea71e2f250867cf7d57cc7db4d6d69a7818e9881e27fa5af5b9d85a13de0d410%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ShopCollectionScoped",
+    "url": "https://www.aldi.us/graphql?operationName=ShopCollectionScoped&variables=%7B%22retailerSlug%22%3A%22aldi%22%2C%22postalCode%22%3A%2246032%22%2C%22coordinates%22%3A%7B%22latitude%22%3A39.972736%2C%22longitude%22%3A-86.175858%7D%2C%22addressId%22%3Anull%2C%22allowCanonicalFallback%22%3Atrue%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22f20693c3c551f0e0fbdcac9b2ca7aa6db50f9224a39967ba5ac767bb2b598f85%22%7D%7D",
+    "variables": {
+      "retailerSlug": "aldi",
+      "postalCode": "46032",
+      "coordinates": {
+        "latitude": 39.972736,
+        "longitude": -86.175858
+      },
+      "addressId": null,
+      "allowCanonicalFallback": true
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartFeatureFlags",
+    "url": "https://www.aldi.us/graphql?operationName=CartFeatureFlags&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%224d5843cb6038a3c4a8807efd5d03c11d7fef2bc8df38d32ae9bedb229827a3bd%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "InternalFeedback",
+    "url": "https://www.aldi.us/graphql?operationName=InternalFeedback&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%223496650f7b538ddb17aec36933e34b4ba5a8335f2ad100134e7b1b9f8b8fe369%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "LandingCurrentUser",
+    "url": "https://www.aldi.us/graphql?operationName=LandingCurrentUser&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2291549410d9d88d0829db6c6b3ff323fbc7641ec3a2a53532b1c300b8e08763a2%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "StorefrontOverHeaderPlacement",
+    "url": "https://www.aldi.us/graphql?operationName=StorefrontOverHeaderPlacement&variables=%7B%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22debugPlacementId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%221cf7001734c48a1e64e8f1a40731b0c9e82fe4569280c98a74b421d140917a70%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "postalCode": "46032",
+      "debugPlacementId": ""
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ExpressStorefrontBannerPlacements",
+    "url": "https://www.aldi.us/graphql?operationName=ExpressStorefrontBannerPlacements&variables=%7B%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22coordinates%22%3A%7B%22latitude%22%3A39.972736%2C%22longitude%22%3A-86.175858%7D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22c02d125d1ec7dbb115156029dfe33baffa6d721b335b57fc51db423c5cd8d56a%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "postalCode": "46032",
+      "coordinates": {
+        "latitude": 39.972736,
+        "longitude": -86.175858
+      }
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "UsersImplicitGuestUserResponse",
+    "url": "https://www.aldi.us/graphql?operationName=UsersImplicitGuestUserResponse&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22f03946b2b145240beb6029a3e2ecb697e32b445503432d355a12145e0f481634%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "StoreSearchLayout",
+    "url": "https://www.aldi.us/graphql?operationName=StoreSearchLayout&variables=%7B%22retailerId%22%3A%2212%22%2C%22retailerType%22%3A%22Grocery%20-%20Traditional%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%222823ee8d4c4cf39a7d577ad4a205a8c56524a1b4654d957ef5206d59c4806655%22%7D%7D",
+    "variables": {
+      "retailerId": "12",
+      "retailerType": "Grocery - Traditional"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "BusinessAccountCreationV2",
+    "url": "https://www.aldi.us/graphql?operationName=BusinessAccountCreationV2&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d9da2827b8d4f08b6fc6ab56a5cfb036382a9d641719a66dee03d580ea47c31c%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SearchFacets",
+    "url": "https://www.aldi.us/graphql?operationName=SearchFacets&variables=%7B%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22query%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22239be7211ba1456b45268b8207a8f3ca87bc28639fd87165b940053062f8f6ae%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "postalCode": "46032",
+      "query": ""
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SearchResultsPlacements",
+    "url": "https://www.aldi.us/graphql?operationName=SearchResultsPlacements&variables=%7B%22action%22%3Anull%2C%22query%22%3A%22%22%2C%22pageViewId%22%3A%22ef3de06c-7e4c-5522-be04-ed31a828a4f0%22%2C%22elevatedProductId%22%3Anull%2C%22searchSource%22%3A%22search%22%2C%22filters%22%3A%5B%5D%2C%22disableReformulation%22%3Afalse%2C%22disableLlm%22%3Afalse%2C%22forceInspiration%22%3Afalse%2C%22orderBy%22%3A%22bestMatch%22%2C%22clusterId%22%3Anull%2C%22includeDebugInfo%22%3Afalse%2C%22clusteringStrategy%22%3Anull%2C%22contentManagementSearchParams%22%3A%7B%22itemGridColumnCount%22%3A3%7D%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22first%22%3A4%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22387535ff634b5f783192dc1464d1253e514ff092876a1747486d90d83beb4dfd%22%7D%7D",
+    "variables": {
+      "action": null,
+      "query": "",
+      "pageViewId": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "elevatedProductId": null,
+      "searchSource": "search",
+      "filters": [],
+      "disableReformulation": false,
+      "disableLlm": false,
+      "forceInspiration": false,
+      "orderBy": "bestMatch",
+      "clusterId": null,
+      "includeDebugInfo": false,
+      "clusteringStrategy": null,
+      "contentManagementSearchParams": {
+        "itemGridColumnCount": 3
+      },
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "first": 4
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-ic-view-layer": "true",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ItemCardSizeSearchVariant",
+    "url": "https://www.aldi.us/graphql?operationName=ItemCardSizeSearchVariant&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e710a4fddd71d1a0fbeea27e4d7cc26fccb10917a5fd94b72f58f1ed4e79abb3%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "ViewLayoutSearchResults",
+    "url": "https://www.aldi.us/graphql?operationName=ViewLayoutSearchResults&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22bb6731b3324ad62be0bd9b31386c38e02b8bda9b12ae56d7960a12512c0e07f1%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartSwitcherServerOrderingVariant",
+    "url": "https://www.aldi.us/graphql?operationName=CartSwitcherServerOrderingVariant&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22815d884c8cbfd86bdce72869f6f16dbcae5693782cc18220186e74e6ffeeff1a%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartSwitcherSingleRetailerCartIds",
+    "url": "https://www.aldi.us/graphql?operationName=CartSwitcherSingleRetailerCartIds&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%225915621492913130fa5840efd7298d57f99aa5fd28ad964cb4b3ec4e34f7eab2%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "LocaleBasedNudgeVariantQuery",
+    "url": "https://www.aldi.us/graphql?operationName=LocaleBasedNudgeVariantQuery&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%223f37908d4222d8154665c806f06ae6f2e4dc216bc28145b009cfe3f1e899674f%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "GeolocationFromIp",
+    "url": "https://www.aldi.us/graphql?operationName=GeolocationFromIp&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22c6172e49ede2ba281e14f794bb9ea7c27bb28fb68af985c975e20ee1b501ec09%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartData",
+    "url": "https://www.aldi.us/graphql?operationName=CartData&variables=%7B%22id%22%3A%2217308956141%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%2205e3d7448576ff7d464c9244fb6687fabd1bdeee85fdf817e85487003cdb6d44%22%7D%7D",
+    "variables": {
+      "id": "17308956141"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartSignaledEta",
+    "url": "https://www.aldi.us/graphql?operationName=CartSignaledEta&variables=%7B%22cartId%22%3A%2217308956141%22%2C%22subtotal%22%3A%7B%22amount%22%3A0%2C%22currencyCode%22%3A%22USD%22%7D%2C%22shopId%22%3A%2230279%22%2C%22addressId%22%3A%22%22%2C%22postalCode%22%3A%2246032%22%2C%22pageType%22%3A%22storefrontHeader%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d971c4e0e239d95f0127a07c4ebe59d0c6ba62b6779c12b286c1a0fc5220898e%22%7D%7D",
+    "variables": {
+      "cartId": "17308956141",
+      "subtotal": {
+        "amount": 0,
+        "currencyCode": "USD"
+      },
+      "shopId": "30279",
+      "addressId": "",
+      "postalCode": "46032",
+      "pageType": "storefrontHeader"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartSignaledEta",
+    "url": "https://www.aldi.us/graphql?operationName=CartSignaledEta&variables=%7B%22cartId%22%3A%2217308956141%22%2C%22subtotal%22%3A%7B%22amount%22%3A0%2C%22currencyCode%22%3A%22USD%22%7D%2C%22shopId%22%3A%2230280%22%2C%22addressId%22%3A%22%22%2C%22postalCode%22%3A%2246032%22%2C%22pageType%22%3A%22storefrontHeader%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22d971c4e0e239d95f0127a07c4ebe59d0c6ba62b6779c12b286c1a0fc5220898e%22%7D%7D",
+    "variables": {
+      "cartId": "17308956141",
+      "subtotal": {
+        "amount": 0,
+        "currencyCode": "USD"
+      },
+      "shopId": "30280",
+      "addressId": "",
+      "postalCode": "46032",
+      "pageType": "storefrontHeader"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CartCoachmark",
+    "url": "https://www.aldi.us/graphql?operationName=CartCoachmark&variables=%7B%22layout%22%3A%22storefront_coachmark%22%2C%22shopId%22%3A%2230279%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22fb6c65522ae65edf1a0cfad464f35babf841a66a8e3e8b9a368986864be12c7e%22%7D%7D",
+    "variables": {
+      "layout": "storefront_coachmark",
+      "shopId": "30279"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "FloatingCartMessages",
+    "url": "https://www.aldi.us/graphql?operationName=FloatingCartMessages&variables=%7B%22cartId%22%3A%2217308956141%22%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22fetchMode%22%3A%22updateFetch%22%2C%22utmTreatmentOfferId%22%3Anull%2C%22isUserClick%22%3Afalse%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22edeed8a3450c0a21e129611a07647e38231ff5c182b00dd3bd819224f47dc104%22%7D%7D",
+    "variables": {
+      "cartId": "17308956141",
+      "shopId": "30279",
+      "postalCode": "46032",
+      "fetchMode": "updateFetch",
+      "utmTreatmentOfferId": null,
+      "isUserClick": false
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SearchResultsPlacements",
+    "url": "https://www.aldi.us/graphql?operationName=SearchResultsPlacements&variables=%7B%22action%22%3Anull%2C%22query%22%3A%22%22%2C%22pageViewId%22%3A%22ef3de06c-7e4c-5522-be04-ed31a828a4f0%22%2C%22elevatedProductId%22%3Anull%2C%22searchSource%22%3A%22search%22%2C%22filters%22%3A%5B%5D%2C%22disableReformulation%22%3Afalse%2C%22disableLlm%22%3Afalse%2C%22forceInspiration%22%3Afalse%2C%22orderBy%22%3A%22bestMatch%22%2C%22clusterId%22%3Anull%2C%22includeDebugInfo%22%3Afalse%2C%22clusteringStrategy%22%3Anull%2C%22contentManagementSearchParams%22%3A%7B%22itemGridColumnCount%22%3A6%7D%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22first%22%3A4%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22387535ff634b5f783192dc1464d1253e514ff092876a1747486d90d83beb4dfd%22%7D%7D",
+    "variables": {
+      "action": null,
+      "query": "",
+      "pageViewId": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "elevatedProductId": null,
+      "searchSource": "search",
+      "filters": [],
+      "disableReformulation": false,
+      "disableLlm": false,
+      "forceInspiration": false,
+      "orderBy": "bestMatch",
+      "clusterId": null,
+      "includeDebugInfo": false,
+      "clusteringStrategy": null,
+      "contentManagementSearchParams": {
+        "itemGridColumnCount": 6
+      },
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "first": 4
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-ic-view-layer": "true",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "AutosuggestViewLayout",
+    "url": "https://www.aldi.us/graphql?operationName=AutosuggestViewLayout&variables=%7B%22retailerId%22%3A%2212%22%2C%22retailerType%22%3A%22Grocery%20-%20Traditional%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%226fc295145119a81dbfa2f4d624fe638b52c504fae548a1b6bcc1243be3a5655e%22%7D%7D",
+    "variables": {
+      "retailerId": "12",
+      "retailerType": "Grocery - Traditional"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "StorefrontTitleRetailerName",
+    "url": "https://www.aldi.us/graphql?operationName=StorefrontTitleRetailerName&variables=%7B%22retailerId%22%3A%2212%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22f8f19dd798ee719cb8cea34cee184e1717e2056dc6e0453964630149fc69390d%22%7D%7D",
+    "variables": {
+      "retailerId": "12"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "RetailerBlankStateSuggestions",
+    "url": "https://www.aldi.us/graphql?operationName=RetailerBlankStateSuggestions&variables=%7B%22shopId%22%3A%2230279%22%2C%22autosuggestionSessionId%22%3A%223dee5c1b-0d01-467c-b63a-84fa5adbd595%22%2C%22limit%22%3A10%2C%22requestSurface%22%3A%22search%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%223b967b0518e6593cd9aafd41e0dff66b4223b4c090e11a31ef65cc1ce2897b43%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "autosuggestionSessionId": "3dee5c1b-0d01-467c-b63a-84fa5adbd595",
+      "limit": 10,
+      "requestSurface": "search"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "Autosuggestions",
+    "url": "https://www.aldi.us/graphql?operationName=Autosuggestions&variables=%7B%22shopId%22%3A%2230279%22%2C%22query%22%3A%22%22%2C%22autosuggestionSessionId%22%3A%223dee5c1b-0d01-467c-b63a-84fa5adbd595%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22ab7f2b2553af705f1969ef5f4512b2e53967e57a2f54e208cea093c308ac713a%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "query": "",
+      "autosuggestionSessionId": "3dee5c1b-0d01-467c-b63a-84fa5adbd595"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "GetProfilingStatus",
+    "url": "https://www.aldi.us/graphql?operationName=GetProfilingStatus&variables=%7B%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%224f7c6b66d973ea7446afeceab637118701861ffd7eed9ffeb909a33173e1ad31%22%7D%7D",
+    "variables": {},
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SlotCampaignPlacement",
+    "url": "https://www.aldi.us/graphql?operationName=SlotCampaignPlacement&variables=%7B%22slotId%22%3A%2214901275508008796%22%2C%22adsEnabled%22%3Afalse%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22first%22%3A100%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22b45479e3eba7132151f8fa2d5998d687009fc39af1e912c7f719974668fce13e%22%7D%7D",
+    "variables": {
+      "slotId": "14901275508008796",
+      "adsEnabled": false,
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "first": 100
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "GetItRightGuaranteeBannerQuery",
+    "url": "https://www.aldi.us/graphql?operationName=GetItRightGuaranteeBannerQuery&variables=%7B%22surfaceType%22%3A%22search%22%2C%22shopId%22%3A%2230279%22%2C%22productCategoryIds%22%3A%5B%5D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a3f3bf595ab8167c9f6d6b317efc91db698b5ac16bf34398af4238455b8a26fe%22%7D%7D",
+    "variables": {
+      "surfaceType": "search",
+      "shopId": "30279",
+      "productCategoryIds": []
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SlotCampaignPlacement",
+    "url": "https://www.aldi.us/graphql?operationName=SlotCampaignPlacement&variables=%7B%22slotId%22%3A%2211982301781000028%22%2C%22adsEnabled%22%3Afalse%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22query%22%3A%22%22%2C%22slotPlacementLimit%22%3A1%2C%22first%22%3A4%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22b45479e3eba7132151f8fa2d5998d687009fc39af1e912c7f719974668fce13e%22%7D%7D",
+    "variables": {
+      "slotId": "11982301781000028",
+      "adsEnabled": false,
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "query": "",
+      "slotPlacementLimit": 1,
+      "first": 4
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b,509ddb20-aefa-58ad-84a1-ca5da32c2f64",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "SlotCampaignPlacement",
+    "url": "https://www.aldi.us/graphql?operationName=SlotCampaignPlacement&variables=%7B%22slotId%22%3A%2212535064386000236%22%2C%22adsEnabled%22%3Atrue%2C%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22query%22%3A%22%22%2C%22slotPlacementLimit%22%3A10%2C%22first%22%3A4%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22b45479e3eba7132151f8fa2d5998d687009fc39af1e912c7f719974668fce13e%22%7D%7D",
+    "variables": {
+      "slotId": "12535064386000236",
+      "adsEnabled": true,
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "query": "",
+      "slotPlacementLimit": 10,
+      "first": 4
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b,2691be15-7292-5de0-a3d8-4bd433bf70aa",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "CollectionProductsWithFeaturedProducts",
+    "url": "https://www.aldi.us/graphql?operationName=CollectionProductsWithFeaturedProducts&variables=%7B%22shopId%22%3A%2230279%22%2C%22postalCode%22%3A%2246032%22%2C%22zoneId%22%3A%22713%22%2C%22slug%22%3A%22rc-weekly-ad%22%2C%22filters%22%3A%5B%5D%2C%22pageViewId%22%3A%22ef3de06c-7e4c-5522-be04-ed31a828a4f0%22%2C%22itemsDisplayType%22%3A%22sfp_featured_collection%22%2C%22first%22%3A5%2C%22pageSource%22%3A%22search%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22a20acd79a5a9d2a9aabef8d9ac82d61b7860c1a5c954f5f96f8cd7473cbad5f6%22%7D%7D",
+    "variables": {
+      "shopId": "30279",
+      "postalCode": "46032",
+      "zoneId": "713",
+      "slug": "rc-weekly-ad",
+      "filters": [],
+      "pageViewId": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "itemsDisplayType": "sfp_featured_collection",
+      "first": 5,
+      "pageSource": "search"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b,2691be15-7292-5de0-a3d8-4bd433bf70aa",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "Items",
+    "url": "https://www.aldi.us/graphql?operationName=Items&variables=%7B%22ids%22%3A%5B%22items_12264-18603561%22%2C%22items_12264-19917224%22%2C%22items_12264-31867281%22%2C%22items_12264-19793642%22%2C%22items_12264-19554637%22%2C%22items_12264-19876327%22%2C%22items_12264-47014872%22%2C%22items_12264-19876326%22%2C%22items_12264-19115474%22%2C%22items_12264-17327459%22%5D%2C%22shopId%22%3A%2230279%22%2C%22zoneId%22%3A%22713%22%2C%22postalCode%22%3A%2246032%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%220362f9eaea7f55c17c95266a64f8c37a10b55d265318f85c761c59c382d96074%22%7D%7D",
+    "variables": {
+      "ids": [
+        "items_12264-18603561",
+        "items_12264-19917224",
+        "items_12264-31867281",
+        "items_12264-19793642",
+        "items_12264-19554637",
+        "items_12264-19876327",
+        "items_12264-47014872",
+        "items_12264-19876326",
+        "items_12264-19115474",
+        "items_12264-17327459"
+      ],
+      "shopId": "30279",
+      "zoneId": "713",
+      "postalCode": "46032"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-ic-view-layer": "true",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b,2691be15-7292-5de0-a3d8-4bd433bf70aa",
+      "content-type": "application/json"
+    }
+  },
+  {
+    "op": "Items",
+    "url": "https://www.aldi.us/graphql?operationName=Items&variables=%7B%22ids%22%3A%5B%22items_12264-30478277%22%2C%22items_12264-31889688%22%2C%22items_12264-19265468%22%2C%22items_12264-18648194%22%2C%22items_12264-20262645%22%2C%22items_12264-18649738%22%2C%22items_12264-17327015%22%2C%22items_12264-3115037%22%2C%22items_12264-77877610%22%2C%22items_12264-112653336%22%5D%2C%22shopId%22%3A%2230279%22%2C%22zoneId%22%3A%22713%22%2C%22postalCode%22%3A%2246032%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%220362f9eaea7f55c17c95266a64f8c37a10b55d265318f85c761c59c382d96074%22%7D%7D",
+    "variables": {
+      "ids": [
+        "items_12264-30478277",
+        "items_12264-31889688",
+        "items_12264-19265468",
+        "items_12264-18648194",
+        "items_12264-20262645",
+        "items_12264-18649738",
+        "items_12264-17327015",
+        "items_12264-3115037",
+        "items_12264-77877610",
+        "items_12264-112653336"
+      ],
+      "shopId": "30279",
+      "zoneId": "713",
+      "postalCode": "46032"
+    },
+    "headers": {
+      "sec-ch-ua-platform": "\"Windows\"",
+      "referer": "https://www.aldi.us/store/aldi/s?query=bananas",
+      "accept-language": "en-US",
+      "sec-ch-ua": "\"Opera\";v=\"131\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+      "sec-ch-ua-mobile": "?0",
+      "x-page-view-id": "ef3de06c-7e4c-5522-be04-ed31a828a4f0",
+      "x-ic-view-layer": "true",
+      "x-client-identifier": "web",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "x-ic-qp": "618eeb1e-c3bd-55f9-9f67-4ad23d16ea0b,2691be15-7292-5de0-a3d8-4bd433bf70aa",
+      "content-type": "application/json"
+    }
+  }
+]

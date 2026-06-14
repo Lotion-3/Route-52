@@ -3879,3 +3879,153 @@ google.genai.errors.ClientError: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429,
 2026-03-06 00:58:41,254 - \u2705 3-Prompt plan complete.
 2026-03-06 00:58:42,244 - AFC is enabled with max remote calls: 10.
 2026-03-06 00:58:42,362 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 400 Bad Request"
+2026-06-12 22:09:14,436 - 
+--------------------------------------------------
+2026-06-12 22:09:14,437 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-06-12 22:09:14,437 -    Budget: $150.0 | Health: None | People: 2
+2026-06-12 22:09:14,437 -    Fridge: Empty
+2026-06-12 22:09:14,437 - --------------------------------------------------
+2026-06-12 22:09:14,496 - AFC is enabled with max remote calls: 10.
+2026-06-12 22:09:14,806 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 404 Not Found"
+2026-06-12 22:09:14,817 - \u274c Error in 3-Prompt planner: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+Traceback (most recent call last):
+  File "C:\Users\laksh\OneDrive\basketBuddy\backend\meal_planner.py", line 105, in create_weekly_meal_plan
+    response1 = client.models.generate_content(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 5215, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 3997, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1375, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1211, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 379, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 325, in iter
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 158, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 382, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1188, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 121, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 146, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+
+2026-06-12 22:10:11,492 - 
+--------------------------------------------------
+2026-06-12 22:10:11,492 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-06-12 22:10:11,492 -    Budget: $150.0 | Health: None | People: 2
+2026-06-12 22:10:11,492 -    Fridge: Empty
+2026-06-12 22:10:11,492 - --------------------------------------------------
+2026-06-12 22:10:11,527 - AFC is enabled with max remote calls: 10.
+2026-06-12 22:10:11,736 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 404 Not Found"
+2026-06-12 22:10:11,738 - \u274c Error in 3-Prompt planner: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+Traceback (most recent call last):
+  File "C:\Users\laksh\OneDrive\basketBuddy\backend\meal_planner.py", line 105, in create_weekly_meal_plan
+    response1 = client.models.generate_content(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 5215, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 3997, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1375, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1211, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 379, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 325, in iter
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 158, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 382, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1188, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 121, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 146, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+
+2026-06-12 22:18:40,188 - 
+--------------------------------------------------
+2026-06-12 22:18:40,188 - \U0001f916 3-PROMPT MEAL PLAN GENERATION STARTING...
+2026-06-12 22:18:40,188 -    Budget: $150.0 | Health: None | People: 2
+2026-06-12 22:18:40,188 -    Fridge: Empty
+2026-06-12 22:18:40,188 - --------------------------------------------------
+2026-06-12 22:18:40,235 - AFC is enabled with max remote calls: 10.
+2026-06-12 22:18:40,504 - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 404 Not Found"
+2026-06-12 22:18:40,522 - \u274c Error in 3-Prompt planner: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+Traceback (most recent call last):
+  File "C:\Users\laksh\OneDrive\basketBuddy\backend\meal_planner.py", line 105, in create_weekly_meal_plan
+    "is_at_home": is_at_home,
+        ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 5215, in generate_content
+    response = self._generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\models.py", line 3997, in _generate_content
+    response = self._api_client.request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1375, in request
+    response = self._request(http_request, http_options, stream=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1211, in _request
+    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 379, in __call__
+    do = self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 325, in iter
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 158, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\tenacity\__init__.py", line 382, in __call__
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\_api_client.py", line 1188, in _request_once
+    errors.APIError.raise_for_response(response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 121, in raise_for_response
+    cls.raise_error(response.status_code, response_json, response)
+  File "C:\Users\laksh\anaconda3\Lib\site-packages\google\genai\errors.py", line 146, in raise_error
+    raise ClientError(status_code, response_json, response)
+google.genai.errors.ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.0-flash is no longer available. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}
+

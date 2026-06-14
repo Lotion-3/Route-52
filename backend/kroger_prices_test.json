@@ -1,0 +1,1143 @@
+{
+  "Yellow onions": {
+    "name": "Jumbo Red Onions",
+    "price": 1.69,
+    "regular_price": 1.69,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Red onions": {
+    "name": "Jumbo Red Onions",
+    "price": 1.69,
+    "regular_price": 1.69,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Garlic bulb": {
+    "name": "Orlando Chopped Garlic",
+    "price": 2.39,
+    "regular_price": 2.39,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Fresh ginger root": {
+    "name": "Ginger Root",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Baby spinach": {
+    "name": "Simple Truth Organic\u2122 Pear Spinach Pea Stage 2 Baby Food",
+    "price": 1.19,
+    "regular_price": 1.19,
+    "on_sale": false,
+    "size": "4 oz"
+  },
+  "Iceberg lettuce": {
+    "name": "Organic Iceberg Lettuce",
+    "price": 2.69,
+    "regular_price": 2.69,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Kale": {
+    "name": "Simple Truth Organic\u2122 Baby Kale",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "5 oz"
+  },
+  "Broccoli": {
+    "name": "Panera Bread Broccoli Cheddar Soup",
+    "price": 4.99,
+    "regular_price": 6.49,
+    "on_sale": true,
+    "size": "16 oz"
+  },
+  "Cauliflower": {
+    "name": "Cauliflower",
+    "price": 2.79,
+    "regular_price": 2.79,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Brussels sprouts": {
+    "name": "Brussels Sprouts",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Green beans": {
+    "name": "Kroger\u00ae Traditional Favorites French Style Green Beans Bag",
+    "price": 1.29,
+    "regular_price": 1.29,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Asparagus": {
+    "name": "Kroger\u00ae Trimmed Asparagus Spears",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Zucchini": {
+    "name": "Zucchini",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Yellow squash": {
+    "name": "Organic Yellow Squash",
+    "price": 2.29,
+    "regular_price": 2.29,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Red bell peppers": {
+    "name": "Organic - Pepper - Bell - Red",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "1 each"
+  },
+  "Jalapenos": {
+    "name": "Philadelphia Jalapeno Cream Cheese",
+    "price": 3.39,
+    "regular_price": 3.39,
+    "on_sale": false,
+    "size": "7.5 oz"
+  },
+  "Carrots": {
+    "name": "Kroger\u00ae Traditional Favorites Crinkle Cut Carrots",
+    "price": 1.29,
+    "regular_price": 1.29,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Celery": {
+    "name": "McCormick Celery Salt, 4 OZ",
+    "price": 5.29,
+    "regular_price": 5.29,
+    "on_sale": false,
+    "size": "1"
+  },
+  "Cucumber": {
+    "name": "Simple Truth Organic\u2122 Seedless Mini Cucumbers 9 oz",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Vine tomatoes": {
+    "name": "On the Vine Red Tomatoes (4-5 Tomatoes per Bunch)",
+    "price": 1.99,
+    "regular_price": 2.19,
+    "on_sale": true,
+    "size": "1 lb"
+  },
+  "Cherry tomatoes": {
+    "name": "Kroger\u00ae Grape Tomatoes",
+    "price": 2.29,
+    "regular_price": 2.29,
+    "on_sale": false,
+    "size": "10 oz"
+  },
+  "Roma tomatoes": {
+    "name": "Organic Roma Tomatoes",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Russet potatoes": {
+    "name": "Russet Potato",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Sweet potatoes": {
+    "name": "PictSweet Farms Sweet Potatoes",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "18 oz"
+  },
+  "Red potatoes": {
+    "name": "Roundy's Fresh Red Salad Potatoes",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "3 lb"
+  },
+  "Red cabbage": {
+    "name": "Organic - Pepper - Bell - Red",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "1 each"
+  },
+  "Bok choy": {
+    "name": "Bok Choy",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Snap peas": {
+    "name": "Kroger\u00ae Sugar Snap Peas",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Baby carrots": {
+    "name": "Happy Tot Organics Super Bellies Bananas Carrots & Strawberries Stage 4 Baby Food",
+    "price": 1.59,
+    "regular_price": 1.59,
+    "on_sale": false,
+    "size": "4 oz"
+  },
+  "Radishes": {
+    "name": "Green Top Red Radishes",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Beets": {
+    "name": "Kroger\u00ae Shoestring Beets",
+    "price": 0.79,
+    "regular_price": 0.79,
+    "on_sale": false,
+    "size": "15 oz"
+  },
+  "Butternut squash": {
+    "name": "PictSweet Farms Halved Brussels Sprouts Butternut Squash and Onions",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "18 oz"
+  },
+  "Spaghetti squash": {
+    "name": "Broccoli",
+    "price": 2.79,
+    "regular_price": 2.79,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Bananas": {
+    "name": "Happy Baby Organics Clearly Crafted Bananas Raspberries & Oats Stage 2 Baby Food",
+    "price": 2.39,
+    "regular_price": 2.39,
+    "on_sale": false,
+    "size": "4 oz"
+  },
+  "Gala apples": {
+    "name": "Kroger\u00ae Gala Apples Bag",
+    "price": 4.49,
+    "regular_price": 4.49,
+    "on_sale": false,
+    "size": "3 lb"
+  },
+  "Navel oranges": {
+    "name": "Private Selection\u2122 Cara Cara Navel Oranges",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "3 lb"
+  },
+  "Strawberries": {
+    "name": "Fresh Strawberries",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Blueberries": {
+    "name": "Simple Truth Organic\u2122 Blueberries",
+    "price": 4.49,
+    "regular_price": 4.49,
+    "on_sale": false,
+    "size": "6 oz"
+  },
+  "Red seedless grapes": {
+    "name": "Red Seedless Grapes",
+    "price": 2.49,
+    "regular_price": 2.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Mangos": {
+    "name": "Happy Tot Organics Super Foods Spinach Mango & Pear Baby Food",
+    "price": 1.59,
+    "regular_price": 1.59,
+    "on_sale": false,
+    "size": "4.22 oz"
+  },
+  "Fresh pineapple": {
+    "name": "Fresh Strawberries",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Peaches": {
+    "name": "Kroger\u00ae Yellow Cling Sliced Peaches in Pear Juice",
+    "price": 1.59,
+    "regular_price": 1.59,
+    "on_sale": false,
+    "size": "15 oz"
+  },
+  "Raspberries": {
+    "name": "Organic - Berries - Raspberries - Red",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "6 oz"
+  },
+  "Avocados": {
+    "name": "Chosen Foods 100% Pure Avocado Oil All-Purpose Cooking Oil",
+    "price": 14.99,
+    "regular_price": 14.99,
+    "on_sale": false,
+    "size": "25.4 fl oz"
+  },
+  "Watermelon": {
+    "name": "Seedless Whole Watermelon",
+    "price": 5.99,
+    "regular_price": 5.99,
+    "on_sale": false,
+    "size": "1 ct"
+  },
+  "Blackberries": {
+    "name": "Simple Truth Organic\u2122 Blackberry Hibiscus Seltzer Water 8 Count",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "8 cans / 12 fl oz"
+  },
+  "Boneless skinless chicken breast": {
+    "name": "Kroger\u00ae Boneless Skinless Chicken Breast Portions with Rib Meat",
+    "price": 19.99,
+    "regular_price": 19.99,
+    "on_sale": false,
+    "size": "6 lb"
+  },
+  "Ground beef 80/20": {
+    "name": "Kroger\u00ae 80/20 Ground Beef",
+    "price": 6.99,
+    "regular_price": 6.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Ground turkey": {
+    "name": "Perdue Fresh Ground Turkey",
+    "price": 4.49,
+    "regular_price": 4.49,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Boneless pork chops": {
+    "name": "Boneless Pork Loin Chops (about 10 per pack)",
+    "price": 10,
+    "regular_price": 10,
+    "on_sale": false,
+    "size": "2.5 lb"
+  },
+  "Bacon": {
+    "name": "Roundy's Double Smoke Thick Bacon",
+    "price": 5.99,
+    "regular_price": 5.99,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Breakfast sausage links": {
+    "name": "Kroger\u00ae Original Breakfast Sausage Links",
+    "price": 2.5,
+    "regular_price": 2.5,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Tilapia fillet": {
+    "name": "Sea Best\u00ae Tilapia Fillets",
+    "price": 8.29,
+    "regular_price": 8.29,
+    "on_sale": false,
+    "size": "2 lb"
+  },
+  "Frozen shrimp medium": {
+    "name": "Kroger\u00ae Crunchy Jumbo Butterfly Shrimp",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "9 oz"
+  },
+  "Canned tuna in water": {
+    "name": "Kroger\u00ae Solid White Albacore Tuna in Water",
+    "price": 1.69,
+    "regular_price": 1.69,
+    "on_sale": false,
+    "size": "5 oz"
+  },
+  "Hot dogs": {
+    "name": "Kroger\u00ae Original Breakfast Sausage Links",
+    "price": 2.5,
+    "regular_price": 2.5,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Deli turkey breast": {
+    "name": "Oscar Mayer\u2122 Deli Fresh Cracked Black Pepper Turkey Breast Family Size",
+    "price": 8.49,
+    "regular_price": 9.49,
+    "on_sale": true,
+    "size": "16 oz"
+  },
+  "Deli ham": {
+    "name": "Oscar Mayer Deli Fresh Honey Uncured Ham Sliced Lunch Meat Family Size",
+    "price": 9.49,
+    "regular_price": 9.49,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Pepperoni": {
+    "name": "Private Selection\u00ae Pepperoni Mozzarella Roll",
+    "price": 6.49,
+    "regular_price": 6.49,
+    "on_sale": false,
+    "size": "6 oz"
+  },
+  "Ground pork": {
+    "name": "Kroger\u00ae 73/27 Ground Beef Roll",
+    "price": 15,
+    "regular_price": 15,
+    "on_sale": false,
+    "size": "5 lb"
+  },
+  "Beef short ribs": {
+    "name": "Kroger\u00ae Beef Shaved Steak",
+    "price": 7.99,
+    "regular_price": 7.99,
+    "on_sale": false,
+    "size": "14 oz"
+  },
+  "Ground lamb": {
+    "name": "Private Selection\u00ae Ground Veal",
+    "price": 8.99,
+    "regular_price": 8.99,
+    "on_sale": false,
+    "size": "1 lb"
+  },
+  "Imitation crab meat": {
+    "name": "Trans-Ocean\u00ae Seafood Snackers Imitation Crab",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "3 oz"
+  },
+  "Rotisserie chicken": {
+    "name": "Oscar Mayer Deli Fresh Rotisserie Seasoned Chicken Breast Sliced Lunch Meat Family Size",
+    "price": 9.49,
+    "regular_price": 9.49,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Chicken wings": {
+    "name": "Kroger\u00ae Chicken Party Wings",
+    "price": 14.99,
+    "regular_price": 14.99,
+    "on_sale": false,
+    "size": "4 lb"
+  },
+  "Large eggs": {
+    "name": "Kroger\u00ae Grade AA Large Eggs",
+    "price": 4.39,
+    "regular_price": 4.39,
+    "on_sale": false,
+    "size": "18 ct"
+  },
+  "Whole milk gallon": {
+    "name": "Simple Truth Organic\u00ae Whole Milk",
+    "price": 3.29,
+    "regular_price": 3.29,
+    "on_sale": false,
+    "size": "1/2 gal"
+  },
+  "2% milk gallon": {
+    "name": "Simple Truth Organic\u00ae Whole Milk",
+    "price": 3.29,
+    "regular_price": 3.29,
+    "on_sale": false,
+    "size": "1/2 gal"
+  },
+  "Salted butter": {
+    "name": "Lurpak Slightly Salted Danish Butter",
+    "price": 4.89,
+    "regular_price": 4.89,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Heavy whipping cream": {
+    "name": "Kroger\u00ae Heavy Whipping Cream",
+    "price": 5.49,
+    "regular_price": 5.49,
+    "on_sale": false,
+    "size": "1 qt"
+  },
+  "Sour cream": {
+    "name": "Kroger\u00ae Light Sour Cream",
+    "price": 2.19,
+    "regular_price": 2.19,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Plain Greek yogurt": {
+    "name": "The Greek Gods Traditional Plain Greek Yogurt",
+    "price": 4.49,
+    "regular_price": 4.49,
+    "on_sale": false,
+    "size": "24 oz"
+  },
+  "Cream cheese": {
+    "name": "Kroger\u00ae Original Cream Cheese",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Shredded mozzarella": {
+    "name": "Kroger\u00ae Shredded Low-Moisture Mozzarella Cheese",
+    "price": 7.99,
+    "regular_price": 7.99,
+    "on_sale": false,
+    "size": "32 oz"
+  },
+  "Shredded cheddar": {
+    "name": "Kroger\u00ae Shredded Cheddar Jack Cheese",
+    "price": 7.99,
+    "regular_price": 7.99,
+    "on_sale": false,
+    "size": "32 oz"
+  },
+  "Parmesan cheese": {
+    "name": "Kroger\u00ae Grated Parmesan Cheese",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Monterey jack cheese": {
+    "name": "Roundy's Shredded Chedder Monterey Jack",
+    "price": 4.89,
+    "regular_price": 4.89,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Cottage cheese": {
+    "name": "Kemps 4% Milkfat Small Curd Cottage Cheese",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "22 oz"
+  },
+  "Half and half": {
+    "name": "Kroger\u00ae Sweet & Delicious Apple Cider",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "1/2 gal"
+  },
+  "White sandwich bread": {
+    "name": "Kroger\u00ae White Bread",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "20 oz"
+  },
+  "Whole wheat bread": {
+    "name": "Private Selection\u00ae 100% Whole Wheat Sliced Wide Pan Bread",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "24 oz"
+  },
+  "Flour tortillas large": {
+    "name": "Mission 100% Whole Wheat Soft Taco Flour Tortillas 10 Count",
+    "price": 3.29,
+    "regular_price": 3.29,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Corn tortillas": {
+    "name": "Jose Ole Corn Tortilla Beef Taquitos",
+    "price": 6.49,
+    "regular_price": 6.49,
+    "on_sale": false,
+    "size": "20 ct / 20 oz"
+  },
+  "White rice long grain": {
+    "name": "Mahatma Basmati Rice",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "2 lb"
+  },
+  "Brown rice": {
+    "name": "Golden Brown Jasmine Rice",
+    "price": 5.99,
+    "regular_price": 5.99,
+    "on_sale": false,
+    "size": "5 lb"
+  },
+  "Jasmine rice": {
+    "name": "Golden Brown Jasmine Rice",
+    "price": 5.99,
+    "regular_price": 5.99,
+    "on_sale": false,
+    "size": "5 lb"
+  },
+  "Spaghetti pasta": {
+    "name": "Stouffer's Spaghetti with Meatballs Frozen Entree",
+    "price": 2.79,
+    "regular_price": 2.79,
+    "on_sale": false,
+    "size": "12.63 oz"
+  },
+  "Elbow macaroni": {
+    "name": "Kroger\u00ae Salad Rotini Pasta",
+    "price": 1.19,
+    "regular_price": 1.19,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Egg noodles": {
+    "name": "Manischewitz Wide Egg Noodles",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Lasagna noodles": {
+    "name": "Kroger\u00ae Salad Rotini Pasta",
+    "price": 1.19,
+    "regular_price": 1.19,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Rolled oats": {
+    "name": "Kroger\u00ae Old Fashioned Whole Grain Oats",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "18 oz"
+  },
+  "Panko bread crumbs": {
+    "name": "Kikkoman 100% Whole Wheat Panko Japanese Style Bread Crumbs",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Plain bread crumbs": {
+    "name": "Kikkoman 100% Whole Wheat Panko Japanese Style Bread Crumbs",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "All purpose flour": {
+    "name": "Gold Medal\u2122 All Purpose Flour",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "10 lb"
+  },
+  "Cornmeal": {
+    "name": "Goya Masarepa White Corn Meal",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "24 oz"
+  },
+  "Quinoa": {
+    "name": "Simple Truth Organic\u2122 Southwest Style Quinoa",
+    "price": 3.69,
+    "regular_price": 3.69,
+    "on_sale": false,
+    "size": "10 oz"
+  },
+  "Hamburger buns": {
+    "name": "Kroger\u00ae Sesame Hamburger Buns",
+    "price": 1.79,
+    "regular_price": 1.99,
+    "on_sale": true,
+    "size": "8 ct / 13 oz"
+  },
+  "Canned diced tomatoes": {
+    "name": "Kroger\u00ae Diced Tomatoes in Tomato Juice",
+    "price": 1,
+    "regular_price": 1,
+    "on_sale": false,
+    "size": "14.5 oz"
+  },
+  "Canned crushed tomatoes": {
+    "name": "Racconto Crushed Tomatoes",
+    "price": 2.39,
+    "regular_price": 2.39,
+    "on_sale": false,
+    "size": "28 oz"
+  },
+  "Tomato sauce": {
+    "name": "Kroger\u00ae Tomato Sauce",
+    "price": 0.5,
+    "regular_price": 0.69,
+    "on_sale": true,
+    "size": "8 oz"
+  },
+  "Canned black beans": {
+    "name": "Bush's Best Organic Black Beans, 15 OZ",
+    "price": 1.79,
+    "regular_price": 1.79,
+    "on_sale": false,
+    "size": "1"
+  },
+  "Canned kidney beans": {
+    "name": "Bush's Best Mild Chili Sauce Kidney Beans",
+    "price": 1.79,
+    "regular_price": 1.79,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Canned chickpeas": {
+    "name": "Ziyad Chick Peas",
+    "price": 2.89,
+    "regular_price": 2.89,
+    "on_sale": false,
+    "size": "15.5 oz"
+  },
+  "Canned corn": {
+    "name": "Hormel Mary Kitchen Reduced Sodium Corned Beef Hash",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "14 oz"
+  },
+  "Canned chicken broth": {
+    "name": "Kroger\u00ae Fat Free Lower Sodium Chicken Broth",
+    "price": 0.83,
+    "regular_price": 0.83,
+    "on_sale": false,
+    "size": "14 oz"
+  },
+  "Canned beef broth": {
+    "name": "Kroger\u00ae 99% Fat Free Beef Broth Can",
+    "price": 0.83,
+    "regular_price": 0.83,
+    "on_sale": false,
+    "size": "14 oz"
+  },
+  "Canned diced green chiles": {
+    "name": "Kroger\u00ae Diced Green Chile Peppers",
+    "price": 0.89,
+    "regular_price": 0.89,
+    "on_sale": false,
+    "size": "4 oz"
+  },
+  "Refried beans": {
+    "name": "Rosarita Traditional No Fat Refried Beans",
+    "price": 1.89,
+    "regular_price": 1.89,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Salsa jar": {
+    "name": "Pace Restaurant Style Medium Salsa",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Marinara pasta sauce jar": {
+    "name": "Prego Three Cheese Italian Sauce",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "24 oz"
+  },
+  "Diced tomatoes with green chiles": {
+    "name": "Red Gold Petite Diced Tomatoes with Green Chilies",
+    "price": 1.19,
+    "regular_price": 1.19,
+    "on_sale": false,
+    "size": "14.5 oz"
+  },
+  "Canned lentils": {
+    "name": "Simple Truth Organic\u2122 Lentils",
+    "price": 1.25,
+    "regular_price": 1.25,
+    "on_sale": false,
+    "size": "15 oz"
+  },
+  "Artichoke hearts canned": {
+    "name": "Reese Artichoke Hearts",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "14 oz"
+  },
+  "Roasted red peppers jar": {
+    "name": "Cento Roasted Peppers",
+    "price": 2.19,
+    "regular_price": 2.19,
+    "on_sale": false,
+    "size": "7 oz"
+  },
+  "Canned pumpkin": {
+    "name": "Kroger\u00ae Blueberry Pie Filling",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "21 oz"
+  },
+  "Tomato soup can": {
+    "name": "Amy's Organic Chunky Tomato Bisque Soup",
+    "price": 2.49,
+    "regular_price": 2.49,
+    "on_sale": false,
+    "size": "14.5 oz"
+  },
+  "Olive oil": {
+    "name": "Filippo Berio Extra Virgin Olive Oil",
+    "price": 16.59,
+    "regular_price": 16.59,
+    "on_sale": false,
+    "size": "50.7 fl oz"
+  },
+  "Vegetable oil": {
+    "name": "Smart Balance Extra Virgin Olive Oil Buttery Spread",
+    "price": 3.79,
+    "regular_price": 3.79,
+    "on_sale": false,
+    "size": "13 oz"
+  },
+  "Sesame oil": {
+    "name": "Kroger\u00ae Hoisin Sauce",
+    "price": 2.19,
+    "regular_price": 2.19,
+    "on_sale": false,
+    "size": "15.3 oz"
+  },
+  "Soy sauce": {
+    "name": "Blue Diamond Bold Wasabi & Soy Sauce Almonds",
+    "price": 4.49,
+    "regular_price": 4.49,
+    "on_sale": false,
+    "size": "6 oz"
+  },
+  "Worcestershire sauce": {
+    "name": "Lea & Perrins Original Worcestershire Sauce",
+    "price": 4.99,
+    "regular_price": 4.99,
+    "on_sale": false,
+    "size": "15 fl oz"
+  },
+  "Hot sauce": {
+    "name": "Pace Hot Picante Sauce",
+    "price": 2.69,
+    "regular_price": 2.69,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Ketchup": {
+    "name": "Kroger\u00ae Original Tomato Ketchup",
+    "price": 2.99,
+    "regular_price": 2.99,
+    "on_sale": false,
+    "size": "64 oz"
+  },
+  "Yellow mustard": {
+    "name": "Koops' Sqeeze Original Yellow Mustard",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Dijon mustard": {
+    "name": "Private Selection\u2122 French Dijon Mustard",
+    "price": 2.39,
+    "regular_price": 2.39,
+    "on_sale": false,
+    "size": "9 oz"
+  },
+  "Mayonnaise": {
+    "name": "Kroger\u00ae Classic Mayonnaise",
+    "price": 2.79,
+    "regular_price": 2.79,
+    "on_sale": false,
+    "size": "15 fl oz"
+  },
+  "White vinegar": {
+    "name": "Colavita Prosecco White Wine Vinegar",
+    "price": 5.49,
+    "regular_price": 5.49,
+    "on_sale": false,
+    "size": "17 fl oz"
+  },
+  "Balsamic vinegar": {
+    "name": "Orlando Original Balsamic Vinegar Glaze",
+    "price": 4.79,
+    "regular_price": 4.79,
+    "on_sale": false,
+    "size": "8.5 fl oz"
+  },
+  "Honey": {
+    "name": "Kroger\u00ae Clover Honey Bear",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Maple syrup": {
+    "name": "Wagners Pure Maple Syrup",
+    "price": 6.99,
+    "regular_price": 6.99,
+    "on_sale": false,
+    "size": "12 fl oz"
+  },
+  "Oyster sauce": {
+    "name": "Sun Luck Cantonese Oyster Flavored Sauce",
+    "price": 3.49,
+    "regular_price": 3.49,
+    "on_sale": false,
+    "size": "9 oz"
+  },
+  "Hoisin sauce": {
+    "name": "Kroger\u00ae Hoisin Sauce",
+    "price": 2.19,
+    "regular_price": 2.19,
+    "on_sale": false,
+    "size": "15.3 oz"
+  },
+  "Ranch dressing": {
+    "name": "Hidden Valley Original Ranch Dressing",
+    "price": 6.99,
+    "regular_price": 6.99,
+    "on_sale": false,
+    "size": "36 fl oz"
+  },
+  "Granulated sugar": {
+    "name": "Kroger\u00ae Apriva Granulated Sweetener 9.7 oz Bag",
+    "price": 4.79,
+    "regular_price": 4.79,
+    "on_sale": false,
+    "size": "9.7 oz"
+  },
+  "Brown sugar": {
+    "name": "Kroger\u00ae Maple & Brown Sugar Instant Oatmeal",
+    "price": 1.67,
+    "regular_price": 1.67,
+    "on_sale": false,
+    "size": "10 ct / 15 oz"
+  },
+  "Powdered sugar": {
+    "name": "Domino Powdered Sugar",
+    "price": 2.89,
+    "regular_price": 2.89,
+    "on_sale": false,
+    "size": "32 oz"
+  },
+  "Baking soda": {
+    "name": "Colgate\u00ae Baking Soda & Proxide Brisk Mint Anticavity Toothpaste",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "4 oz"
+  },
+  "Baking powder": {
+    "name": "Simple Truth Organic\u2122 Ground Curry Powder",
+    "price": 3.79,
+    "regular_price": 3.79,
+    "on_sale": false,
+    "size": "1.66 oz"
+  },
+  "Salt": {
+    "name": "Kroger\u00ae Salted In-Shell Peanuts",
+    "price": 1.99,
+    "regular_price": 1.99,
+    "on_sale": false,
+    "size": "10 oz"
+  },
+  "Black pepper": {
+    "name": "Oscar Mayer\u2122 Deli Fresh Cracked Black Pepper Turkey Breast Family Size",
+    "price": 8.49,
+    "regular_price": 9.49,
+    "on_sale": true,
+    "size": "16 oz"
+  },
+  "Chicken bouillon cubes": {
+    "name": "Kroger\u00ae Chicken Bouillon Cubes",
+    "price": 1.69,
+    "regular_price": 1.69,
+    "on_sale": false,
+    "size": "3.25 oz"
+  },
+  "Beef bouillon cubes": {
+    "name": "Kroger\u00ae Chicken Bouillon Cubes",
+    "price": 1.69,
+    "regular_price": 1.69,
+    "on_sale": false,
+    "size": "3.25 oz"
+  },
+  "Cocoa powder": {
+    "name": "Kroger\u00ae Sugar Free Baking Cocoa",
+    "price": 2.69,
+    "regular_price": 2.69,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Chocolate chips": {
+    "name": "Bakery Fresh Goodness Pumpkin Chocolate Chip Cookies",
+    "price": 5.49,
+    "regular_price": 5.49,
+    "on_sale": false,
+    "size": "10 ct"
+  },
+  "Orzo pasta": {
+    "name": "Racconto Orzo Pasta",
+    "price": 1.49,
+    "regular_price": 1.49,
+    "on_sale": false,
+    "size": "16 oz"
+  },
+  "Peanut butter": {
+    "name": "Kroger\u00ae Peanut Butter Filled Pretzels Jar",
+    "price": 5.99,
+    "regular_price": 5.99,
+    "on_sale": false,
+    "size": "24 oz"
+  },
+  "Almond butter": {
+    "name": "MaraNatha Creamy No Stir Almond Butter",
+    "price": 9.99,
+    "regular_price": 9.99,
+    "on_sale": false,
+    "size": "12 oz"
+  },
+  "Strawberry jam": {
+    "name": "Smucker's\u00ae Uncrustables\u00ae Peanut Butter & Strawberry Jam Sandwiches",
+    "price": 6.79,
+    "regular_price": 6.79,
+    "on_sale": false,
+    "size": "10 ct / 2 oz"
+  },
+  "Active dry yeast": {
+    "name": "Kroger\u00ae Sugar Free Baking Cocoa",
+    "price": 2.69,
+    "regular_price": 2.69,
+    "on_sale": false,
+    "size": "8 oz"
+  },
+  "Red lentils dried": {
+    "name": "Simple Truth Organic\u2122 Lentils",
+    "price": 1.25,
+    "regular_price": 1.25,
+    "on_sale": false,
+    "size": "15 oz"
+  },
+  "Garlic powder": {
+    "name": "Kroger\u00ae Garlic Powder",
+    "price": 11.99,
+    "regular_price": 11.99,
+    "on_sale": false,
+    "size": "24.7 oz"
+  },
+  "Onion powder": {
+    "name": "Kroger\u00ae Garlic Powder",
+    "price": 11.99,
+    "regular_price": 11.99,
+    "on_sale": false,
+    "size": "24.7 oz"
+  },
+  "Smoked paprika": {
+    "name": "McCormick Celery Salt, 4 OZ",
+    "price": 5.29,
+    "regular_price": 5.29,
+    "on_sale": false,
+    "size": "1"
+  },
+  "Cayenne pepper": {
+    "name": "Kroger\u00ae Garlic Powder",
+    "price": 11.99,
+    "regular_price": 11.99,
+    "on_sale": false,
+    "size": "24.7 oz"
+  },
+  "Italian seasoning": {
+    "name": "Cento Flavored Bread Crumbs",
+    "price": 1.79,
+    "regular_price": 1.79,
+    "on_sale": false,
+    "size": "15 oz"
+  },
+  "Oregano dried": {
+    "name": "Kroger\u00ae Garlic Powder",
+    "price": 11.99,
+    "regular_price": 11.99,
+    "on_sale": false,
+    "size": "24.7 oz"
+  },
+  "Rosemary dried": {
+    "name": "Kroger\u00ae Garlic Powder",
+    "price": 11.99,
+    "regular_price": 11.99,
+    "on_sale": false,
+    "size": "24.7 oz"
+  },
+  "Cinnamon ground": {
+    "name": "Simple Truth Organic\u2122 Ground Saigon Cinnamon",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "1.4 oz"
+  },
+  "Curry powder": {
+    "name": "Simple Truth Organic\u2122 Ground Curry Powder",
+    "price": 3.79,
+    "regular_price": 3.79,
+    "on_sale": false,
+    "size": "1.66 oz"
+  },
+  "Turmeric ground": {
+    "name": "Simple Truth Organic\u2122 Ground Saigon Cinnamon",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "1.4 oz"
+  },
+  "Taco seasoning": {
+    "name": "Ortega Original Taco Seasoning Mix",
+    "price": 3.59,
+    "regular_price": 3.59,
+    "on_sale": false,
+    "size": "6.5 oz"
+  },
+  "Old bay seasoning": {
+    "name": "Zatarain's\u00ae Crawfish Shrimp & Crab Boil in Bag",
+    "price": 1.79,
+    "regular_price": 1.79,
+    "on_sale": false,
+    "size": "3 oz"
+  },
+  "Coriander ground": {
+    "name": "Simple Truth Organic\u2122 Ground Saigon Cinnamon",
+    "price": 3.99,
+    "regular_price": 3.99,
+    "on_sale": false,
+    "size": "1.4 oz"
+  }
+}

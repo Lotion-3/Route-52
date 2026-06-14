@@ -1,0 +1,10 @@
+{
+  "errors": [
+    {
+      "message": "Graphql4xxError: status code 401, body: {\"errors\":[{\"message\":\"Not Authenticated\",\"locations\":[{\"line\":2,\"column\":2}],\"path\":[\"searchResultsPlacements\"]}],\"data\":null}"
+    }
+  ],
+  "data": {
+    "noopQueryField": "Query"
+  }
+}
