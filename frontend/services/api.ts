@@ -3,12 +3,36 @@ import { Platform } from 'react-native';
 // Production backend URL (deployed on Render)
 const PRODUCTION_API_URL = 'https://route52.onrender.com';
 
-// Local development URL
-const LOCAL_API_URL = 'http://localhost:8000';
+// Local development URL (must match the port in localrun.bat → PORT=8002)
+const LOCAL_API_URL = 'http://localhost:8002';
 const LAN_IP = '192.168.1.138'; // Found via ipconfig
 
+// Which backend to talk to is chosen by the launch script:
+//   localrun.bat → EXPO_PUBLIC_API_TARGET=local  (this machine's backend on :8002)
+//   liverun.bat  → EXPO_PUBLIC_API_TARGET=live   (deployed Render backend)
+// When unset, fall back to auto-detection (localhost web → local, else production).
+const API_TARGET = process.env.EXPO_PUBLIC_API_TARGET;
+
+// Resolve the correct LOCAL url: localhost web can reach localhost, but physical
+// devices / LAN-served web must use the machine's LAN IP instead.
+const localUrl = () => {
+    if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined' &&
+        (window.location.hostname.includes('localhost') ||
+            window.location.hostname.includes('127.0.0.1'))
+    ) {
+        return LOCAL_API_URL;
+    }
+    return `http://${LAN_IP}:8002`;
+};
+
 const getApiUrl = () => {
-    // Check if running in web on Firebase (production)
+    // Explicit target from the launch script always wins.
+    if (API_TARGET === 'live') return PRODUCTION_API_URL;
+    if (API_TARGET === 'local') return localUrl();
+
+    // No override → legacy auto-detection.
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
         // If NOT on localhost, use production backend
         if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
@@ -16,14 +40,13 @@ const getApiUrl = () => {
         }
         return LOCAL_API_URL;
     }
-    if (Platform.OS === 'android') {
-        return `http://${LAN_IP}:8000`;
-    }
-    // Default for iOS / Physical devices
-    return `http://${LAN_IP}:8000`;
+    // Default for Android / iOS / physical devices
+    return `http://${LAN_IP}:8002`;
 };
 
 const DEV_API_URL = getApiUrl();
+// Surfaces which backend is in use so it's obvious in the Expo / browser console.
+console.log(`[api] target=${API_TARGET ?? 'auto'} → ${DEV_API_URL}`);
 
 export interface ShoppingPlanRequest {
     location: string;

@@ -32,10 +32,9 @@ from kroger_search_map import get_all_terms
 # Constants
 # ---------------------------------------------------------------------------
 ALDI_BANNERS: set[str] = {"aldi"}
-SESSION_TTL = 2 * 3600  # re-bootstrap after 2 h
+SESSION_TTL = 30 * 24 * 3600  # re-bootstrap after 30 days
 
 BASE_GQL = "https://www.aldi.us/graphql"
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
 _SESSION_CACHE = Path(__file__).parent / ".aldi_session.json"
 
 HASHES = {
@@ -87,106 +86,72 @@ def _load_disk_session() -> dict:
     return {}
 
 
-def _save_disk_session(cookies: dict, qp: str, zone_id: str) -> None:
+def _save_disk_session(cookies: dict, qp: str, zone_id: str, shop_id: str = "") -> None:
     try:
         _SESSION_CACHE.write_text(json.dumps({
             "cookies": cookies,
             "qp": qp,
             "zone_id": zone_id,
+            "shop_id": shop_id,
             "expires_at": time.time() + SESSION_TTL,
         }))
     except Exception:
         pass
 
 
-def _bootstrap() -> tuple[dict, str, str]:
-    """Run Playwright to capture cookies, x-ic-qp, and zoneId."""
-    from playwright.sync_api import sync_playwright
+def _bootstrap() -> tuple[dict, str, str, str]:
+    """Bootstrap ALDI session via HTTP.
+
+    Reads ALDI_INSTACART_SID and ALDI_SHOP_ID from config.env.
+
+    NOTE: the SID is REQUIRED. Verified against the live API — with the SID the
+    SearchResultsPlacements/Items queries return the correct ALDI in-store price
+    (e.g. green onions $0.95); without it the search returns ZERO products and
+    ALDI pricing fails entirely. The SID does NOT introduce a delivery markup.
+    """
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / "config.env")
+    sid = os.getenv("ALDI_INSTACART_SID", "")
+    shop_id = os.getenv("ALDI_SHOP_ID", "")
+
+    print("[ALDI] Bootstrapping session (HTTP)...", flush=True)
+    s = requests.Session()
+    s.headers.update(BASE_HEADERS)
     try:
-        from playwright_stealth import Stealth
-        _stealth = Stealth()
-    except ImportError:
-        _stealth = None
+        s.get("https://www.aldi.us/store/aldi/s?query=eggs", timeout=15)
+    except Exception as e:
+        print(f"[ALDI] Bootstrap GET failed: {e}", flush=True)
 
-    cookies: dict = {}
-    qp: str = ""
-    zone_id: str = ""
+    cookies = dict(s.cookies)
+    if sid:
+        cookies["__Host-instacart_sid"] = sid
+        print(f"[ALDI] Using ALDI_INSTACART_SID from config.env", flush=True)
+    else:
+        print("[ALDI] WARNING: ALDI_INSTACART_SID not set — search will return no products.", flush=True)
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False, executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            locale="en-US",
-            user_agent=BASE_HEADERS["user-agent"],
-        )
-        page = ctx.new_page()
-        if _stealth:
-            _stealth.apply_stealth_sync(page)
+    if shop_id:
+        print(f"[ALDI] Using hardcoded ALDI_SHOP_ID={shop_id!r} from config.env", flush=True)
+    else:
+        print("[ALDI] WARNING: ALDI_SHOP_ID not set — will use DefaultShop (may be wrong).", flush=True)
 
-        def on_req(req):
-            nonlocal qp, zone_id
-            if "graphql" not in req.url:
-                return
-            if not qp:
-                v = req.headers.get("x-ic-qp", "")
-                if v:
-                    qp = v
-            if "operationName=Items" in req.url and not zone_id:
-                try:
-                    import urllib.parse
-                    qs = urllib.parse.parse_qs(urllib.parse.urlparse(req.url).query)
-                    vv = json.loads(qs.get("variables", ["{}"])[0])
-                    z = vv.get("zoneId") or ""
-                    if z:
-                        zone_id = str(z)
-                except Exception:
-                    pass
-
-        page.on("request", on_req)
-        print("[ALDI] Bootstrapping guest session (Playwright)...", flush=True)
-        page.goto("https://www.aldi.us/store/aldi/s?query=eggs",
-                  wait_until="domcontentloaded", timeout=30000)
-        time.sleep(3)
-
-        for sel in ["button:has-text('Accept All')", "button:has-text('Accept')"]:
-            try:
-                el = page.locator(sel).first
-                if el.is_visible(timeout=2000):
-                    el.click(); time.sleep(2); break
-            except Exception:
-                pass
-
-        for sel in ["text=Delivery", "a:has-text('Delivery')"]:
-            try:
-                el = page.locator(sel).first
-                if el.is_visible(timeout=2500):
-                    el.click(); time.sleep(3); break
-            except Exception:
-                pass
-
-        time.sleep(8)
-        cookies = {c["name"]: c["value"] for c in ctx.cookies()}
-        browser.close()
-
-    print(f"[ALDI] Session ready. cookies={len(cookies)}, qp={'yes' if qp else 'no'}, zoneId={zone_id!r}", flush=True)
-    return cookies, qp, zone_id
+    qp = str(uuid.uuid4())
+    zone_id = "713"
+    return cookies, qp, zone_id, shop_id
 
 
-def _get_session() -> tuple[requests.Session, str]:
-    """Return (session, zone_id), using disk cache or re-bootstrapping as needed."""
+def _get_session() -> tuple[requests.Session, str, str]:
+    """Return (session, zone_id, shop_id), using disk cache or re-bootstrapping as needed."""
     global _mem_cache, _session
 
     if not _mem_cache:
         _mem_cache = _load_disk_session()
 
     if not _mem_cache:
-        cookies, qp, zone_id = _bootstrap()
-        _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id,
+        cookies, qp, zone_id, shop_id = _bootstrap()
+        _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id, "shop_id": shop_id,
                       "expires_at": time.time() + SESSION_TTL}
-        _save_disk_session(cookies, qp, zone_id)
+        _save_disk_session(cookies, qp, zone_id, shop_id)
         _session = None  # force rebuild
 
     if _session is None:
@@ -195,7 +160,7 @@ def _get_session() -> tuple[requests.Session, str]:
         if _mem_cache.get("qp"):
             _session.headers.update({"x-ic-qp": _mem_cache["qp"]})
 
-    return _session, _mem_cache.get("zone_id", "")
+    return _session, _mem_cache.get("zone_id", ""), _mem_cache.get("shop_id", "")
 
 
 def _invalidate_session() -> None:
@@ -269,11 +234,19 @@ def find_nearest_aldi_store(
     lon: float,
     session: requests.Session,
     zone_id: str,
+    cached_shop_id: str = "",
 ) -> Optional[tuple[str, str, str]]:
     """
     Find the nearest ALDI store.
     Returns (shopId, zoneId, display_name) or None if nothing found within range.
+
+    If cached_shop_id is set (from ALDI_SHOP_ID in config.env), skips DefaultShop
+    entirely and uses the hardcoded value so geolocation can never return the wrong store.
     """
+    if cached_shop_id:
+        print(f"[ALDI] Using hardcoded shopId={cached_shop_id!r} — skipping DefaultShop", flush=True)
+        return cached_shop_id, zone_id, "ALDI"
+
     postal = _get_postal(lat, lon)
     data = _gql("DefaultShop", {
         "postalCode": postal or None,
@@ -282,13 +255,13 @@ def find_nearest_aldi_store(
     }, session)
     shop = data.get("defaultShop") or {}
     shop_id = shop.get("id", "")
+
     if not shop_id:
         return None
 
-    # zoneId from bootstrap is more reliable than DefaultShop response
-    store_zone = zone_id or shop.get("zoneId") or ""
+    print(f"[ALDI] shopId from DefaultShop={shop_id!r} (no hardcoded ID set)", flush=True)
 
-    # Build display name from store info
+    store_zone = shop.get("zoneId") or zone_id or ""
     name = shop.get("name") or "ALDI"
     address = shop.get("address") or {}
     city = address.get("city") or address.get("locality") or ""
@@ -306,14 +279,28 @@ def _to_kroger_format(prod: dict) -> Optional[dict]:
     Convert an ALDI Items product dict into a Kroger API product dict shape
     so that find_best_purchase() can process it unchanged.
     """
-    price_sec = ((prod.get("price") or {}).get("viewSection")) or {}
-    price_str = price_sec.get("priceValueString")
+    price_obj = prod.get("price") or {}
+    view_sec = price_obj.get("viewSection") or {}
+    price_str = view_sec.get("priceValueString")
     try:
         price = float(re.sub(r"[^\d.]", "", str(price_str)))
         if not (0.01 <= price <= 300):
             return None
     except Exception:
         return None
+
+    # Use the lower of regular price and any available promo/offer price so that
+    # weekly specials (e.g. chicken breast $2.59 vs shelf $2.85) are reflected.
+    for offer_key in ("offerSection", "promoSection", "saleSection"):
+        offer_sec = price_obj.get(offer_key) or {}
+        offer_str = offer_sec.get("priceValueString")
+        if offer_str:
+            try:
+                offer_price = float(re.sub(r"[^\d.]", "", str(offer_str)))
+                if 0.01 <= offer_price < price:
+                    price = offer_price
+            except Exception:
+                pass
 
     # ALDI's "size" field: usually "12 Count", "1 gal", "16 oz", etc.
     size = prod.get("size") or "1 each"
@@ -438,9 +425,9 @@ def price_all_aldi(
     (store_display_name, shop_id, prices)
         prices: {ingredient_name: find_best_purchase() result dict}
     """
-    session, zone_id = _get_session()
+    session, zone_id, cached_shop_id = _get_session()
 
-    store_info = find_nearest_aldi_store(lat, lon, session, zone_id)
+    store_info = find_nearest_aldi_store(lat, lon, session, zone_id, cached_shop_id)
     if not store_info:
         print("[ALDI] No ALDI store found near this location.", flush=True)
         return None, None, {}

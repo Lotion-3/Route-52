@@ -259,6 +259,23 @@ def find_optimal_store(
         if not found_any_time_feasible_subset_at_k and optimal_route:
             break
 
+    # Prefer single store unless multi-store saves at least this much.
+    # Splitting across stores is only worth it for meaningful savings.
+    MULTI_STORE_MIN_SAVINGS = 0.01
+    if len(optimal_route) > 1 and k1_winner_store_id is not None:
+        k1_cost, _ = calculate_split_shopping_price(
+            shopping_list, [k1_winner_store_id], price_database
+        )
+        if k1_cost < float('inf') and min_cost > k1_cost - MULTI_STORE_MIN_SAVINGS:
+            print(
+                f" -> Multi-store saves only ${k1_cost - min_cost:.2f} "
+                f"(<${MULTI_STORE_MIN_SAVINGS:.2f} threshold) — "
+                f"preferring single store: {k1_winner_store_id}",
+                flush=True,
+            )
+            optimal_route = [k1_winner_store_id]
+            min_cost = k1_cost
+
     # Re-calculate assignments for the final winner
     _, final_assignment_counts = calculate_split_shopping_price(shopping_list, optimal_route, price_database)
     

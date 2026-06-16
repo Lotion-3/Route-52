@@ -10,8 +10,10 @@ import {
 
 export type CartItem = {
     id: string;
-    name: string;
-    qty: number;
+    name: string;           // ingredient name (used for category inference)
+    product_name?: string;  // exact name from the store API/website
+    size_str?: string;      // package size (e.g. "12 ct", "16 oz")
+    units_to_buy: number;   // whole number of packages to buy
     price: number; // total price for this line item (already multiplied by qty)
     category: "Produce" | "Dairy" | "Meat" | "Pantry" | "Frozen" | "Other";
     hasCoupon?: boolean;
@@ -122,9 +124,14 @@ export default function GroupedCart({
                                             <View key={it.id} style={styles.gridItem}>
                                                 <View style={styles.itemTop}>
                                                     <View style={{ flex: 1 }}>
-                                                        <Text numberOfLines={1} style={styles.itemName}>
-                                                            {it.name}
+                                                        <Text numberOfLines={2} style={styles.itemName}>
+                                                            {it.product_name ?? it.name}
                                                         </Text>
+                                                        {it.size_str ? (
+                                                            <Text numberOfLines={1} style={styles.itemSize}>
+                                                                {it.size_str}
+                                                            </Text>
+                                                        ) : null}
                                                         {it.hasCoupon && (
                                                             <View style={styles.couponBadge}>
                                                                 <Text style={styles.couponBadgeText}>
@@ -134,7 +141,7 @@ export default function GroupedCart({
                                                         )}
                                                     </View>
                                                     <View style={styles.qtyPill}>
-                                                        <Text style={styles.qtyText}>x{it.qty}</Text>
+                                                        <Text style={styles.qtyText}>x{it.units_to_buy}</Text>
                                                     </View>
                                                 </View>
 
@@ -148,6 +155,13 @@ export default function GroupedCart({
                                                                 <Text style={[styles.itemPrice, { color: '#ee7422' }]}>
                                                                     {formatMoney(discountedPrice)}
                                                                 </Text>
+                                                            </>
+                                                        ) : it.units_to_buy > 1 ? (
+                                                            <>
+                                                                <Text style={styles.perUnitPrice}>
+                                                                    {formatMoney(it.price / it.units_to_buy)} each
+                                                                </Text>
+                                                                <Text style={styles.itemPrice}>{formatMoney(it.price)}</Text>
                                                             </>
                                                         ) : (
                                                             <Text style={styles.itemPrice}>{formatMoney(it.price)}</Text>
@@ -284,6 +298,11 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: "#1A1A1A",
     },
+    itemSize: {
+        fontSize: 11,
+        color: "#888",
+        marginTop: 1,
+    },
     qtyPill: {
         paddingHorizontal: 8,
         paddingVertical: 3,
@@ -328,6 +347,12 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         textDecorationLine: 'line-through',
         marginBottom: 2,
+    },
+    perUnitPrice: {
+        fontSize: 10,
+        color: '#6B7280',
+        marginBottom: 1,
+        fontVariant: ['tabular-nums'],
     },
     useCouponButton: {
         marginTop: 12,

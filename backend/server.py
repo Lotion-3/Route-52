@@ -1,4 +1,5 @@
 import asyncio
+import math
 import uvicorn
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware  # Added for CORS
@@ -9,7 +10,6 @@ import config
 import meal_planner
 import fridge_manager
 import geo_utils
-import data_manager
 import optimizer
 import kroger_async
 from kroger_async import is_kroger_banner
@@ -23,6 +23,8 @@ import walmart_pricing
 from walmart_pricing import is_walmart_store
 import trader_joes_pricing
 from trader_joes_pricing import is_trader_joes_store
+import meijer_pricing
+from meijer_pricing import is_meijer_store
 import flipp_coupons
 from kroger_pricing import aggregate_ingredients
 from geopy.geocoders import Nominatim
@@ -229,24 +231,27 @@ def generate_plan(request: PlanRequest):
     matrix_response = geo_utils.get_distance_matrix(all_coords)
     durations_matrix = geo_utils.process_matrix_result(matrix_response)
     
-    # Step 7: Get prices
-    # Start with synthetic prices for all stores as a baseline.
-    # Real Kroger prices will override the Kroger store if one is nearby.
-    price_database, removed_items, shopping_list = data_manager.generate_synthetic_market(
-        to_buy_quantities, list(STORE_LOCATIONS.keys())
-    )
-
-    # Attempt real Kroger pricing for the nearest Kroger-family store.
+    # Step 7: Get real prices for each store; exclude any store where pricing fails.
     lat, lon = user_loc
+    price_database: dict = {k.strip(): {} for k in STORE_LOCATIONS.keys()}
+    real_priced_keys: set = set()
+    product_details: dict = {}  # (store_key, ing_key) → {product_name, size_str}
+
+    # shopping_list is needed by the optimizer regardless of pricing source.
+    shopping_list = [
+        {"name": name, "qty": float(data.get("qty", 1) or 1)}
+        for name, data in to_buy_quantities.items()
+    ]
+
+    # --- Kroger / King Soopers ---
     try:
         kroger_store_name, kroger_store_id, kroger_prices = asyncio.run(
             kroger_async.price_all_async(to_buy_quantities, lat, lon)
         )
     except Exception as e:
-        print(f"[Kroger] Async pricing failed ({e}), using synthetic prices.")
+        print(f"[Kroger] Async pricing failed ({e}), store will be excluded.", flush=True)
         kroger_store_name, kroger_prices = None, {}
 
-    # If Kroger API returned nothing, try King Soopers via Instacart (Colorado fallback).
     if not kroger_prices:
         ks_key = next((k for k in price_database if is_king_soopers_store(k)), None)
         if ks_key:
@@ -263,29 +268,35 @@ def generate_plan(request: PlanRequest):
                 print(f"[KS] Instacart fallback failed ({e}).", flush=True)
 
     if kroger_prices:
-        # Find the matching Kroger-family store in the optimizer's store list.
-        kroger_key = next(
-            (k for k in price_database if is_kroger_banner(k)), None
-        )
+        kroger_key = next((k for k in price_database if is_kroger_banner(k)), None)
         if kroger_key:
             print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
             for ing_name, result in kroger_prices.items():
                 total_cost = result.get("total_cost", 0.0)
                 qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                # Store as unit_price so optimizer's (unit_price × qty = total_cost) stays correct.
-                price_database[kroger_key][ing_name.lower().strip()] = total_cost / qty
+                key = ing_name.lower().strip()
+                price_database[kroger_key][key] = total_cost / qty
+                if result.get("description"):
+                    brand = result.get("brand", "")
+                    product_details[(kroger_key, key)] = {
+                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                        "size_str": result.get("size_str", ""),
+                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                    }
+            real_priced_keys.add(kroger_key)
         else:
-            print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.")
+            print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
 
-    # Attempt real ALDI pricing if an ALDI store is in the optimizer's store list.
+    # --- ALDI ---
     aldi_key = next((k for k in price_database if is_aldi_store(k)), None)
     if aldi_key:
         try:
+            aldi_lat, aldi_lon = STORE_LOCATIONS.get(aldi_key, (lat, lon))
             aldi_store_name, aldi_store_id, aldi_prices = aldi_pricing.price_all_aldi(
-                to_buy_quantities, lat, lon
+                to_buy_quantities, aldi_lat, aldi_lon
             )
         except Exception as e:
-            print(f"[ALDI] Pricing failed ({e}), using synthetic prices.", flush=True)
+            print(f"[ALDI] Pricing failed ({e}), store will be excluded.", flush=True)
             aldi_prices = {}
 
         if aldi_prices:
@@ -293,27 +304,61 @@ def generate_plan(request: PlanRequest):
             for ing_name, result in aldi_prices.items():
                 total_cost = result.get("total_cost", 0.0)
                 qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                price_database[aldi_key][ing_name.lower().strip()] = total_cost / qty
+                unit_price = total_cost / qty if qty else total_cost
+                key = ing_name.lower().strip()
+                price_database[aldi_key][key] = unit_price
+                print(f"  [ALDI price] {ing_name!r}: total=${total_cost:.2f} qty={qty} unit=${unit_price:.3f} | {result.get('description','')}", flush=True)
+                if result.get("description"):
+                    brand = result.get("brand", "")
+                    product_details[(aldi_key, key)] = {
+                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                        "size_str": result.get("size_str", ""),
+                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                    }
+            real_priced_keys.add(aldi_key)
+        else:
+            print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
     else:
         print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
 
-    # Track which store keys already have real pricing so we don't double-price.
-    _priced_keys: set[str] = set()
-    if kroger_prices:
-        kroger_key_tmp = next((k for k in price_database if is_kroger_banner(k)), None)
-        if kroger_key_tmp:
-            _priced_keys.add(kroger_key_tmp)
-    if aldi_key:
-        _priced_keys.add(aldi_key)
+    # --- Meijer ---
+    meijer_key = next((k for k in price_database if is_meijer_store(k)), None)
+    if meijer_key:
+        try:
+            meijer_store_name, meijer_store_id, meijer_prices = meijer_pricing.price_all_meijer(
+                to_buy_quantities, lat, lon
+            )
+        except Exception as e:
+            print(f"[Meijer] Pricing failed ({e}), store will be excluded.", flush=True)
+            meijer_prices = {}
 
-    # Price all remaining stores: Walmart, Trader Joe's, and any Instacart retailer.
+        if meijer_prices:
+            print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
+            for ing_name, result in meijer_prices.items():
+                total_cost = result.get("total_cost", 0.0)
+                qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                key = ing_name.lower().strip()
+                price_database[meijer_key][key] = total_cost / qty
+                if result.get("description"):
+                    brand = result.get("brand", "")
+                    product_details[(meijer_key, key)] = {
+                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                        "size_str": result.get("size_str", ""),
+                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                    }
+            real_priced_keys.add(meijer_key)
+        else:
+            print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
+    else:
+        print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
+
+    # --- Walmart, Trader Joe's, and generic Instacart retailers ---
     for store_key in list(price_database.keys()):
-        if store_key in _priced_keys:
+        if store_key in real_priced_keys:
             continue
-        if is_kroger_banner(store_key) or is_aldi_store(store_key):
-            continue  # Handled above
+        if is_kroger_banner(store_key) or is_aldi_store(store_key) or is_meijer_store(store_key):
+            continue
 
-        # --- Walmart (via Instacart; direct scrape is blocked by PerimeterX) ---
         if is_walmart_store(store_key):
             try:
                 _, _, wm_prices = instacart_pricing.price_all_instacart(
@@ -324,13 +369,20 @@ def generate_plan(request: PlanRequest):
                     for ing_name, result in wm_prices.items():
                         total_cost = result.get("total_cost", 0.0)
                         qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        price_database[store_key][ing_name.lower().strip()] = total_cost / qty
-                    _priced_keys.add(store_key)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
             except Exception as e:
-                print(f"[Walmart] Pricing failed ({e}).", flush=True)
+                print(f"[Walmart] Pricing failed ({e}), store will be excluded.", flush=True)
             continue
 
-        # --- Trader Joe's ---
         if is_trader_joes_store(store_key):
             try:
                 _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
@@ -339,13 +391,20 @@ def generate_plan(request: PlanRequest):
                     for ing_name, result in tj_prices.items():
                         total_cost = result.get("total_cost", 0.0)
                         qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        price_database[store_key][ing_name.lower().strip()] = total_cost / qty
-                    _priced_keys.add(store_key)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
             except Exception as e:
-                print(f"[TJ] Pricing failed ({e}).", flush=True)
+                print(f"[TJ] Pricing failed ({e}), store will be excluded.", flush=True)
             continue
 
-        # --- Generic Instacart retailer ---
         slug = get_instacart_slug(store_key)
         if slug:
             try:
@@ -357,10 +416,33 @@ def generate_plan(request: PlanRequest):
                     for ing_name, result in ic_prices.items():
                         total_cost = result.get("total_cost", 0.0)
                         qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        price_database[store_key][ing_name.lower().strip()] = total_cost / qty
-                    _priced_keys.add(store_key)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
             except Exception as e:
-                print(f"[IC:{slug}] Pricing failed ({e}).", flush=True)
+                print(f"[IC:{slug}] Pricing failed ({e}), store will be excluded.", flush=True)
+
+    # Drop any store that real pricing couldn't cover — no synthetic fallback.
+    unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
+    for k in unpriced:
+        print(f"[Pricing] No real prices for '{k}' — excluding from optimization.", flush=True)
+        del price_database[k]
+
+    if not price_database:
+        raise HTTPException(status_code=503, detail="No stores with real pricing found in your area.")
+
+    # Filter location_names and durations_matrix to only the priced stores.
+    priced_set = set(price_database.keys())
+    keep_indices = [i for i, name in enumerate(location_names) if name == "Start" or name in priced_set]
+    location_names = [location_names[i] for i in keep_indices]
+    durations_matrix = [[durations_matrix[r][c] for c in keep_indices] for r in keep_indices]
 
     # Step 7b: Apply real Flipp deals (weekly flyers + digital coupons) to the
     # price database BEFORE optimization, so savings affect both the cheapest-
@@ -385,6 +467,11 @@ def generate_plan(request: PlanRequest):
         durations_matrix, price_database, location_names, shopping_list
     )
     
+    # Debug: print full item assignments so we can spot duplicates across stores
+    print("[Optimizer] Item assignments per store:", flush=True)
+    for s_key, s_items in item_assignments.items():
+        print(f"  {s_key}: {[i['name'] for i in s_items]}", flush=True)
+
     formatted_shopping_list = []
     if optimal_route:
         for store_raw in optimal_route:
@@ -407,6 +494,11 @@ def generate_plan(request: PlanRequest):
                 
                 total_item_price = unit_price * item_qty
                 item_entry = {"name": item_name, "qty": item_qty, "price": total_item_price}
+                detail = product_details.get((store, lookup_key))
+                if detail:
+                    item_entry["product_name"] = detail["product_name"]
+                    item_entry["size_str"] = detail["size_str"]
+                    item_entry["units_to_buy"] = detail["units_to_buy"]
 
                 # Attach a real Flipp deal if one was applied to this line.
                 deal = applied_deals.get((store, lookup_key))

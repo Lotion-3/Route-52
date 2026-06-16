@@ -156,14 +156,32 @@ def _normalize_unit(raw: str) -> str:
     return u
 
 
+_BARE_UNIT_MAP: dict[str, tuple[float, str]] = {
+    "gallon": (1.0, "gal"),   "gallons": (1.0, "gal"),
+    "quart":  (1.0, "qt"),    "quarts":  (1.0, "qt"),
+    "pint":   (1.0, "pt"),    "pints":   (1.0, "pt"),
+    "liter":  (1.0, "l"),     "liters":  (1.0, "l"),
+    "litre":  (1.0, "l"),     "litres":  (1.0, "l"),
+    "dozen":  (12.0, "ct"),   "dozens":  (12.0, "ct"),
+    "pound":  (1.0, "lb"),    "pounds":  (1.0, "lb"),
+    "ounce":  (1.0, "oz"),    "ounces":  (1.0, "oz"),
+}
+
+
 def _parse_simple(s: str) -> Optional[tuple[float, str]]:
     """Parse a single (no slash) size token into (qty, unit)."""
+    s = s.strip()
     # Bare integer or decimal with no unit → treat as 1 ct
-    if re.fullmatch(r"\d+(?:\.\d+)?", s.strip()):
+    if re.fullmatch(r"\d+(?:\.\d+)?", s):
         try:
-            return float(s.strip()), "ct"
+            return float(s), "ct"
         except ValueError:
             return None
+
+    # Bare unit word without a leading number (e.g. "Gallon", "Dozen", "Pint")
+    bare = _BARE_UNIT_MAP.get(s.lower())
+    if bare:
+        return bare
 
     m = _SIZE_PATTERN.search(s)
     if not m:
@@ -264,6 +282,9 @@ def _parse_compound(left: str, right: str) -> Optional[tuple[float, str]]:
     if priority.get(l_fam, 0) >= priority.get(r_fam, 0):
         return lp
     return rp
+
+
+
 
 
 def unit_family(unit: str) -> Optional[str]:
@@ -512,9 +533,9 @@ def _dry_oz_per_floz(ingredient_name: str) -> float:
 # to estimate the number of cans/jars worth.
 STANDARD_CAN_OZ: dict[str, float] = {
     # (ingredient keyword → typical net oz content)
-    "bean": 15.5,
-    "chickpea": 15.5,
-    "lentil": 15.5,
+    "bean": 15.0,
+    "chickpea": 15.0,
+    "lentil": 15.0,
     "corn": 15.25,
     "tomato": 14.5,
     "diced tomato": 14.5,
@@ -1002,6 +1023,26 @@ def find_best_purchase(
         unit_price_str = f"${pp.price:.2f}/lb"
     else:
         unit_price_str = f"${pp.price:.2f}/{pp.size_str}"
+
+    # Weight items: represent as a single "X lb" package so the UI doesn't show
+    # "x2 | Per LB" (confusing) but instead "x1 | 2 lb | $2.58" (clear).
+    if pp.sold_by == "WEIGHT":
+        lbs = round(best.units_to_buy, 2)
+        size_display = f"{lbs:g} lb"
+        return {
+            "units_to_buy": 1,
+            "total_qty": round(total_qty_display, 3),
+            "unit": display_unit,
+            "overage": 0.0,
+            "overage_pct": 0.0,
+            "total_cost": round(best.total_cost, 2),
+            "unit_price_str": unit_price_str,
+            "description": pp.description,
+            "brand": pp.brand,
+            "size_str": size_display,
+            "sold_by": pp.sold_by,
+            "notes": pp.notes,
+        }
 
     return {
         "units_to_buy": round(best.units_to_buy, 3),

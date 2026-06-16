@@ -335,7 +335,9 @@ export default function ResultsScreen() {
             return {
               id: `${index}-${iIdx}`,
               name,
-              qty,
+              product_name: it.product_name,
+              size_str: it.size_str,
+              units_to_buy: it.units_to_buy != null ? it.units_to_buy : Math.ceil(qty),
               price: it.price,
               category,
               hasCoupon,
@@ -452,11 +454,7 @@ export default function ResultsScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cheapestText}>
-                    Cheapest single store is <Text style={styles.cheapestHighlight}>{plan.cheapest_single_store_name || 'MISSING NAME'}</Text> for <Text style={styles.cheapestHighlight}>${(plan.cheapest_single_store_cost * 1.35).toFixed(2)}</Text>
-                  </Text>
-                  {/* FORCED DEBUG OVERLAY */}
-                  <Text style={{ fontSize: 8, color: '#999', marginTop: 2 }}>
-                    Raw Name: "{String(plan.cheapest_single_store_name)}" | Cost: {plan.cheapest_single_store_cost}
+                    Cheapest single store: <Text style={styles.cheapestHighlight}>{plan.cheapest_single_store_name}</Text> for <Text style={styles.cheapestHighlight}>${plan.cheapest_single_store_cost.toFixed(2)}</Text>
                   </Text>
                 </View>
               </View>

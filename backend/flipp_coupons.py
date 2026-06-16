@@ -262,6 +262,11 @@ def apply_deals(
         banner = _banner_of(store_key)
         if not banner or banner not in flyers_by_banner:
             continue
+        # Skip ALDI — prices come from the Instacart API directly and are already
+        # accurate. Flipp's ALDI flyer data often covers a different zone or lags
+        # behind, so applying it overwrites correct API prices with wrong ones.
+        if banner == "aldi":
+            continue
         flyer_products = [_flyer_to_product(n, p) for n, p in flyers_by_banner[banner]]
         if not flyer_products:
             continue
