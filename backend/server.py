@@ -25,6 +25,8 @@ import trader_joes_pricing
 from trader_joes_pricing import is_trader_joes_store
 import meijer_pricing
 from meijer_pricing import is_meijer_store
+import target_pricing
+from target_pricing import is_target_store
 import flipp_coupons
 from kroger_pricing import aggregate_ingredients
 from geopy.geocoders import Nominatim
@@ -40,6 +42,19 @@ print(f"\n🚀 BASKET BUDDY SERVER STARTING - VERSION: {SERVER_VERSION}", flush=
 
 app = FastAPI()
 router = APIRouter(prefix="/api")
+
+
+@app.on_event("shutdown")
+def _close_target_browser():
+    # Free the persistent CloakBrowser (~250MB) used for direct Target pricing.
+    try:
+        target_pricing.shutdown()
+    except Exception:
+        pass
+    try:
+        walmart_pricing.shutdown()
+    except Exception:
+        pass
 
 @app.middleware("http")
 async def catch_exceptions_middleware(request, call_next):
@@ -236,6 +251,7 @@ def generate_plan(request: PlanRequest):
     price_database: dict = {k.strip(): {} for k in STORE_LOCATIONS.keys()}
     real_priced_keys: set = set()
     product_details: dict = {}  # (store_key, ing_key) → {product_name, size_str}
+    costco_estimates: dict = {}  # store_key → {"distance_km": float, "store": str} when proxied
 
     # shopping_list is needed by the optimizer regardless of pricing source.
     shopping_list = [
@@ -359,30 +375,6 @@ def generate_plan(request: PlanRequest):
         if is_kroger_banner(store_key) or is_aldi_store(store_key) or is_meijer_store(store_key):
             continue
 
-        if is_walmart_store(store_key):
-            try:
-                _, _, wm_prices = instacart_pricing.price_all_instacart(
-                    to_buy_quantities, lat, lon, "walmart"
-                )
-                if wm_prices:
-                    print(f"[IC:walmart] Applying real prices to '{store_key}'", flush=True)
-                    for ing_name, result in wm_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
-            except Exception as e:
-                print(f"[Walmart] Pricing failed ({e}), store will be excluded.", flush=True)
-            continue
-
         if is_trader_joes_store(store_key):
             try:
                 _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
@@ -403,6 +395,93 @@ def generate_plan(request: PlanRequest):
                     real_priced_keys.add(store_key)
             except Exception as e:
                 print(f"[TJ] Pricing failed ({e}), store will be excluded.", flush=True)
+            continue
+
+        # Target: try direct RedSky pricing first; on failure fall through to
+        # the generic Instacart "target" slug below (zero-regression fallback).
+        if is_target_store(store_key):
+            try:
+                _, _, tg_prices = target_pricing.price_all_target(
+                    to_buy_quantities, lat, lon
+                )
+                if tg_prices:
+                    print(f"[Target] Applying real prices to '{store_key}'", flush=True)
+                    for ing_name, result in tg_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+                print(f"[Target] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
+            except Exception as e:
+                print(f"[Target] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
+
+        # Walmart: try direct CloakBrowser pricing first; on failure fall through
+        # to the generic Instacart "walmart" slug below (zero-regression fallback).
+        if is_walmart_store(store_key):
+            try:
+                _, _, wm_prices = walmart_pricing.price_all_walmart(
+                    to_buy_quantities, lat, lon
+                )
+                if wm_prices:
+                    print(f"[Walmart] Applying real prices to '{store_key}'", flush=True)
+                    for ing_name, result in wm_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+                print(f"[Walmart] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
+            except Exception as e:
+                print(f"[Walmart] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
+
+        # Costco: prices are near-uniform nationally, so when the local warehouse
+        # isn't on Instacart Same-Day we price at the nearest covered Costco and
+        # flag the line as an estimate (instead of dropping Costco entirely).
+        if "costco" in store_key.lower():
+            try:
+                _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(
+                    to_buy_quantities, lat, lon
+                )
+                if cc_prices:
+                    tag = " (estimate)" if cc_meta.get("is_estimate") else ""
+                    print(f"[IC:costco] Applying real prices to '{store_key}'{tag}", flush=True)
+                    for ing_name, result in cc_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            brand = result.get("brand", "")
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    if cc_meta.get("is_estimate"):
+                        costco_estimates[store_key] = {
+                            "distance_km": cc_meta.get("distance_km"),
+                            "store": cc_meta.get("store", ""),
+                        }
+            except Exception as e:
+                print(f"[IC:costco] Pricing failed ({e}), store will be excluded.", flush=True)
             continue
 
         slug = get_instacart_slug(store_key)
@@ -514,12 +593,24 @@ def generate_plan(request: PlanRequest):
                     }
                 store_items.append(item_entry)
             
-            formatted_shopping_list.append({
+            store_entry = {
                 "store": store,
                 "address": STORE_ADDRESSES.get(store, ""),
                 "coordinates": {"lat": STORE_LOCATIONS[store][0], "lng": STORE_LOCATIONS[store][1]},
                 "items": store_items
-            })
+            }
+            # Costco priced via the nearest-covered-warehouse proxy: flag as an
+            # estimate so the UI can label it (Costco pricing is ~national).
+            est = costco_estimates.get(store)
+            if est:
+                km = est.get("distance_km")
+                store_entry["estimated"] = True
+                store_entry["pricing_note"] = (
+                    "Estimated — local Costco isn't on Instacart, so prices are from the "
+                    f"nearest covered Costco (~{int(km)} km away). Costco prices are ~national."
+                    if km else "Estimated from the nearest covered Costco."
+                )
+            formatted_shopping_list.append(store_entry)
 
     # Step 8: Calculate prices for meal ingredients
     # Create a lookup for unit prices based on optimal assignments

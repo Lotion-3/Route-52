@@ -6,6 +6,10 @@ RAW_recipes.csv
 .env.*.local
 config.env
 
+# Instacart session cache — contains LIVE auth cookies, never commit
+.ic_session.json
+backend/.ic_session.json
+
 # Python
 __pycache__
 *.py[cod]

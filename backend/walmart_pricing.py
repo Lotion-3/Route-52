@@ -1,30 +1,43 @@
 """
-Walmart grocery pricing — scrapes walmart.com search results directly.
+Walmart grocery pricing — direct from walmart.com via a stealth CloakBrowser.
 
-Walmart is not on Instacart and has uniform national pricing, so we don't
-need a location-specific session. We extract product data from the Next.js
-__NEXT_DATA__ blob embedded in the search page HTML.
+Walmart embeds its full product+price list in the Next.js `__NEXT_DATA__` blob
+on the search page, so we don't need a separate API call — we load the search
+page in a real (stealth) browser and read the blob. walmart.com is fronted by
+PerimeterX/HUMAN; plain `requests` gets a 412/captcha, but CloakBrowser (a
+Chromium with C++ fingerprint patches) renders the page and the blob with real
+prices, even from a datacenter IP (verified).
 
-Falls back to Playwright if the plain-requests path is blocked (Akamai).
+Pricing is national/default (no store resolution); the blob price is
+`priceInfo.linePrice`.
+
+Reliability mirrors target_pricing: one warm browser pinned to a worker thread,
+per-term cache, and on a PerimeterX block we rotate to a fresh proxy exit IP and
+retry up to MAX_IP_REFRESHES times before returning empty → server falls back to
+Instacart for Walmart. A residential proxy (CLOAK_PROXY) makes it reliable from
+a datacenter host.
 
 Entry point:
-    store_name, prices = price_all_walmart(ingredients)
+    store_name, store_id, prices = price_all_walmart(ingredients, lat, lon)
 
-prices format (same as kroger_async):
-    {ingredient_name: {"total_cost": float, "description": str, ...}}
+Self-test:  python walmart_pricing.py
+Env: CLOAK_PROXY, WALMART_MAX_IP_REFRESHES, WALMART_SEARCH_TTL
+
+NOTE: shares the CloakBrowser session pattern with target_pricing; once a third
+chain lands, extract the common engine into a shared module (rule of three).
 """
 from __future__ import annotations
 
 import json
+import os
+import random
 import re
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
-import requests
-
-from kroger_pricing import find_best_purchase
+from kroger_pricing import find_best_purchase, parse_size
 from kroger_search_map import get_all_terms
 
 # ---------------------------------------------------------------------------
@@ -32,210 +45,291 @@ from kroger_search_map import get_all_terms
 # ---------------------------------------------------------------------------
 
 WALMART_BANNERS: set[str] = {"walmart"}
+_SEARCH_URL = "https://www.walmart.com/search?q={q}&affinityOverride=default&ps=40"
+_WARM_URL = "https://www.walmart.com/"
+_STORE_ID = "national"  # Walmart online pricing isn't store-resolved here
 
-_SEARCH_URL = "https://www.walmart.com/search?q={query}&affinityOverride=default&ps=40"
+_PROXY = os.environ.get("CLOAK_PROXY") or os.environ.get("WALMART_PROXY") or None
+MAX_IP_REFRESHES = int(os.environ.get("WALMART_MAX_IP_REFRESHES", "5"))
+_SEARCH_TTL = int(os.environ.get("WALMART_SEARCH_TTL", str(6 * 3600)))
 
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Cache-Control": "max-age=0",
-}
 
-# Regex to extract size info from product names
-_SIZE_RE = re.compile(
-    r'(\d+(?:\.\d+)?)\s*'
-    r'(fl\.?\s*oz|fluid\s*ounce|oz|ounce|lb|lbs|pound|gal|gallon|'
-    r'count|ct|pk|pack|each|liter|litre|ml|g|kg)',
-    re.IGNORECASE,
-)
+class _Blocked(Exception):
+    """Raised when PerimeterX blocks the page (no __NEXT_DATA__)."""
 
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
-
-# ---------------------------------------------------------------------------
-# Banner detection
-# ---------------------------------------------------------------------------
 
 def is_walmart_store(store_name: str) -> bool:
     return any(b in store_name.lower() for b in WALMART_BANNERS)
 
 
 # ---------------------------------------------------------------------------
-# Product size extraction
+# CloakBrowser singleton — all access pinned to one worker thread
 # ---------------------------------------------------------------------------
 
-def _extract_size(name: str, item: dict) -> str:
-    """Extract a parseable size string from product name or Walmart item fields."""
-    # Try dedicated size field first
-    for field in ("salesUnit", "orderType"):
-        val = item.get(field) or ""
-        if val and val.upper() not in ("EACH", ""):
-            return val
+_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cloak-walmart")
+_browser = None
+_ctx = None
+_session_lock = threading.Lock()
+_proxy_session_id: Optional[str] = None
 
-    m = _SIZE_RE.search(name)
+
+def _rotate_proxy_session() -> None:
+    global _proxy_session_id
+    _proxy_session_id = os.urandom(6).hex()
+
+
+def _current_proxy() -> Optional[str]:
+    if not _PROXY:
+        return None
+    if "{session}" in _PROXY:
+        return _PROXY.replace("{session}", _proxy_session_id or os.urandom(6).hex())
+    return _PROXY
+
+
+def _bootstrap_session():
+    """(worker thread) Launch CloakBrowser on the current proxy session and warm
+    PerimeterX cookies via the homepage. Raises on launch failure → Instacart."""
+    global _browser, _ctx
+    from cloakbrowser import launch
+
+    _teardown_session()
+    if _proxy_session_id is None:
+        _rotate_proxy_session()
+
+    proxy = _current_proxy()
+    kwargs: dict = {"headless": True}
+    if proxy:
+        kwargs["proxy"] = proxy
+        kwargs["geoip"] = True
+    try:
+        _browser = launch(**kwargs)
+    except Exception:
+        kwargs.pop("geoip", None)
+        _browser = launch(**kwargs)
+
+    _ctx = _browser.new_context()
+    page = _ctx.new_page()
+    page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
+    time.sleep(2)
+    page.close()
+    print(f"[Walmart] CloakBrowser session warmed{' (proxy)' if proxy else ''}.", flush=True)
+
+
+def _teardown_session():
+    global _browser, _ctx
+    try:
+        if _browser is not None:
+            _browser.close()
+    except Exception:
+        pass
+    _browser, _ctx = None, None
+
+
+def _ensure_ctx():
+    global _ctx
+    if _ctx is None:
+        _bootstrap_session()
+    return _ctx
+
+
+# ---------------------------------------------------------------------------
+# Search page → items  (worker thread)
+# ---------------------------------------------------------------------------
+
+def _find_items(o) -> list[dict]:
+    """Walk __NEXT_DATA__ to the search itemStacks[].items[] list."""
+    if isinstance(o, dict):
+        if isinstance(o.get("itemStacks"), list):
+            items: list[dict] = []
+            for st in o["itemStacks"]:
+                if isinstance(st, dict) and st.get("items"):
+                    items.extend(st["items"])
+            if items:
+                return items
+        for v in o.values():
+            r = _find_items(v)
+            if r:
+                return r
+    elif isinstance(o, list):
+        for v in o:
+            r = _find_items(v)
+            if r:
+                return r
+    return []
+
+
+def _fetch_items(term: str) -> list[dict]:
+    """(worker thread) Load the search page, return raw Walmart item dicts.
+    Raises _Blocked when PerimeterX serves a challenge (no __NEXT_DATA__)."""
+    ctx = _ensure_ctx()
+    page = ctx.new_page()
+    try:
+        page.goto(_SEARCH_URL.format(q=requests_quote(term)),
+                  wait_until="domcontentloaded", timeout=45000)
+        nd = page.evaluate(
+            "() => { const e = document.getElementById('__NEXT_DATA__');"
+            " return e ? e.textContent : null; }"
+        )
+    except Exception as e:
+        raise _Blocked(f"page load failed: {repr(e)[:80]}")
+    finally:
+        try:
+            page.close()
+        except Exception:
+            pass
+
+    if not nd:
+        # No data blob → PerimeterX challenge / block.
+        raise _Blocked("no __NEXT_DATA__")
+    try:
+        return _find_items(json.loads(nd))
+    except Exception:
+        return []  # parseable page, just no usable items
+
+
+# ---------------------------------------------------------------------------
+# Item → Kroger product shape
+# ---------------------------------------------------------------------------
+
+_NUM_SIZE_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*"
+    r"(fl\.?\s*oz|fluid\s*ounce|oz|ounce|lb|lbs|pound|gal|gallon|qt|quart|"
+    r"pt|pint|count|ct|pk|pack|liter|litre|ml|kg|g)\b",
+    re.IGNORECASE,
+)
+# Bare unit words with no number (Walmart names like "…, Gallon").
+_BARE_SIZE = {
+    "half gallon": "0.5 gal", "gallon": "1 gal", "quart": "1 qt",
+    "pint": "1 pt", "dozen": "12 ct",
+}
+
+
+def _extract_size(name: str) -> str:
+    low = name.lower()
+    m = _NUM_SIZE_RE.search(name)
     if m:
         return f"{m.group(1)} {m.group(2)}"
+    for word, size in _BARE_SIZE.items():  # "half gallon" before "gallon"
+        if word in low:
+            return size
     return "1 each"
 
 
-# ---------------------------------------------------------------------------
-# HTML search → item list
-# ---------------------------------------------------------------------------
-
-def _extract_items_from_html(html: str) -> list[dict]:
-    """Pull the item list from Walmart's __NEXT_DATA__ JSON blob."""
-    m = re.search(
-        r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>',
-        html, re.DOTALL,
-    )
+def _price_from_lineprice(price_info: dict) -> Optional[float]:
+    raw = (price_info.get("linePrice") or price_info.get("linePriceDisplay")
+           or price_info.get("itemPrice") or "")
+    m = re.search(r"(\d+(?:\.\d{1,2})?)", str(raw).replace(",", ""))
     if not m:
-        return []
-    try:
-        data = json.loads(m.group(1))
-    except Exception:
-        return []
+        return None
+    val = float(m.group(1))
+    return val if 0.01 <= val <= 500 else None
 
-    # Try both current and older page prop paths
-    search_result = (
-        (data.get("props") or {}).get("pageProps") or {}
-    ).get("initialData") or {}
-    if "searchResult" not in search_result:
-        search_result = ((data.get("props") or {}).get("pageProps") or {})
-
-    stacks = (search_result.get("searchResult") or {}).get("itemStacks") or []
-    items: list[dict] = []
-    for stack in stacks:
-        items.extend(stack.get("items") or [])
-    return items
-
-
-def _search_requests(query: str) -> list[dict]:
-    """Plain HTTP search — works unless Walmart blocks the IP."""
-    url = _SEARCH_URL.format(query=requests.utils.quote(query))
-    try:
-        r = requests.get(url, headers=_HEADERS, timeout=15)
-        if r.status_code != 200:
-            return []
-        return _extract_items_from_html(r.text)
-    except Exception:
-        return []
-
-
-def _search_playwright(query: str) -> list[dict]:
-    """Playwright fallback for when plain requests are blocked."""
-    from playwright.sync_api import sync_playwright
-    try:
-        from playwright_stealth import Stealth
-        _stealth = Stealth()
-    except ImportError:
-        _stealth = None
-
-    html = ""
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False, executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            viewport={"width": 1366, "height": 768}, locale="en-US",
-            user_agent=_HEADERS["User-Agent"],
-        )
-        page = ctx.new_page()
-        if _stealth:
-            _stealth.apply_stealth_sync(page)
-        try:
-            url = _SEARCH_URL.format(query=requests.utils.quote(query))
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(4)
-            html = page.content()
-        except Exception:
-            pass
-        browser.close()
-    return _extract_items_from_html(html)
-
-
-def _search_walmart(query: str) -> list[dict]:
-    # Walmart enforces PerimeterX bot detection (CAPTCHA) for all automated requests.
-    # Plain requests return 412 / redirect-to-blocked. Playwright triggers a
-    # press-and-hold human CAPTCHA that cannot be solved programmatically.
-    # Until a non-interactive data source is available, return empty so the
-    # server falls back to synthetic prices for Walmart stores.
-    return _search_requests(query)
-
-
-# ---------------------------------------------------------------------------
-# Item → Kroger format conversion
-# ---------------------------------------------------------------------------
 
 def _item_to_kroger_format(item: dict) -> Optional[dict]:
-    """Convert a Walmart search result item to find_best_purchase() input format."""
     name = item.get("name") or ""
-
-    # Price: try several nested paths Walmart has used over time
-    price: Optional[float] = None
-    price_info = item.get("priceInfo") or {}
-    current_price = price_info.get("currentPrice") or {}
-    price = current_price.get("price")
-    if not price:
-        price = (item.get("price") or {}).get("currentPrice")
-    if not price:
-        # Some items embed price directly
-        price = item.get("salePrice") or item.get("regularPrice")
-    if not price:
+    if not name:
         return None
-    try:
-        price = float(price)
-        if not (0.01 <= price <= 500):
-            return None
-    except Exception:
+    # Skip third-party marketplace sellers (shipping/markup, not in-store price).
+    if item.get("hasSellerBadge"):
+        return None
+    pi = item.get("priceInfo") or {}
+    price = _price_from_lineprice(pi)
+    if price is None:
         return None
 
-    size_str = _extract_size(name, item)
-
+    by_weight = bool(pi.get("finalCostByWeight"))
     return {
         "description": name,
         "brand": item.get("brand") or "",
         "items": [{
             "itemId": str(item.get("usItemId") or item.get("id") or ""),
-            "soldBy": "UNIT",
-            "size": size_str,
+            "soldBy": "WEIGHT" if by_weight else "UNIT",
+            "size": "1 lb" if by_weight else _extract_size(name),
             "price": {"regular": price, "promo": None},
         }],
     }
 
 
 # ---------------------------------------------------------------------------
-# Per-ingredient pricing
+# Search (cached) + per-ingredient pricing
 # ---------------------------------------------------------------------------
+
+def requests_quote(s: str) -> str:
+    from urllib.parse import quote
+    return quote(s)
+
+
+_search_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
+def _search(term: str) -> list[dict]:
+    """Return Kroger-format products for `term` (cached). May raise _Blocked."""
+    cached = _search_cache.get(term.lower())
+    if cached and cached[0] > time.time():
+        return cached[1]
+
+    raw = _fetch_items(term)  # raises _Blocked on PX challenge
+    query_words = set(term.lower().split())
+    out = []
+    for it in raw:
+        fmt = _item_to_kroger_format(it)
+        if fmt and any(w in fmt["description"].lower() for w in query_words):
+            out.append(fmt)
+    if not out:  # relax keyword filter if nothing matched
+        out = [f for f in (_item_to_kroger_format(it) for it in raw) if f]
+    _search_cache[term.lower()] = (time.time() + _SEARCH_TTL, out)
+    return out
+
 
 def _price_one(ingredient: str, qty: float, unit: str) -> Optional[dict]:
     for term in get_all_terms(ingredient):
-        raw_items = _search_walmart(term)
-        if not raw_items:
-            continue
-        products = [p for p in (_item_to_kroger_format(i) for i in raw_items) if p]
+        products = _search(term)  # may raise _Blocked
         if not products:
             continue
-        # Keyword pre-filter: at least one query word must appear in product name
-        query_words = set(term.lower().split())
-        matched = [
-            p for p in products
-            if any(qw in p["description"].lower() for qw in query_words)
-        ]
-        products = matched or products  # fall back to unfiltered if all rejected
         result = find_best_purchase(ingredient, qty, unit, products)
         if result:
             return result
+        if term.lower() != ingredient.lower():
+            result = find_best_purchase(term, qty, unit, products)
+            if result:
+                return result
     return None
+
+
+def _do_pricing(ingredients: dict) -> dict:
+    """(worker thread) Price all ingredients, rotating exit IP on PerimeterX
+    blocks (up to MAX_IP_REFRESHES) before giving up → Instacart fallback."""
+    prices: dict = {}
+    pending = dict(ingredients)
+    refreshes = 0
+    while pending:
+        try:
+            _ensure_ctx()
+            for name in list(pending):
+                data = pending[name]
+                try:
+                    r = _price_one(name, float(data.get("qty", 1) or 1),
+                                   str(data.get("unit", "whole")))
+                    if r:
+                        prices[name] = r
+                except _Blocked:
+                    raise
+                except Exception as e:
+                    print(f"[Walmart] Error pricing '{name}': {e}", flush=True)
+                del pending[name]
+            break
+        except _Blocked:
+            if refreshes >= MAX_IP_REFRESHES:
+                print(f"[Walmart] Still blocked after {refreshes} IP refreshes — "
+                      f"falling back to Instacart.", flush=True)
+                return {}
+            refreshes += 1
+            print(f"[Walmart] PerimeterX block — rotating exit IP "
+                  f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
+            _teardown_session()
+            _rotate_proxy_session()
+            time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))
+    return prices
 
 
 # ---------------------------------------------------------------------------
@@ -244,71 +338,46 @@ def _price_one(ingredient: str, qty: float, unit: str) -> Optional[dict]:
 
 def price_all_walmart(
     ingredients: dict,
-    max_workers: int = 6,
-) -> tuple[str, dict]:
-    """
-    Price all ingredients at Walmart (national prices).
-
-    Parameters
-    ----------
-    ingredients : {name: {"qty": float, "unit": str, ...}}
-    max_workers : parallel threads (keep low to avoid rate limiting)
-
-    Returns
-    -------
-    (store_display_name, prices)
-        prices: {ingredient_name: find_best_purchase() result dict}
-    """
-    print("[Walmart] Pricing ingredients via walmart.com ...", flush=True)
-
-    prices: dict = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = {
-            pool.submit(
-                _price_one,
-                name,
-                float(data.get("qty", 1)),
-                str(data.get("unit", "whole")),
-            ): name
-            for name, data in ingredients.items()
-        }
-        for fut in as_completed(futures):
-            name = futures[fut]
-            try:
-                result = fut.result()
-                if result:
-                    prices[name] = result
-            except Exception as e:
-                print(f"[Walmart] Error pricing '{name}': {e}", flush=True)
-
+    lat: float = 0.0,
+    lon: float = 0.0,
+    max_workers: int = 10,  # signature parity; pricing is serialized
+) -> tuple[Optional[str], Optional[str], dict]:
+    """Price all ingredients at Walmart (national online pricing) via CloakBrowser.
+    Returns (display_name, store_id, prices); empty prices → caller uses Instacart."""
+    with _session_lock:
+        try:
+            prices = _executor.submit(_do_pricing, ingredients).result()
+        except Exception as e:
+            print(f"[Walmart] Direct pricing unavailable ({repr(e)[:140]}) — "
+                  "falling back to Instacart.", flush=True)
+            return None, None, {}
     print(f"[Walmart] Priced {len(prices)}/{len(ingredients)} ingredients.", flush=True)
-    return "Walmart", prices
+    return "Walmart", _STORE_ID, prices
+
+
+def shutdown():
+    try:
+        _executor.submit(_teardown_session).result(timeout=15)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
-# Quick test
+# Self-test:  python walmart_pricing.py
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    TEST = {
-        "Large eggs":           {"qty": 12, "unit": "whole"},
-        "Whole milk":           {"qty": 1,  "unit": "gal"},
-        "Bananas":              {"qty": 5,  "unit": "whole"},
-        "Boneless skinless chicken breast": {"qty": 2, "unit": "lb"},
-        "Ground beef 80/20":    {"qty": 1,  "unit": "lb"},
-        "Russet potatoes":      {"qty": 3,  "unit": "lb"},
-        "Canned black beans":   {"qty": 2,  "unit": "can"},
-        "Shredded cheddar":     {"qty": 8,  "unit": "oz"},
+    sample = {
+        "milk":           {"qty": 1, "unit": "gallon"},
+        "eggs":           {"qty": 12, "unit": "count"},
+        "bananas":        {"qty": 3, "unit": "pound"},
+        "chicken breast": {"qty": 3, "unit": "pound"},
+        "white rice":     {"qty": 5, "unit": "pound"},
     }
-    print("Testing Walmart pricing pipeline...")
-    print("=" * 60)
-    store, prices = price_all_walmart(TEST, max_workers=4)
-    print(f"\nStore: {store}")
-    print("-" * 60)
-    total = 0.0
-    for ing, r in sorted(prices.items()):
-        cost = r.get("total_cost", 0)
-        total += cost
-        print(f"  {ing:<40} ${cost:.2f}  ({r.get('description','')[:40]})")
-    print(f"\n  TOTAL: ${total:.2f}  ({len(prices)}/{len(TEST)} priced)")
-    if len(prices) < len(TEST):
-        print(f"  Missing: {', '.join(k for k in TEST if k not in prices)}")
+    name, sid, out = price_all_walmart(sample)
+    print(f"\n=== {name} ({sid}) ===")
+    if not out:
+        print("No prices — CloakBrowser unavailable or PerimeterX-blocked.")
+    for ing, res in out.items():
+        print(f"  {ing:16s} ${res.get('total_cost', 0):7.2f}  "
+              f"{res.get('description', '')[:40]} ({res.get('size_str', '')})")
+    shutdown()

@@ -21,6 +21,7 @@ Retailers covered (via RETAILER_REGISTRY):
 from __future__ import annotations
 
 import json
+import math
 import re
 import time
 import uuid
@@ -343,6 +344,131 @@ def find_nearest_store(
 
 
 # ---------------------------------------------------------------------------
+# Nearest-covered-store search (expanding rings) — used by the Costco proxy
+# ---------------------------------------------------------------------------
+#
+# Costco's grocery prices are near-uniform nationally (a handful of regional
+# tiers, not per-store variation), so when the user's local warehouse isn't on
+# Instacart Same-Day we can price at the nearest *covered* Costco and flag the
+# result as an estimate. This is ONLY sound for Costco — chains like Kroger /
+# Safeway price per store, so a distant proxy would be misleading for them.
+
+
+# Major US metros (postal, lat, lon) used as proxy anchors. ShopCollectionScoped
+# REQUIRES a postal (coordinates alone return nothing), so we can't jitter
+# arbitrary points — instead we walk these known postals outward from the user.
+# The runtime query confirms Costco coverage, so a listed metro without Same-Day
+# is simply skipped; a generous, well-spread list just improves nearest-distance
+# resolution. (lat, lon, postal, label)
+_US_METROS: tuple[tuple[float, float, str, str], ...] = (
+    (47.61, -122.33, "98101", "Seattle, WA"), (45.52, -122.68, "97201", "Portland, OR"),
+    (47.66, -117.43, "99201", "Spokane, WA"), (43.62, -116.21, "83702", "Boise, ID"),
+    (37.77, -122.42, "94102", "San Francisco, CA"), (37.34, -121.89, "95110", "San Jose, CA"),
+    (38.58, -121.49, "95814", "Sacramento, CA"), (36.74, -119.79, "93721", "Fresno, CA"),
+    (34.05, -118.24, "90012", "Los Angeles, CA"), (32.72, -117.16, "92101", "San Diego, CA"),
+    (36.17, -115.14, "89101", "Las Vegas, NV"), (39.53, -119.81, "89501", "Reno, NV"),
+    (33.45, -112.07, "85004", "Phoenix, AZ"), (32.22, -110.97, "85701", "Tucson, AZ"),
+    (40.76, -111.89, "84101", "Salt Lake City, UT"), (39.74, -104.99, "80202", "Denver, CO"),
+    (38.83, -104.82, "80903", "Colorado Springs, CO"), (35.08, -106.65, "87102", "Albuquerque, NM"),
+    (31.76, -106.49, "79901", "El Paso, TX"), (32.78, -96.80, "75201", "Dallas, TX"),
+    (29.76, -95.37, "77002", "Houston, TX"), (29.42, -98.49, "78205", "San Antonio, TX"),
+    (30.27, -97.74, "78701", "Austin, TX"), (26.20, -98.23, "78501", "McAllen, TX"),
+    (33.58, -101.86, "79401", "Lubbock, TX"), (35.47, -97.52, "73102", "Oklahoma City, OK"),
+    (36.15, -95.99, "74103", "Tulsa, OK"), (37.69, -97.34, "67202", "Wichita, KS"),
+    (39.10, -94.58, "64106", "Kansas City, MO"), (38.63, -90.20, "63101", "St. Louis, MO"),
+    (41.26, -95.93, "68102", "Omaha, NE"), (44.98, -93.27, "55401", "Minneapolis, MN"),
+    (41.59, -93.62, "50309", "Des Moines, IA"), (43.55, -96.70, "57104", "Sioux Falls, SD"),
+    (46.88, -96.79, "58102", "Fargo, ND"), (41.88, -87.63, "60601", "Chicago, IL"),
+    (43.04, -87.91, "53202", "Milwaukee, WI"), (39.77, -86.16, "46204", "Indianapolis, IN"),
+    (39.96, -82.99, "43215", "Columbus, OH"), (41.50, -81.69, "44114", "Cleveland, OH"),
+    (39.10, -84.51, "45202", "Cincinnati, OH"), (42.33, -83.05, "48226", "Detroit, MI"),
+    (42.96, -85.67, "49503", "Grand Rapids, MI"), (36.16, -86.78, "37203", "Nashville, TN"),
+    (35.15, -90.05, "38103", "Memphis, TN"), (35.96, -83.92, "37902", "Knoxville, TN"),
+    (38.25, -85.76, "40202", "Louisville, KY"), (33.75, -84.39, "30303", "Atlanta, GA"),
+    (35.23, -80.84, "28202", "Charlotte, NC"), (35.78, -78.64, "27601", "Raleigh, NC"),
+    (36.07, -79.79, "27401", "Greensboro, NC"), (33.52, -86.81, "35203", "Birmingham, AL"),
+    (29.95, -90.07, "70112", "New Orleans, LA"), (30.45, -91.19, "70801", "Baton Rouge, LA"),
+    (34.75, -92.29, "72201", "Little Rock, AR"), (30.33, -81.66, "32202", "Jacksonville, FL"),
+    (28.54, -81.38, "32801", "Orlando, FL"), (27.95, -82.46, "33602", "Tampa, FL"),
+    (25.76, -80.19, "33131", "Miami, FL"), (32.78, -79.93, "29401", "Charleston, SC"),
+    (34.00, -81.03, "29201", "Columbia, SC"), (37.54, -77.44, "23219", "Richmond, VA"),
+    (36.85, -75.98, "23451", "Virginia Beach, VA"), (38.91, -77.02, "20001", "Washington, DC"),
+    (39.29, -76.61, "21201", "Baltimore, MD"), (39.95, -75.16, "19102", "Philadelphia, PA"),
+    (40.44, -79.99, "15222", "Pittsburgh, PA"), (40.75, -73.99, "10001", "New York, NY"),
+    (40.74, -74.17, "07102", "Newark, NJ"), (41.76, -72.67, "06103", "Hartford, CT"),
+    (42.36, -71.06, "02108", "Boston, MA"), (41.82, -71.41, "02903", "Providence, RI"),
+    (43.66, -70.26, "04101", "Portland, ME"), (42.99, -71.46, "03101", "Manchester, NH"),
+    (42.65, -73.75, "12207", "Albany, NY"), (42.89, -78.88, "14202", "Buffalo, NY"),
+    (43.16, -77.61, "14604", "Rochester, NY"), (45.78, -108.50, "59101", "Billings, MT"),
+    (46.87, -113.99, "59802", "Missoula, MT"), (21.31, -157.86, "96813", "Honolulu, HI"),
+    (61.22, -149.90, "99501", "Anchorage, AK"),
+)
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = (math.sin(dphi / 2) ** 2 +
+         math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2)
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+def _shop_at_postal(
+    lat: float, lon: float, postal: str, slug: str,
+    session: requests.Session, zone_id: str,
+) -> Optional[tuple[str, str, str]]:
+    """ShopCollectionScoped at an explicit (lat, lon, postal). Returns
+    (shop_id, zone, "Name (City)") or None when no shop serves that postal."""
+    data = _gql("ShopCollectionScoped", {
+        "retailerSlug": slug,
+        "postalCode": postal,
+        "coordinates": {"latitude": lat, "longitude": lon},
+        "addressId": None,
+        "allowCanonicalFallback": False,  # only real serving shops, no fake fallback
+    }, session, slug)
+    shops = (data.get("shopCollection") or {}).get("shops") or []
+    if not shops:
+        return None
+    shop = shops[0]
+    shop_id = shop.get("id") or ""
+    if not shop_id:
+        return None
+    retailer = shop.get("retailer") or {}
+    name = retailer.get("name") or slug.replace("-", " ").title()
+    loc = shop.get("retailerLocation") or shop.get("location") or {}
+    city = loc.get("city") or ""
+    return shop_id, zone_id, (f"{name} ({city})" if city else name)
+
+
+def find_covered_store_expanding(
+    lat: float, lon: float, slug: str, session: requests.Session, zone_id: str,
+    max_metros: int = 12,
+) -> Optional[tuple[str, str, str, float]]:
+    """Find the nearest Instacart-covered store, walking outward through known
+    metro postals.
+
+    Returns (shop_id, zone, display_name, distance_km) or None. distance_km == 0
+    means the store serves the user's exact location (an exact price, not an
+    estimate). A positive distance means the nearest covered store is that far
+    away and the price should be treated as an estimate.
+    """
+    # 1. Exact location first (uses the user's real postal — reliable).
+    local = find_nearest_store(lat, lon, slug, session, zone_id)
+    if local:
+        return local[0], local[1], local[2], 0.0
+
+    # 2. Walk the nearest metros outward; the GQL query confirms coverage.
+    ranked = sorted(_US_METROS, key=lambda m: _haversine_km(lat, lon, m[0], m[1]))
+    for mlat, mlon, mpostal, _label in ranked[:max_metros]:
+        s = _shop_at_postal(mlat, mlon, mpostal, slug, session, zone_id)
+        if s:
+            return s[0], s[1], s[2], _haversine_km(lat, lon, mlat, mlon)
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Product format conversion
 # ---------------------------------------------------------------------------
 
@@ -529,3 +655,83 @@ def price_all_instacart(
 
     print(f"[IC:{slug}] Priced {len(prices)}/{len(ingredients)} ingredients.", flush=True)
     return display_name, shop_id, prices
+
+
+def _price_ingredients_at(
+    ingredients: dict, shop_id: str, zone_id: str, postal: str,
+    session: requests.Session, slug: str, max_workers: int = 10,
+) -> dict:
+    """Run the search+price loop for every ingredient at a resolved store."""
+    prices: dict = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(
+                _price_one,
+                name,
+                float(data.get("qty", 1)),
+                str(data.get("unit", "whole")),
+                shop_id, zone_id, postal, session, slug,
+            ): name
+            for name, data in ingredients.items()
+        }
+        for fut in as_completed(futures):
+            name = futures[fut]
+            try:
+                result = fut.result()
+                if result:
+                    prices[name] = result
+            except Exception as e:
+                print(f"[IC:{slug}] Error pricing '{name}': {e}", flush=True)
+    return prices
+
+
+def price_all_costco(
+    ingredients: dict,
+    lat: float,
+    lon: float,
+    max_workers: int = 10,
+) -> tuple[Optional[str], Optional[str], dict, dict]:
+    """
+    Price all ingredients at Costco via Instacart, with a national-uniform-price
+    PROXY fallback for markets where the local warehouse isn't on Same-Day.
+
+    Costco's grocery prices are near-uniform nationally, so when no Costco serves
+    the user's exact location we price at the nearest *covered* Costco and flag
+    the result as an estimate. (This proxy is sound only for Costco — see
+    find_covered_store_expanding.)
+
+    Returns (display_name, shop_id, prices, meta) where
+        meta = {"is_estimate": bool, "distance_km": float|None, "store": str}.
+    prices is empty (and the caller drops Costco) only if no covered Costco
+    exists within the search radius.
+    """
+    slug = "costco"
+    session, zone_id = _get_session(bootstrap_slug=slug)
+
+    found = find_covered_store_expanding(lat, lon, slug, session, zone_id)
+    if not found:
+        print("[IC:costco] No covered Costco within range — excluding.", flush=True)
+        return None, None, {}, {"is_estimate": False, "distance_km": None, "store": ""}
+
+    shop_id, store_zone, display_name, dist = found
+    effective_zone = zone_id or store_zone
+    is_estimate = dist > 0
+    # The user's own postal is fine for the search payload context; the shopId +
+    # zoneId are what actually pin pricing to the (proxy) warehouse.
+    postal = _get_postal(lat, lon)
+
+    if is_estimate:
+        print(f"[IC:costco] Local Costco not on Instacart — using nearest covered "
+              f"Costco '{display_name}' (~{int(dist)} km) as a national-price estimate.",
+              flush=True)
+    else:
+        print(f"[IC:costco] Pricing at: {display_name} (shopId={shop_id})", flush=True)
+
+    prices = _price_ingredients_at(
+        ingredients, shop_id, effective_zone, postal, session, slug, max_workers
+    )
+    print(f"[IC:costco] Priced {len(prices)}/{len(ingredients)} ingredients"
+          f"{' (estimate)' if is_estimate else ''}.", flush=True)
+
+    meta = {"is_estimate": is_estimate, "distance_km": dist, "store": display_name}
+    return display_name, shop_id, prices, meta
