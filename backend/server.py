@@ -1,8 +1,10 @@
 import asyncio
+import json
 import math
 import uvicorn
-from fastapi import FastAPI, HTTPException, APIRouter
-from fastapi.middleware.cors import CORSMiddleware  # Added for CORS
+from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import os
@@ -13,8 +15,7 @@ import geo_utils
 import optimizer
 import kroger_async
 from kroger_async import is_kroger_banner
-import aldi_pricing
-from aldi_pricing import is_aldi_store
+from aldi.aldi_pricing import price_all_aldi, is_aldi_store
 import kingsoopers_pricing
 from kingsoopers_pricing import is_king_soopers_store
 import instacart_pricing
@@ -37,11 +38,65 @@ import traceback
 # Setup logging
 logging.basicConfig(filename='server_error.log', level=logging.ERROR)
 
-SERVER_VERSION = "2.1.0-STRICT-BENCHMARK"
-print(f"\n🚀 BASKET BUDDY SERVER STARTING - VERSION: {SERVER_VERSION}", flush=True)
+SERVER_VERSION = "3.0.0-SUPABASE"
+print(f"\nBASKET BUDDY SERVER STARTING - VERSION: {SERVER_VERSION}", flush=True)
 
 app = FastAPI()
 router = APIRouter(prefix="/api")
+
+
+# ── Supabase Auth Dependency ───────────────────────────────────────────────
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Extract the Supabase user_id from the JWT in the Authorization header.
+    Returns None for anonymous requests (no token provided).
+    """
+    if not authorization:
+        return None
+    token = authorization.replace("Bearer ", "").strip()
+    try:
+        from db import db
+        user = db.client.auth.get_user(token)
+        return user.user.id if user and user.user else None
+    except Exception as e:
+        print(f"[Auth] JWT verification failed: {e}", flush=True)
+        return None
+
+
+# ── Helper: save results to Supabase ──────────────────────────────────────
+def _save_results(user_id: str | None, prefs: "UserPreferences", meal_plan: list,
+                  shopping_list: list, route: list, total_cost: float,
+                  cheapest_store_name: str, cheapest_store_cost: float,
+                  total_time_minutes: float, total_savings: float) -> None:
+    """Persist the generated plan and route to Supabase when a user is authenticated."""
+    if not user_id:
+        return
+    try:
+        from db import db
+        plan = db.save_meal_plan(
+            user_id=user_id,
+            preferences={
+                "address": prefs.address,
+                "budget": prefs.budget,
+                "calorie_target": prefs.calorie_target,
+                "household_size": prefs.household_size,
+                "days_plan": prefs.days_plan,
+                "meals_per_day": prefs.meals_per_day,
+                "dietary_restrictions": prefs.dietary_restrictions,
+                "health_issues": prefs.health_issues,
+                "cuisines": prefs.cuisines,
+            },
+            meals=meal_plan,
+        )
+        db.save_shopping_route(plan["id"], {
+            "total_cost": total_cost,
+            "total_time_minutes": total_time_minutes,
+            "route": route,
+            "cheapest_single_store_name": cheapest_store_name,
+            "cheapest_single_store_cost": cheapest_store_cost,
+        })
+        print(f"[Supabase] Saved plan {plan['id']} for user {user_id}", flush=True)
+    except Exception as e:
+        print(f"[Supabase] Failed to save results: {e}", flush=True)
 
 
 @app.on_event("shutdown")
@@ -62,9 +117,9 @@ async def catch_exceptions_middleware(request, call_next):
         return await call_next(request)
     except Exception as exc:
         err_msg = f"Unhandled exception: {exc}\n{traceback.format_exc()}"
-        print(f"🔥 CRITICAL ERROR:\n{err_msg}")
+        print(f"CRITICAL ERROR:\n{err_msg}")
         logging.error(err_msg)
-        return {"error": str(exc), "traceback": traceback.format_exc()}
+        return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
 
 # --- CORS CONFIGURATION START ---
 app.add_middleware(
@@ -107,8 +162,8 @@ def read_root_api():
     return {"message": "Route 52 Backend is running!"}
 
 @router.post("/generate_plan")
-def generate_plan(request: PlanRequest):
-    print(f"\n📥 RECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
+def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
+    print(f"\nRECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request.preferences
     
     # 1. Geocode Address with Cache
@@ -141,12 +196,25 @@ def generate_plan(request: PlanRequest):
             fridge_items = f"{fridge_items}, {vision_items}"
     
     # 4. Generate Meal Plan
-    # Pass household_size so AI knows to scale ingredients
-    print(f"\n📦 FINAL FRIDGE LIST FOR MEAL PLANNER: {repr(fridge_items)}", flush=True)
+    # Fetch meals from Supabase (fall back to meals.json if DB unavailable)
+    print(f"\nFINAL FRIDGE LIST FOR MEAL PLANNER: {repr(fridge_items)}", flush=True)
+    try:
+        from db import db
+        raw_meals = db.get_meals()
+        db_meals = []
+        for m in raw_meals:
+            if isinstance(m.get("ingredients"), str):
+                m["ingredients"] = json.loads(m["ingredients"])
+            if isinstance(m.get("instructions"), str):
+                m["instructions"] = json.loads(m["instructions"])
+            db_meals.append(m)
+    except Exception as e:
+        print(f"[Supabase] Could not fetch meals from DB ({e}), falling back to meals.json", flush=True)
+        db_meals = None
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
         prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
-        prefs.health_issues, prefs.budget, prefs.household_size
+        prefs.health_issues, prefs.budget, prefs.household_size, meals=db_meals
     )
     
     if not ingredient_data:
@@ -308,7 +376,7 @@ def generate_plan(request: PlanRequest):
     if aldi_key:
         try:
             aldi_lat, aldi_lon = STORE_LOCATIONS.get(aldi_key, (lat, lon))
-            aldi_store_name, aldi_store_id, aldi_prices = aldi_pricing.price_all_aldi(
+            aldi_store_name, aldi_store_id, aldi_prices = price_all_aldi(
                 to_buy_quantities, aldi_lat, aldi_lon
             )
         except Exception as e:
@@ -641,6 +709,18 @@ def generate_plan(request: PlanRequest):
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]},
         "total_savings": round(sum(d["savings"] for d in applied_deals.values()), 2),
     }
+
+    # Persist to Supabase if user is authenticated
+    _save_results(
+        user_id=user_id, prefs=prefs, meal_plan=meal_plan,
+        shopping_list=formatted_shopping_list, route=optimal_route or [],
+        total_cost=res["total_cost"],
+        cheapest_store_name=cheapest_single_store_name or "",
+        cheapest_store_cost=cheapest_single_store_cost or 0,
+        total_time_minutes=res["total_time_minutes"],
+        total_savings=res["total_savings"],
+    )
+
     print(f"DEBUG SERVER: Sending benchmark {cheapest_single_store_name} to frontend", flush=True)
     return res
 

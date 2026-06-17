@@ -9,4 +9,4 @@ googlemaps
 shapely
 pillow
 cloakbrowser
-playwright
+supabase

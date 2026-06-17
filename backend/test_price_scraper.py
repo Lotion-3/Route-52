@@ -10,7 +10,7 @@ Run with: python test_price_scraper.py
 import re
 import time
 import random
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+from cloakbrowser import launch
 
 STORES = ["Walmart", "Kroger", "Aldi", "Whole Foods", "Target"]
 
@@ -88,7 +88,7 @@ def scrape_google_rich_snippet(page, query: str) -> str:
                 text = el.inner_text(timeout=2000)
                 if "$" in text:
                     return text
-        except PWTimeout:
+        except Exception:
             continue
         except Exception:
             continue
@@ -133,8 +133,7 @@ def main():
 
     all_results = {}
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+    browser = launch(headless=True)
         context = browser.new_context(
             # Mimic a real browser viewport and locale
             viewport={"width": 1280, "height": 800},

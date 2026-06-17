@@ -4,10 +4,7 @@ Bootstraps once, then hits 5 cities using each city's shopId.
 """
 import time, json, uuid, re, requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from playwright.sync_api import sync_playwright
-from playwright_stealth import Stealth
-
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
+from cloakbrowser import launch
 BASE_GQL   = "https://www.aldi.us/graphql"
 HASHES = {
     "DefaultShop":             "d389a8d33d63801f1ce5c4929fb181dd10c57b49c3a2dcb6a6baa44212e8e069",
@@ -40,17 +37,12 @@ TEST_ITEMS = [
 # ── Bootstrap ──────────────────────────────────────────────────────────────
 def bootstrap():
     cookies, qp, zone_id = {}, "", ""
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False, executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            viewport={"width": 1366, "height": 768}, locale="en-US",
-            user_agent=BASE_HEADERS["user-agent"],
-        )
-        page = ctx.new_page()
-        Stealth().apply_stealth_sync(page)
+    browser = launch(headless=False)
+    ctx = browser.new_context(
+        viewport={"width": 1366, "height": 768}, locale="en-US",
+        user_agent=BASE_HEADERS["user-agent"],
+    )
+    page = ctx.new_page()
 
         def on_req(req):
             nonlocal qp, zone_id

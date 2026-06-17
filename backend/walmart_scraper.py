@@ -19,8 +19,7 @@ import time
 import random
 from typing import Dict, Optional
 from urllib.parse import quote_plus
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-from playwright_stealth import Stealth
+from cloakbrowser import launch
 from cache_manager import cache
 
 PRICE_CACHE_TTL = 60 * 60 * 24  # 24 hours
@@ -96,7 +95,7 @@ def _load_walmart_next_data(page, query: str) -> Optional[dict]:
 
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=20000)
-    except PWTimeout:
+    except Exception:
         print(f"    [Walmart] Timeout loading page for {query!r}")
         return None
 
@@ -160,22 +159,17 @@ def fetch_walmart_prices(items: list[str]) -> Dict[str, Dict]:
     if not items_to_fetch:
         return results
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        context = browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            locale="en-US",
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-        )
-        page = context.new_page()
-        Stealth().apply_stealth_sync(page)
+    browser = launch(headless=True)
+    context = browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        locale="en-US",
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+    )
+    page = context.new_page()
 
         for item in items_to_fetch:
             print(f"  [Walmart] Searching {item!r}...")

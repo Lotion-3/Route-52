@@ -108,7 +108,6 @@ def is_instacart_retailer(store_name: str) -> bool:
 
 SESSION_TTL = 2 * 3600
 BASE_GQL = "https://www.instacart.com/graphql"
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
 _SESSION_CACHE = Path(__file__).parent / ".ic_session.json"
 
 HASHES = {
@@ -160,68 +159,57 @@ def _save_disk_session(cookies: dict, qp: str, zone_id: str) -> None:
 
 def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     """Open the given retailer's Instacart storefront and capture session data."""
-    from playwright.sync_api import sync_playwright
-    try:
-        from playwright_stealth import Stealth
-        _stealth = Stealth()
-    except ImportError:
-        _stealth = None
+    from cloakbrowser import launch
 
     cookies: dict = {}
     qp: str = ""
     zone_id: str = ""
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False, executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            viewport={"width": 1366, "height": 768}, locale="en-US",
-            user_agent=BASE_HEADERS["user-agent"],
-        )
-        page = ctx.new_page()
-        if _stealth:
-            _stealth.apply_stealth_sync(page)
+    browser = launch(headless=False)
+    ctx = browser.new_context(
+        viewport={"width": 1366, "height": 768}, locale="en-US",
+        user_agent=BASE_HEADERS["user-agent"],
+    )
+    page = ctx.new_page()
 
-        def on_req(req):
-            nonlocal qp, zone_id
-            if "graphql" not in req.url:
-                return
-            if not qp:
-                v = req.headers.get("x-ic-qp", "")
-                if v:
-                    qp = v
-            if "operationName=Items" in req.url and not zone_id:
-                try:
-                    import urllib.parse
-                    qs = urllib.parse.parse_qs(urllib.parse.urlparse(req.url).query)
-                    vv = json.loads(qs.get("variables", ["{}"])[0])
-                    z = vv.get("zoneId") or ""
-                    if z:
-                        zone_id = str(z)
-                except Exception:
-                    pass
-
-        page.on("request", on_req)
-        print(f"[IC] Bootstrapping session via {slug}...", flush=True)
-        page.goto(
-            f"https://www.instacart.com/store/{slug}/storefront",
-            wait_until="domcontentloaded", timeout=30000,
-        )
-        time.sleep(4)
-        for sel in ["button:has-text('Accept All')", "button:has-text('Accept')",
-                    "[aria-label='Close']"]:
+    def on_req(req):
+        nonlocal qp, zone_id
+        if "graphql" not in req.url:
+            return
+        if not qp:
+            v = req.headers.get("x-ic-qp", "")
+            if v:
+                qp = v
+        if "operationName=Items" in req.url and not zone_id:
             try:
-                el = page.locator(sel).first
-                if el.is_visible(timeout=1500):
-                    el.click(); time.sleep(1); break
+                import urllib.parse
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(req.url).query)
+                vv = json.loads(qs.get("variables", ["{}"])[0])
+                z = vv.get("zoneId") or ""
+                if z:
+                    zone_id = str(z)
             except Exception:
                 pass
-        page.keyboard.press("Escape")
-        time.sleep(8)
-        cookies = {c["name"]: c["value"] for c in ctx.cookies()}
-        browser.close()
+
+    page.on("request", on_req)
+    print(f"[IC] Bootstrapping session via {slug}...", flush=True)
+    page.goto(
+        f"https://www.instacart.com/store/{slug}/storefront",
+        wait_until="domcontentloaded", timeout=30000,
+    )
+    time.sleep(4)
+    for sel in ["button:has-text('Accept All')", "button:has-text('Accept')",
+                "[aria-label='Close']"]:
+        try:
+            el = page.locator(sel).first
+            if el.is_visible(timeout=1500):
+                el.click(); time.sleep(1); break
+        except Exception:
+            pass
+    page.keyboard.press("Escape")
+    time.sleep(8)
+    cookies = {c["name"]: c["value"] for c in ctx.cookies()}
+    browser.close()
 
     print(f"[IC] Session ready. cookies={len(cookies)}, qp={'yes' if qp else 'no'}, zoneId={zone_id!r}", flush=True)
     return cookies, qp, zone_id

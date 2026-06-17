@@ -554,7 +554,7 @@ if __name__ == "__main__":
     print(f"\n=== {name} ===")
     if not out:
         print("No prices — CloakBrowser unavailable or blocked. "
-              "Install with: pip install cloakbrowser playwright")
+              "Install with: pip install cloakbrowser")
     for ing, res in out.items():
         print(f"  {ing:18s} ${res.get('total_cost', 0):6.2f}  "
               f"{res.get('description', '')} ({res.get('size_str', '')})")

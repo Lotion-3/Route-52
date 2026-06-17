@@ -10,28 +10,19 @@ HASHES = {
 
 # Load session cookies from cache (set by aldi_direct.py bootstrap)
 # We'll reconstruct a session manually using what the previous run captured
-from playwright.sync_api import sync_playwright
-from playwright_stealth import Stealth
+from cloakbrowser import launch
 import time
-
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
 
 cookies_dict = {}
 qp_value = ""
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(
-        headless=False,
-        executable_path=OPERA_PATH,
-        args=["--disable-blink-features=AutomationControlled"],
-    )
-    ctx = browser.new_context(
-        viewport={"width": 1366, "height": 768},
-        locale="en-US",
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    )
-    page = ctx.new_page()
-    Stealth().apply_stealth_sync(page)
+browser = launch(headless=False)
+ctx = browser.new_context(
+    viewport={"width": 1366, "height": 768},
+    locale="en-US",
+    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+)
+page = ctx.new_page()
 
     def on_request(req):
         global qp_value

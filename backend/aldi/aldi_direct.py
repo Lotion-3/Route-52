@@ -18,15 +18,13 @@ import time
 import uuid
 from typing import Optional
 import requests
-from playwright.sync_api import sync_playwright
-from playwright_stealth import Stealth
+from cloakbrowser import launch
 from cache_manager import cache
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 BASE_GQL = "https://www.aldi.us/graphql"
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
 CACHE_TTL = 60 * 60 * 24   # 24 h
 
 HASHES = {
@@ -63,19 +61,13 @@ def _bootstrap_session() -> tuple[dict, str, str]:
     qp_value: str = ""
     zone_id: str = ""
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            locale="en-US",
-            user_agent=BASE_HEADERS["user-agent"],
-        )
-        page = ctx.new_page()
-        Stealth().apply_stealth_sync(page)
+    browser = launch(headless=False)
+    ctx = browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        locale="en-US",
+        user_agent=BASE_HEADERS["user-agent"],
+    )
+    page = ctx.new_page()
 
         def on_request(req):
             nonlocal qp_value, zone_id

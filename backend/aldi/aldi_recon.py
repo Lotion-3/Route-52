@@ -11,8 +11,7 @@ Strategy:
 
 import json
 import time
-from playwright.sync_api import sync_playwright
-from playwright_stealth import Stealth
+from cloakbrowser import launch
 
 QUERY = "bananas"
 SEARCH_URL = f"https://www.aldi.us/store/aldi/s?query={QUERY}"
@@ -61,24 +60,18 @@ def dump_all_clickables(page, label):
             except Exception:
                 pass
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(
-        headless=False,
-        executable_path=r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe",
-        args=["--disable-blink-features=AutomationControlled"],
-    )
-    context = browser.new_context(
-        viewport={"width": 1366, "height": 768},
-        locale="en-US",
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-    )
-    page = context.new_page()
-    Stealth().apply_stealth_sync(page)
-    page.on("response", handle_response)
+browser = launch(headless=False)
+context = browser.new_context(
+    viewport={"width": 1366, "height": 768},
+    locale="en-US",
+    user_agent=(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+)
+page = context.new_page()
+page.on("response", handle_response)
 
     print(f"Step 1: Loading {SEARCH_URL}")
     page.goto(SEARCH_URL, wait_until="domcontentloaded", timeout=30000)

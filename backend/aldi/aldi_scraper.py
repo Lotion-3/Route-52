@@ -23,13 +23,11 @@ import re
 import time
 import random
 from typing import Dict, List, Optional
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-from playwright_stealth import Stealth
+from cloakbrowser import launch
 from cache_manager import cache
 
 PRICE_CACHE_TTL = 60 * 60 * 24  # 24 hours
 ALDI_SEARCH_URL = "https://www.aldi.us/store/aldi/s?query={query}"
-OPERA_PATH = r"C:\Users\laksh\AppData\Local\Programs\Opera\opera.exe"
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +118,7 @@ def _load_aldi_items(page, query: str) -> List[Dict]:
     url = ALDI_SEARCH_URL.format(query=query.replace(" ", "+"))
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=25000)
-    except PWTimeout:
+    except Exception:
         print(f"    [ALDI] Timeout loading {query!r}")
         page.remove_listener("response", on_response)
         return captured
@@ -169,23 +167,17 @@ def fetch_aldi_prices(items: list) -> Dict[str, Dict]:
     if not to_fetch:
         return results
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            executable_path=OPERA_PATH,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        context = browser.new_context(
-            viewport={"width": 1366, "height": 768},
-            locale="en-US",
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-        )
-        page = context.new_page()
-        Stealth().apply_stealth_sync(page)
+    browser = launch(headless=False)
+    context = browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        locale="en-US",
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+    )
+    page = context.new_page()
 
         for item in to_fetch:
             print(f"  [ALDI] Searching {item!r}...")

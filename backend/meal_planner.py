@@ -2,7 +2,7 @@ import json
 import os
 import random
 from collections import defaultdict
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 
 _MEALS_FILE = os.path.join(os.path.dirname(__file__), "meals.json")
 _DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -68,11 +68,12 @@ def create_weekly_meal_plan(
     health_issues: str = "",
     budget: float = 150.0,
     household_size: int = 1,
+    meals: Optional[List[Dict]] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
 
     print(f"[MealPlanner] {days}d × {meals_per_day} meals, household={household_size}", flush=True)
 
-    all_meals = _load_meals()
+    all_meals = meals if meals is not None else _load_meals()
     filtered = _filter_meals(all_meals, diet_restrictions, "") or all_meals
     selected = _select_meals(filtered, days, meals_per_day)
 

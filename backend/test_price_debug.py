@@ -4,21 +4,14 @@ Saves screenshot and dumps price lines.
 """
 import time
 import os
-from playwright.sync_api import sync_playwright
+from cloakbrowser import launch
 
 QUERY = "walmart banana price"
 
 
-def run_search(p, engine: str, use_real_chrome: bool):
-    launch_kwargs = {
-        "headless": True,
-        "args": ["--disable-blink-features=AutomationControlled"],
-    }
-    if use_real_chrome:
-        launch_kwargs["channel"] = "chrome"
-
+def run_search(engine: str):
     try:
-        browser = p.chromium.launch(**launch_kwargs)
+        browser = launch(headless=True)
     except Exception as e:
         print(f"  Launch failed ({engine}): {e}")
         return
@@ -63,19 +56,18 @@ def run_search(p, engine: str, use_real_chrome: bool):
     browser.close()
 
 
-with sync_playwright() as p:
-    print("=" * 60)
-    print(f"Query: {QUERY!r}")
-    print("=" * 60)
+print("=" * 60)
+print(f"Query: {QUERY!r}")
+print("=" * 60)
 
-    # 1. Bing with bundled Chromium (fastest, no Chrome needed)
-    print("\n--- Bing + Chromium ---")
-    run_search(p, "bing", use_real_chrome=False)
+# 1. Bing with CloakBrowser
+print("\n--- Bing ---")
+run_search("bing")
 
-    # 2. DuckDuckGo with bundled Chromium
-    print("\n--- DuckDuckGo + Chromium ---")
-    run_search(p, "ddg", use_real_chrome=False)
+# 2. DuckDuckGo with CloakBrowser
+print("\n--- DuckDuckGo ---")
+run_search("ddg")
 
-    # 3. Google with real Chrome (if installed)
-    print("\n--- Google + Real Chrome ---")
-    run_search(p, "google", use_real_chrome=True)
+# 3. Google with CloakBrowser
+print("\n--- Google ---")
+run_search("google")
