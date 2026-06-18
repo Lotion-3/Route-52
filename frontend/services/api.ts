@@ -1,11 +1,35 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// Backend port — must match localrun.bat → PORT=8002
+const BACKEND_PORT = 8002;
 
 // Production backend URL (deployed on Render)
 const PRODUCTION_API_URL = 'https://route52.onrender.com';
 
-// Local development URL (must match the port in localrun.bat → PORT=8002)
-const LOCAL_API_URL = 'http://localhost:8002';
-const LAN_IP = '192.168.1.138'; // Found via ipconfig
+// Local development URL (for the browser running on the same machine)
+const LOCAL_API_URL = `http://localhost:${BACKEND_PORT}`;
+
+// Last-resort LAN IP if the dev-server host can't be read (rarely hit).
+const FALLBACK_LAN_IP = '192.168.1.138';
+
+// Auto-detect the dev machine's LAN IP from the Expo dev-server host. A physical
+// device already connected to that IP to download the JS bundle, so it's the
+// correct, reachable address for the backend on ANY network — no per-network
+// hardcoding needed.
+const devServerLanIp = (): string => {
+    const hostUri =
+        Constants.expoConfig?.hostUri ??
+        (Constants.expoGoConfig as any)?.debuggerHost ??
+        (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost ??
+        (Constants.manifest as any)?.debuggerHost ??
+        '';
+    // hostUri looks like "192.168.1.138:8081" — keep the host, drop the port.
+    const host = String(hostUri).split(':')[0];
+    return host || FALLBACK_LAN_IP;
+};
+
+const lanApiUrl = () => `http://${devServerLanIp()}:${BACKEND_PORT}`;
 
 // Which backend to talk to is chosen by the launch script:
 //   localrun.bat → EXPO_PUBLIC_API_TARGET=local  (this machine's backend on :8002)
@@ -24,7 +48,7 @@ const localUrl = () => {
     ) {
         return LOCAL_API_URL;
     }
-    return `http://${LAN_IP}:8002`;
+    return lanApiUrl();
 };
 
 const getApiUrl = () => {
@@ -41,7 +65,7 @@ const getApiUrl = () => {
         return LOCAL_API_URL;
     }
     // Default for Android / iOS / physical devices
-    return `http://${LAN_IP}:8002`;
+    return lanApiUrl();
 };
 
 const DEV_API_URL = getApiUrl();
