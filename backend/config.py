@@ -34,7 +34,7 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter" 
 
 # --- STORE SEARCH CONFIG ---
-STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Whole Foods', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco']
+STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco']
 
 # Keywords to exclude from store results (e.g. specialized departments)
 EXCLUDED_STORE_TERMS = [
@@ -99,7 +99,6 @@ STORE_TIME_MULTIPLIERS: Dict[str, float] = {
     "Trader Joe's": 0.9, 
     "Kroger": 1.0,       
     "Meijer": 1.1,       
-    "Whole Foods": 1.2,  
     "Walmart": 1.2,      
     "Costco": 1.5         
 }
@@ -119,7 +118,7 @@ RECIPES_CSV = "RAW_recipes.csv"
 # --- CITY-TO-STATE MAPPING ---
 STORE_CITY_MAPPING = {
     "Kroger": "Indianapolis", "Walmart": "Indianapolis", "Meijer": "Indianapolis",
-    "Target": "Indianapolis", "Aldi": "Indianapolis", "Whole Foods": "Indianapolis",
+    "Target": "Indianapolis", "Aldi": "Indianapolis",
     "Trader Joe's": "Indianapolis", "Costco": "Indianapolis", "Safeway": "Indianapolis",
     "Publix": "Indianapolis", "Giant": "Indianapolis", "Food Lion": "Indianapolis",
     "Harris Teeter": "Indianapolis", "Hy-Vee": "Indianapolis", "H-E-B": "Indianapolis",

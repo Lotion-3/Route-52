@@ -140,6 +140,19 @@ def run():
         total_priced += inserted
         print(f"priced {len(prices)} ingredients, upserted {inserted} rows", flush=True)
 
+    # 4. Scrape coupons for configured zipcodes (on-demand via endpoints also does this)
+    coupon_zipcodes = os.environ.get("COUPON_ZIPCODES", "").strip()
+    if coupon_zipcodes:
+        import coupon_scraper
+        for z in coupon_zipcodes.split(","):
+            z = z.strip()
+            if z:
+                try:
+                    count = coupon_scraper.fetch_and_store(z)
+                    print(f"  Coupons for {z}: {count} stored", flush=True)
+                except Exception as e:
+                    print(f"  Coupons for {z}: FAILED ({e})", flush=True)
+
     elapsed = time.time() - start
     print(f"\nDone in {elapsed:.1f}s — {total_priced} prices written, {total_failed} stores failed.")
 

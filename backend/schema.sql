@@ -149,5 +149,33 @@ CREATE POLICY "Users delete own routes" ON shopping_routes
         auth.uid() = (SELECT user_id FROM meal_plans WHERE id = plan_id)
     );
 
+-- 7. Coupons (weekly flyer / digital coupon deals per postal code)
+CREATE TABLE coupons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    price DOUBLE PRECISION NOT NULL,
+    qty INTEGER DEFAULT 1,
+    brand TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    image_url TEXT DEFAULT '',
+    valid_from TIMESTAMPTZ,
+    valid_to TIMESTAMPTZ,
+    keywords TEXT[] DEFAULT '{}',
+    postal_code TEXT NOT NULL,
+    scraped_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coupons_postal ON coupons(postal_code);
+CREATE INDEX IF NOT EXISTS idx_coupons_merchant ON coupons(merchant);
+
+-- 8. Add coupon-source columns to prices
+ALTER TABLE prices ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'scraped';
+ALTER TABLE prices ADD COLUMN IF NOT EXISTS valid_to TIMESTAMPTZ;
+
+-- RLS for coupons (public read, service_role write)
+ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read coupons" ON coupons FOR SELECT USING (true);
+
 -- Allow the service_role (backend server) full access to all tables
 -- (This is the default for service_role; RLS applies to anon/key roles)

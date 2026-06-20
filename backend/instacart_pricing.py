@@ -15,7 +15,7 @@ prices format (same as kroger_async):
 Retailers covered (via RETAILER_REGISTRY):
     Publix, Safeway, Albertsons, Target, Meijer, Wegmans, H-E-B, Sprouts,
     Giant Food, Giant Eagle, Stop & Shop, ShopRite, Costco, Jewel-Osco,
-    Hy-Vee, Food Lion, Winn-Dixie, Whole Foods, Hannaford, Schnucks,
+    Hy-Vee, Food Lion, Winn-Dixie, Hannaford, Schnucks,
     Vons, Pavilions, Tom Thumb, Randalls, Shaw's, and more.
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ RETAILER_REGISTRY: dict[str, str] = {
     "stop & shop":        "stop-and-shop",
     "stop and shop":      "stop-and-shop",
     "shop rite":          "shoprite",
-    "whole foods":        "whole-foods-market",
+
     "stater bros":        "stater-bros-markets",
     "harris teeter":      "harris-teeter",
     "star market":        "star-market",

@@ -19,7 +19,7 @@ from aldi.aldi_pricing import price_all_aldi, is_aldi_store
 import kingsoopers_pricing
 from kingsoopers_pricing import is_king_soopers_store
 import instacart_pricing
-from instacart_pricing import get_instacart_slug, is_instacart_retailer
+from instacart_pricing import get_instacart_slug
 import walmart_pricing
 from walmart_pricing import is_walmart_store
 import trader_joes_pricing
@@ -28,7 +28,8 @@ import meijer_pricing
 from meijer_pricing import is_meijer_store
 import target_pricing
 from target_pricing import is_target_store
-import flipp_coupons
+import matcher
+import coupon_scraper
 from kroger_pricing import aggregate_ingredients
 from geopy.geocoders import Nominatim
 
@@ -66,7 +67,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 def _save_results(user_id: str | None, prefs: "UserPreferences", meal_plan: list,
                   shopping_list: list, route: list, total_cost: float,
                   cheapest_store_name: str, cheapest_store_cost: float,
-                  total_time_minutes: float, total_savings: float) -> None:
+                  total_time_minutes: float) -> None:
     """Persist the generated plan and route to Supabase when a user is authenticated."""
     if not user_id:
         return
@@ -97,6 +98,44 @@ def _save_results(user_id: str | None, prefs: "UserPreferences", meal_plan: list
         print(f"[Supabase] Saved plan {plan['id']} for user {user_id}", flush=True)
     except Exception as e:
         print(f"[Supabase] Failed to save results: {e}", flush=True)
+
+
+# ── Coupon-first pricing helpers ──────────────────────────────────────────
+STORE_MERCHANT_MAP = {
+    "kroger": "kroger", "king soopers": "kroger", "aldi": "aldi",
+    "walmart": "walmart", "target": "target", "trader joe": "trader joe",
+    "meijer": "meijer", "costco": "costco",
+}
+
+def _resolve_merchant(store_key: str) -> str:
+    lower = store_key.lower()
+    for keyword, merchant in STORE_MERCHANT_MAP.items():
+        if keyword in lower:
+            return merchant
+    return lower
+
+def _overlay_coupon_prices(store_key: str, price_db: dict[str, dict],
+                           postal: str, to_buy: dict[str, dict]) -> dict[str, str]:
+    """Check coupons for this store and overlay coupon prices on price_db.
+    Returns a dict {item_key: source} for items that had coupon matches.
+    """
+    from db import db
+    merchant = _resolve_merchant(store_key)
+    coupons = db.get_coupons_by_postal(postal, merchant=merchant)
+    if not coupons:
+        return {}
+
+    sources = {}
+    for ing_name, data in to_buy.items():
+        key = ing_name.lower().strip()
+        match = matcher.match_item_to_coupon(ing_name, coupons)
+        if match and match.get("price", 0) > 0:
+            unit_price = match["price"]
+            qty = float(data.get("qty", 1) or 1)
+            price_db[key] = (unit_price / qty) if qty else unit_price
+            sources[key] = "coupon"
+            print(f"  [Coupon] {ing_name}: ${unit_price:.2f} at {store_key}", flush=True)
+    return sources
 
 
 @app.on_event("shutdown")
@@ -152,6 +191,17 @@ class UserPreferences(BaseModel):
 
 class PlanRequest(BaseModel):
     preferences: UserPreferences
+
+class PriceListItem(BaseModel):
+    name: str
+    qty: float = 1.0
+    unit: str = "ct"
+
+class PriceListRequest(BaseModel):
+    address: str
+    shopping_time_hours: float = 3.0
+    items: List[PriceListItem]
+    has_costco_card: bool = False
 
 @app.get("/")
 def read_root():
@@ -591,23 +641,20 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     location_names = [location_names[i] for i in keep_indices]
     durations_matrix = [[durations_matrix[r][c] for c in keep_indices] for r in keep_indices]
 
-    # Step 7b: Apply real Flipp deals (weekly flyers + digital coupons) to the
-    # price database BEFORE optimization, so savings affect both the cheapest-
-    # route comparison and the displayed prices.
-    applied_deals: dict = {}
-    try:
-        postal = instacart_pricing._get_postal(lat, lon)
-        if postal:
-            flyers, coupons = flipp_coupons.fetch_deals(postal)
-            if flyers or coupons:
-                applied_deals = flipp_coupons.apply_deals(
-                    price_database, to_buy_quantities, flyers, coupons
-                )
-                print(f"[Flipp] Applied {len(applied_deals)} real deals to the price database.", flush=True)
-        else:
-            print("[Flipp] No postal code for this location — skipping deals.", flush=True)
-    except Exception as e:
-        print(f"[Flipp] Deal application failed ({e}).", flush=True)
+    # Step 7b: Overlay coupon prices on top of scraped prices.
+    # Coupon prices replace scraped prices when matched.
+    postal = instacart_pricing._get_postal(lat, lon)
+    coupon_sources: dict[str, dict[str, str]] = {}
+    if postal:
+        try:
+            from coupon_scraper import fetch_and_store
+            fetch_and_store(postal)
+        except Exception as e:
+            print(f"[Coupon] Fetch/store failed ({e}), using existing data.", flush=True)
+        for sk in list(price_database.keys()):
+            sources = _overlay_coupon_prices(sk, price_database, postal, to_buy_quantities)
+            if sources:
+                coupon_sources[sk] = sources
 
     config.MAX_TIME_SECONDS = MAX_TIME_SECS
     optimal_route, item_cost, total_time_seconds, item_assignments, cheapest_single_store_cost, cheapest_single_store_name = optimizer.find_optimal_store(
@@ -647,18 +694,6 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                     item_entry["size_str"] = detail["size_str"]
                     item_entry["units_to_buy"] = detail["units_to_buy"]
 
-                # Attach a real Flipp deal if one was applied to this line.
-                deal = applied_deals.get((store, lookup_key))
-                if deal:
-                    orig_unit = deal["old_unit"]
-                    item_entry["original_price"] = round(orig_unit * item_qty, 2)
-                    item_entry["coupon"] = {
-                        "type": deal["type"],
-                        "label": deal["label"],
-                        "savings": deal["savings"],
-                        "image_url": deal.get("image_url", ""),
-                        "valid_to": deal.get("valid_to", ""),
-                    }
                 store_items.append(item_entry)
             
             store_entry = {
@@ -707,7 +742,6 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         "total_time_minutes": total_time_seconds / 60 if total_time_seconds else 0,
         "route": optimal_route if optimal_route else [],
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]},
-        "total_savings": round(sum(d["savings"] for d in applied_deals.values()), 2),
     }
 
     # Persist to Supabase if user is authenticated
@@ -718,11 +752,332 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         cheapest_store_name=cheapest_single_store_name or "",
         cheapest_store_cost=cheapest_single_store_cost or 0,
         total_time_minutes=res["total_time_minutes"],
-        total_savings=res["total_savings"],
     )
 
     print(f"DEBUG SERVER: Sending benchmark {cheapest_single_store_name} to frontend", flush=True)
     return res
+
+@router.post("/price_list")
+def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_current_user)):
+    print(f"\nRECEIVED PRICE LIST REQUEST (Server v{SERVER_VERSION})", flush=True)
+    prefs = request
+
+    # 1. Geocode Address with Cache
+    from cache_manager import cache
+    cache_key = {"func": "geocode", "address": prefs.address}
+    cached_loc = cache.get(cache_key)
+    if cached_loc:
+        print(f"Using cached location for: {prefs.address}")
+        user_loc = (cached_loc['lat'], cached_loc['lon'])
+    else:
+        geolocator = Nominatim(user_agent="basket_buddy_backend")
+        location = geolocator.geocode(prefs.address)
+        if not location:
+            raise HTTPException(status_code=400, detail="Address not found")
+        user_loc = (location.latitude, location.longitude)
+        cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
+
+    # 2. Build to_buy_quantities from the items list
+    to_buy_quantities = {}
+    for item in prefs.items:
+        to_buy_quantities[item.name] = {"qty": item.qty, "unit": item.unit}
+
+    # 3. Find Stores & Optimize (same logic as generate_plan)
+    sh_hours = prefs.shopping_time_hours
+    if sh_hours > 12:
+        sh_hours = sh_hours / 60.0
+    MAX_TIME_SECS = sh_hours * 3600
+    ONE_WAY_TIME_SECONDS = int(MAX_TIME_SECS / 4)
+    isochrone_geometry = geo_utils.get_travel_isochrone(user_loc, ONE_WAY_TIME_SECONDS)
+    if not isochrone_geometry:
+        print("[Server] ORS isochrone failed — using 15 km bounding-box fallback.", flush=True)
+        lat0, lon0 = user_loc
+        D = 0.135
+        isochrone_geometry = {
+            "type": "Polygon",
+            "coordinates": [[
+                [lon0 - D, lat0 - D], [lon0 + D, lat0 - D],
+                [lon0 + D, lat0 + D], [lon0 - D, lat0 + D],
+                [lon0 - D, lat0 - D],
+            ]]
+        }
+
+    STORE_LOCATIONS, STORE_ADDRESSES = geo_utils.find_eligible_stores_google(isochrone_geometry, user_loc)
+    if not prefs.has_costco_card:
+        STORE_LOCATIONS = {k: v for k, v in STORE_LOCATIONS.items() if "costco" not in k.lower()}
+        STORE_ADDRESSES = {k: STORE_ADDRESSES[k] for k in STORE_LOCATIONS if k in STORE_ADDRESSES}
+
+    STORE_LOCATIONS_RAW, STORE_ADDRESSES_RAW = geo_utils.filter_unique_closest_chains(STORE_LOCATIONS, STORE_ADDRESSES, user_loc)
+    STORE_LOCATIONS = {k.strip(): v for k, v in STORE_LOCATIONS_RAW.items()}
+    STORE_ADDRESSES = {k.strip(): v for k, v in STORE_ADDRESSES_RAW.items()}
+
+    if len(STORE_LOCATIONS) > config.MAX_STORES_TO_USE:
+        distances = [( (lat - user_loc[0])**2 + (lon - user_loc[1])**2, name, (lat, lon) ) for name, (lat, lon) in STORE_LOCATIONS.items()]
+        distances.sort(key=lambda x: x[0])
+        STORE_LOCATIONS = {name: loc for _, name, loc in distances[:config.MAX_STORES_TO_USE]}
+        STORE_ADDRESSES = {name: STORE_ADDRESSES[name] for name in STORE_LOCATIONS}
+
+    all_coords = [user_loc] + list(STORE_LOCATIONS.values())
+    location_names = ["Start"] + list(STORE_LOCATIONS.keys())
+    matrix_response = geo_utils.get_distance_matrix(all_coords)
+    durations_matrix = geo_utils.process_matrix_result(matrix_response)
+
+    # 4. Price each store (same coupon-first pipeline)
+    lat, lon = user_loc
+    price_database: dict = {k.strip(): {} for k in STORE_LOCATIONS.keys()}
+    real_priced_keys: set = set()
+    product_details: dict = {}
+    costco_estimates: dict = {}
+
+    shopping_list = [
+        {"name": name, "qty": float(data.get("qty", 1) or 1)}
+        for name, data in to_buy_quantities.items()
+    ]
+
+    # --- Kroger ---
+    kroger_key = next((k for k in price_database if is_kroger_banner(k)), None)
+    if kroger_key:
+        try:
+            _, _, kroger_prices = asyncio.run(kroger_async.price_all_async(to_buy_quantities, lat, lon))
+        except Exception as e:
+            kroger_prices = {}
+        if kroger_prices:
+            for ing_name, result in kroger_prices.items():
+                total_cost = result.get("total_cost", 0.0)
+                qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                key = ing_name.lower().strip()
+                price_database[kroger_key][key] = total_cost / qty
+                if result.get("description"):
+                    product_details[(kroger_key, key)] = {
+                        "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                        "size_str": result.get("size_str", ""),
+                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                    }
+            real_priced_keys.add(kroger_key)
+
+    # --- ALDI, Meijer, Walmart, Target, Trader Joe's, Costco, Instacart fallback ---
+    # (same blocks as generate_plan but without the King Soopers King Soopers fallback)
+    for store_key in list(price_database.keys()):
+        if store_key in real_priced_keys:
+            continue
+        if is_kroger_banner(store_key):
+            continue
+        if is_aldi_store(store_key):
+            try:
+                _, _, aldi_prices = price_all_aldi(to_buy_quantities, lat, lon)
+            except Exception:
+                aldi_prices = {}
+            if aldi_prices:
+                for ing_name, result in aldi_prices.items():
+                    total_cost = result.get("total_cost", 0.0)
+                    qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                    key = ing_name.lower().strip()
+                    price_database[store_key][key] = total_cost / qty if qty else total_cost
+                    if result.get("description"):
+                        product_details[(store_key, key)] = {
+                            "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                            "size_str": result.get("size_str", ""),
+                            "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                        }
+                real_priced_keys.add(store_key)
+            continue
+        if is_meijer_store(store_key):
+            try:
+                _, _, meijer_prices = meijer_pricing.price_all_meijer(to_buy_quantities, lat, lon)
+            except Exception:
+                meijer_prices = {}
+            if meijer_prices:
+                for ing_name, result in meijer_prices.items():
+                    total_cost = result.get("total_cost", 0.0)
+                    qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                    key = ing_name.lower().strip()
+                    price_database[store_key][key] = total_cost / qty
+                    if result.get("description"):
+                        product_details[(store_key, key)] = {
+                            "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                            "size_str": result.get("size_str", ""),
+                            "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                        }
+                real_priced_keys.add(store_key)
+            continue
+        if is_trader_joes_store(store_key):
+            try:
+                _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
+            except Exception:
+                tj_prices = {}
+            if tj_prices:
+                for ing_name, result in tj_prices.items():
+                    total_cost = result.get("total_cost", 0.0)
+                    qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                    key = ing_name.lower().strip()
+                    price_database[store_key][key] = total_cost / qty
+                    if result.get("description"):
+                        product_details[(store_key, key)] = {
+                            "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                            "size_str": result.get("size_str", ""),
+                            "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                        }
+                real_priced_keys.add(store_key)
+            continue
+        if is_target_store(store_key):
+            try:
+                _, _, tg_prices = target_pricing.price_all_target(to_buy_quantities, lat, lon)
+                if tg_prices:
+                    for ing_name, result in tg_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+            except Exception:
+                pass
+        if is_walmart_store(store_key):
+            try:
+                _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, lat, lon)
+                if wm_prices:
+                    for ing_name, result in wm_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+            except Exception:
+                pass
+        if "costco" in store_key.lower():
+            try:
+                _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(to_buy_quantities, lat, lon)
+                if cc_prices:
+                    for ing_name, result in cc_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    if cc_meta.get("is_estimate"):
+                        costco_estimates[store_key] = {
+                            "distance_km": cc_meta.get("distance_km"),
+                            "store": cc_meta.get("store", ""),
+                        }
+            except Exception:
+                pass
+            continue
+        slug = get_instacart_slug(store_key)
+        if slug:
+            try:
+                _, _, ic_prices = instacart_pricing.price_all_instacart(to_buy_quantities, lat, lon, slug)
+                if ic_prices:
+                    for ing_name, result in ic_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+            except Exception:
+                pass
+
+    unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
+    for k in unpriced:
+        del price_database[k]
+    if not price_database:
+        raise HTTPException(status_code=503, detail="No stores with real pricing found in your area.")
+
+    priced_set = set(price_database.keys())
+    keep_indices = [i for i, n in enumerate(location_names) if n == "Start" or n in priced_set]
+    location_names = [location_names[i] for i in keep_indices]
+    durations_matrix = [[durations_matrix[r][c] for c in keep_indices] for r in keep_indices]
+
+    # Coupon overlay
+    postal = instacart_pricing._get_postal(lat, lon)
+    if postal:
+        try:
+            from coupon_scraper import fetch_and_store
+            fetch_and_store(postal)
+        except Exception:
+            pass
+        for sk in list(price_database.keys()):
+            _overlay_coupon_prices(sk, price_database, postal, to_buy_quantities)
+
+    config.MAX_TIME_SECONDS = MAX_TIME_SECS
+    optimal_route, item_cost, total_time_seconds, item_assignments, cheapest_single_store_cost, cheapest_single_store_name = optimizer.find_optimal_store(
+        durations_matrix, price_database, location_names, shopping_list
+    )
+
+    formatted_shopping_list = []
+    if optimal_route:
+        for store_raw in optimal_route:
+            store = store_raw.strip()
+            if store == "Start":
+                continue
+            items = item_assignments.get(store_raw, [])
+            store_items = []
+            for item_data in items:
+                item_name = item_data["name"]
+                item_qty = item_data["qty"]
+                lookup_key = item_name.lower().strip()
+                store_prices = price_database.get(store, {})
+                unit_price = store_prices.get(lookup_key, 0.0)
+                total_item_price = unit_price * item_qty
+                item_entry = {"name": item_name, "qty": item_qty, "price": total_item_price}
+                detail = product_details.get((store, lookup_key))
+                if detail:
+                    item_entry["product_name"] = detail["product_name"]
+                    item_entry["size_str"] = detail["size_str"]
+                    item_entry["units_to_buy"] = detail["units_to_buy"]
+                store_items.append(item_entry)
+            store_entry = {
+                "store": store,
+                "address": STORE_ADDRESSES.get(store, ""),
+                "coordinates": {"lat": STORE_LOCATIONS[store][0], "lng": STORE_LOCATIONS[store][1]},
+                "items": store_items,
+            }
+            est = costco_estimates.get(store)
+            if est:
+                km = est.get("distance_km")
+                store_entry["estimated"] = True
+                store_entry["pricing_note"] = (
+                    f"Estimated — local Costco isn't on Instacart, so prices are from the "
+                    f"nearest covered Costco (~{int(km)} km away). Costco prices are ~national."
+                    if km else "Estimated from the nearest covered Costco."
+                )
+            formatted_shopping_list.append(store_entry)
+
+    res = {
+        "shopping_list": formatted_shopping_list,
+        "total_cost": item_cost if item_cost != float('inf') else 0,
+        "cheapest_single_store_cost": cheapest_single_store_cost if cheapest_single_store_cost != float('inf') else 0,
+        "cheapest_single_store_name": cheapest_single_store_name,
+        "total_time_minutes": total_time_seconds / 60 if total_time_seconds else 0,
+        "route": optimal_route if optimal_route else [],
+        "user_location": {"lat": user_loc[0], "lng": user_loc[1]},
+    }
+    return res
+
 
 @router.post("/optimize_shopping")
 def optimize_shopping_route(data: Dict):
