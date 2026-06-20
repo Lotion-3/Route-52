@@ -25,7 +25,7 @@ from typing import Optional
 
 import requests
 
-from kroger_pricing import find_best_purchase
+from kroger_pricing import find_best_purchase, _kw_matches
 from kroger_search_map import get_all_terms
 
 # ---------------------------------------------------------------------------
@@ -321,6 +321,52 @@ def _to_kroger_format(prod: dict) -> Optional[dict]:
 # Search + price helpers
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Relevance filter — keeps the loose word-overlap search from accepting the
+# wrong FORM of a staple (e.g. "Garlic Powder" for "garlic bulb", "Pitted
+# Olives" for "olive oil", "Corn Muffin Mix" for "canned corn"). Kept local so
+# ALDI stays cloakbrowser-independent; mirrors instacart_pricing._is_relevant
+# but adds the qualifier/derivative-noun cases seen in ALDI's catalog.
+# ---------------------------------------------------------------------------
+_NONFOOD = (
+    "wax", "scent", "candle", "soap", "lotion", "shampoo", "detergent",
+    "air freshener", "perfume", "deodorant", "lip balm",
+)
+
+# Processing/packaging words signalling a form the query didn't ask for.
+# Rejected only when the query itself doesn't contain the word (so "trail mix"
+# still matches "mix", "chili powder" still matches "powder").
+_QUALIFIERS = (
+    "powder", "powdered", "spray", "mix", "muffin", "sauce", "soup",
+    "dressing", "wafer", "bread", "chips", "dried", "freeze-dried",
+    "dehydrated", "flavored", "candied", "pickled", "no-stick",
+    "non-stick", "nonstick",
+)
+
+# Derivative nouns: when the query names one, the product MUST contain it too —
+# "olive oil" must be oil (not olives), "vanilla extract" must be extract,
+# "chicken broth" must be broth (not cream-of-chicken soup).
+_ESSENTIAL_NOUNS = (
+    "oil", "extract", "broth", "stock", "vinegar", "paste", "juice", "syrup",
+)
+
+
+def _is_relevant(name_lower: str, query_lower: str) -> bool:
+    """True if a product name is a plausible match for the search query."""
+    if any(bad in name_lower for bad in _NONFOOD):
+        return False
+    query_words = set(query_lower.split())
+    # Substring check on the query (not word-set) so compound queries like
+    # "breadcrumbs" still tolerate a "bread" qualifier.
+    for q in _QUALIFIERS:
+        if q not in query_lower and _kw_matches(q, name_lower):
+            return False
+    for noun in _ESSENTIAL_NOUNS:
+        if noun in query_words and not _kw_matches(noun, name_lower):
+            return False
+    return True
+
+
 def _search_and_fetch(
     query: str,
     shop_id: str,
@@ -365,12 +411,15 @@ def _search_and_fetch(
     }, session)
     products = d2.get("items") or []
 
-    query_words = set(query.lower().split())
+    query_low = query.lower()
+    query_words = set(query_low.split())
     results = []
     for prod in products:
         name = (prod.get("name") or "").lower()
         name_words = set(name.split())
         if not any(qw in nw or nw in qw for qw in query_words for nw in name_words):
+            continue
+        if not _is_relevant(name, query_low):
             continue
         fmt = _to_kroger_format(prod)
         if fmt:
