@@ -224,17 +224,47 @@ class PrewarmRequest(BaseModel):
 
 
 def _geocode_address(address: str):
-    """Geocode an address to (lat, lon), using the shared geocode cache."""
+    """Geocode an address to (lat, lon), using the shared geocode cache.
+
+    Google is tried FIRST because it's the same source as the /autocomplete the
+    user picked their address from — so anything selectable resolves. Nominatim
+    (OpenStreetMap) is only a fallback: it's missing many exact US street
+    addresses (e.g. it returns None for "5530 Pine Valley Drive, Zanesville, OH"
+    that Google resolves fine), which previously 400'd the whole plan request.
+    """
     from cache_manager import cache
+    address = (address or "").strip()
+    if not address:
+        return None
     cache_key = {"func": "geocode", "address": address}
     cached_loc = cache.get(cache_key)
     if cached_loc:
         return cached_loc['lat'], cached_loc['lon']
-    location = Nominatim(user_agent="basket_buddy_backend").geocode(address)
-    if not location:
+
+    lat = lon = None
+    # Primary: Google (near-complete US coverage; matches the autocomplete source).
+    try:
+        if getattr(config, "GOOGLE_MAPS_API_KEY", None):
+            import googlemaps
+            res = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY).geocode(address)
+            if res:
+                g = res[0]["geometry"]["location"]
+                lat, lon = g["lat"], g["lng"]
+    except Exception as e:
+        print(f"[Geocode] Google failed ({repr(e)[:80]}), trying Nominatim.", flush=True)
+    # Fallback: Nominatim (OSM).
+    if lat is None:
+        try:
+            location = Nominatim(user_agent="basket_buddy_backend").geocode(address, timeout=10)
+            if location:
+                lat, lon = location.latitude, location.longitude
+        except Exception as e:
+            print(f"[Geocode] Nominatim failed ({repr(e)[:80]}).", flush=True)
+
+    if lat is None:
         return None
-    cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
-    return location.latitude, location.longitude
+    cache.set(cache_key, {'lat': lat, 'lon': lon})
+    return lat, lon
 
 
 def _warm_chain(name: str, ensure_fn) -> bool:
@@ -376,23 +406,12 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     print(f"\nRECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request.preferences
     
-    # 1. Geocode Address with Cache
-    from cache_manager import cache
-    cache_key = {"func": "geocode", "address": prefs.address}
-    cached_loc = cache.get(cache_key)
-    
-    if cached_loc:
-        print(f"Using cached location for: {prefs.address}")
-        user_loc = (cached_loc['lat'], cached_loc['lon'])
-    else:
-        geolocator = Nominatim(user_agent="basket_buddy_backend")
-        location = geolocator.geocode(prefs.address)
-        
-        if not location:
-            raise HTTPException(status_code=400, detail="Address not found")
-            
-        user_loc = (location.latitude, location.longitude)
-        cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
+    # 1. Geocode Address (Google first — same source as autocomplete — then OSM)
+    user_loc = _geocode_address(prefs.address)
+    if not user_loc:
+        print(f"[Geocode] Could not resolve address: {prefs.address!r}", flush=True)
+        raise HTTPException(status_code=400, detail="Address not found")
+    print(f"Using location for: {prefs.address}")
     
     # 2. Update Config
     # Each person needs calorie_target, so total is target * days * size
@@ -854,20 +873,12 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
     print(f"\nRECEIVED PRICE LIST REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request
 
-    # 1. Geocode Address with Cache
-    from cache_manager import cache
-    cache_key = {"func": "geocode", "address": prefs.address}
-    cached_loc = cache.get(cache_key)
-    if cached_loc:
-        print(f"Using cached location for: {prefs.address}")
-        user_loc = (cached_loc['lat'], cached_loc['lon'])
-    else:
-        geolocator = Nominatim(user_agent="basket_buddy_backend")
-        location = geolocator.geocode(prefs.address)
-        if not location:
-            raise HTTPException(status_code=400, detail="Address not found")
-        user_loc = (location.latitude, location.longitude)
-        cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
+    # 1. Geocode Address (Google first — same source as autocomplete — then OSM)
+    user_loc = _geocode_address(prefs.address)
+    if not user_loc:
+        print(f"[Geocode] Could not resolve address: {prefs.address!r}", flush=True)
+        raise HTTPException(status_code=400, detail="Address not found")
+    print(f"Using location for: {prefs.address}")
 
     # 2. Build to_buy_quantities from the items list
     to_buy_quantities = {}
