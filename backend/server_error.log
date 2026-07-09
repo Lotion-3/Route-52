@@ -1,6 +1,6 @@
-ERROR:root:Unhandled exception: string indices must be integers, not 'str'
+ERROR:root:Unhandled exception: Cannot choose from an empty sequence
 Traceback (most recent call last):
-  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 116, in catch_exceptions_middleware
+  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 156, in catch_exceptions_middleware
     return await call_next(request)
            ^^^^^^^^^^^^^^^^^^^^^^^^
   File "C:\Python311\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
@@ -48,11 +48,79 @@ Traceback (most recent call last):
   File "C:\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
     result = context.run(func, *args)
              ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 206, in generate_plan
+  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 264, in generate_plan
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\vsasa\hub\basketBuddy\backend\meal_planner.py", line 98, in create_weekly_meal_plan
-    scaled_qty = ing["qty"] * household_size
-                 ~~~^^^^^^^
-TypeError: string indices must be integers, not 'str'
+  File "C:\Users\vsasa\hub\basketBuddy\backend\meal_planner.py", line 78, in create_weekly_meal_plan
+    selected = _select_meals(filtered, days, meals_per_day)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vsasa\hub\basketBuddy\backend\meal_planner.py", line 53, in _select_meals
+    meal = random.choice(available)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\random.py", line 373, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
+
+ERROR:root:Unhandled exception: Cannot choose from an empty sequence
+Traceback (most recent call last):
+  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 156, in catch_exceptions_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Python311\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\fastapi\routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python311\Lib\site-packages\fastapi\routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\fastapi\routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\fastapi\routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vsasa\hub\basketBuddy\backend\server.py", line 264, in generate_plan
+    meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vsasa\hub\basketBuddy\backend\meal_planner.py", line 78, in create_weekly_meal_plan
+    selected = _select_meals(filtered, days, meals_per_day)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vsasa\hub\basketBuddy\backend\meal_planner.py", line 53, in _select_meals
+    meal = random.choice(available)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python311\Lib\random.py", line 373, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
 

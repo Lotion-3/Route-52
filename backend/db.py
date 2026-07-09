@@ -163,6 +163,23 @@ class Database:
         )
         return len(resp.data)
 
+    # ── Coupons ────────────────────────────────────────────────────────────────
+
+    def batch_upsert_coupons(self, postal_code: str, coupons: list[dict]) -> int:
+        for c in coupons:
+            c["postal_code"] = postal_code
+        if not coupons:
+            return 0
+        resp = self.client.table("coupons").upsert(coupons, on_conflict="postal_code,merchant,item_name,valid_to").execute()
+        return len(resp.data)
+
+    def get_coupons_by_postal(self, postal_code: str, merchant: str = "") -> list[dict]:
+        query = self.client.table("coupons").select("*").eq("postal_code", postal_code)
+        if merchant:
+            query = query.eq("merchant", merchant.lower())
+        resp = query.execute()
+        return resp.data
+
     # ── Meal Plans ───────────────────────────────────────────────────────────
 
     def save_meal_plan(self, user_id: str, preferences: dict, meals: list) -> dict:

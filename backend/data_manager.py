@@ -105,7 +105,7 @@ _STORE_MULTIPLIERS = {
     "harris teeter":1.05,
     "meijer":       0.97,
     "walmart":      0.88,
-    "whole foods":  1.40,
+
     "costco":       0.78,
     "target":       1.05,
     "publix":       1.08,
