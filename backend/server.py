@@ -123,7 +123,13 @@ def _overlay_coupon_prices(store_key: str, price_db: dict[str, dict],
     """
     from db import db
     merchant = _resolve_merchant(store_key)
-    coupons = db.get_coupons_by_postal(postal, merchant=merchant)
+    try:
+        coupons = db.get_coupons_by_postal(postal, merchant=merchant)
+    except Exception as e:
+        # Coupons are an optional overlay — a DB/network failure (e.g. Supabase
+        # unreachable) must never sink an otherwise-complete plan.
+        print(f"[Coupon] Lookup failed for {store_key} ({repr(e)[:80]}) — skipping coupons.", flush=True)
+        return {}
     if not coupons:
         return {}
 
