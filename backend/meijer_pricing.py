@@ -8,8 +8,9 @@ Flow:
 
 Store ID:
   Constructor.io filters pricing and availability to a specific Meijer store via
-  the `availableInStores` query param.  Set MEIJER_STORE_ID env var to override;
-  defaults to 130 (Grand Rapids, MI area).
+  the `availableInStores` query param.  The store number is resolved from the
+  caller's coordinates via Meijer's store locator (_resolve_store_id) — curl_cffi
+  clears its WAF, no browser needed.  Set MEIJER_STORE_ID to force a store.
 
 Entry point:
     store_name, store_id, prices = price_all_meijer(ingredients, lat, lon)
@@ -39,8 +40,14 @@ MEIJER_BANNERS: set[str] = {"meijer"}
 CNSTRC_KEY = "key_GdYuTcnduTUtsZd6"
 CNSTRC_BASE = "https://ac.cnstrc.com/search"
 
-# Default: Grand Rapids-area store. Override with MEIJER_STORE_ID env var.
+# Ultimate fallback only — the store is normally resolved from the caller's
+# coordinates (see _resolve_store_id). Set MEIJER_STORE_ID to force a store.
 _DEFAULT_STORE_ID = "130"
+
+# Meijer's store locator. It's WAF-protected (plain requests get 403), but
+# curl_cffi's Chrome-JA3 impersonation passes it with no cookie/browser needed.
+# Returns stores sorted by distance, each with a geoPoint + store number.
+_STORE_LOCATOR = "https://www.meijer.com/bin/meijer/store/search"
 
 HEADERS = {
     "accept": "*/*",
@@ -62,6 +69,80 @@ def _get_session() -> requests.Session:
         _session = requests.Session()
         _session.headers.update(HEADERS)
     return _session
+
+
+# ---------------------------------------------------------------------------
+# Store resolution (nearest Meijer to the caller's coordinates)
+# ---------------------------------------------------------------------------
+
+_store_id_cache: dict[tuple, str] = {}  # (round(lat,2), round(lon,2)) -> store_id
+
+
+def _haversine_miles(la1: float, lo1: float, la2: float, lo2: float) -> float:
+    from math import radians, sin, cos, asin, sqrt
+    dlat = radians(la2 - la1)
+    dlon = radians(lo2 - lo1)
+    a = sin(dlat / 2) ** 2 + cos(radians(la1)) * cos(radians(la2)) * sin(dlon / 2) ** 2
+    return 3959.0 * 2 * asin(sqrt(a))
+
+
+def _resolve_store_id(lat: float, lon: float) -> str:
+    """Resolve the nearest full Meijer store number for (lat, lon) via Meijer's
+    store locator (curl_cffi Chrome-JA3 clears the WAF — no browser/cookie).
+    Picks the nearest GROCERY store (skips pharmacy/clinic-only locations) by
+    exact coordinates, cached per ~rounded location. Falls back to the default."""
+    if not lat and not lon:
+        return _DEFAULT_STORE_ID
+    cache_key = (round(lat, 2), round(lon, 2))
+    if cache_key in _store_id_cache:
+        return _store_id_cache[cache_key]
+
+    try:
+        from instacart_pricing import _get_postal
+        postal = _get_postal(lat, lon)
+    except Exception:
+        postal = ""
+    if not postal:
+        return _DEFAULT_STORE_ID
+
+    try:
+        from curl_cffi import requests as _ccffi
+        resp = _ccffi.get(
+            _STORE_LOCATOR,
+            params={"locationQuery": postal, "radius": "50"},
+            headers={**HEADERS, "accept": "application/json",
+                     "referer": "https://www.meijer.com/shopping/store-finder.html"},
+            impersonate="chrome", timeout=15,
+        )
+        if resp.status_code != 200:
+            print(f"[Meijer] Store locator HTTP {resp.status_code}; using #{_DEFAULT_STORE_ID}.", flush=True)
+            return _DEFAULT_STORE_ID
+        body = resp.json()
+        stores = (body.get("data", {}).get("pointsOfService")
+                  or body.get("pointsOfService") or [])
+        best = None  # (distance_miles, store_id, display_name)
+        for s in stores:
+            dn = (s.get("displayName") or "").lower()
+            if any(x in dn for x in ("pharmacy", "clinic", "express")):
+                continue  # not a full grocery store
+            sid = str(s.get("name") or s.get("mfcStoreId") or "").strip()
+            gp = s.get("geoPoint") or {}
+            slat, slon = gp.get("latitude"), gp.get("longitude")
+            if not sid or slat is None or slon is None:
+                continue
+            dist = _haversine_miles(lat, lon, slat, slon)
+            if best is None or dist < best[0]:
+                best = (dist, sid, s.get("displayName") or sid)
+        if best:
+            _, sid, dn = best
+            _store_id_cache[cache_key] = sid
+            print(f"[Meijer] Resolved store #{sid} ({dn}, {best[0]:.1f} mi) "
+                  f"for {postal}.", flush=True)
+            return sid
+        print(f"[Meijer] No Meijer store near {postal}; using #{_DEFAULT_STORE_ID}.", flush=True)
+    except Exception as e:
+        print(f"[Meijer] Store resolution failed ({e}); using #{_DEFAULT_STORE_ID}.", flush=True)
+    return _DEFAULT_STORE_ID
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +336,7 @@ def price_all_meijer(
     Parameters
     ----------
     ingredients : {name: {"qty": float, "unit": str, ...}}
-    lat, lon    : user coordinates (unused for store lookup in current impl)
+    lat, lon    : coordinates of the target store (used to resolve store #)
     max_workers : parallel threads
 
     Returns
@@ -263,7 +344,7 @@ def price_all_meijer(
     (display_name, store_id, prices)
         prices: {ingredient_name: find_best_purchase() result dict}
     """
-    store_id = os.environ.get("MEIJER_STORE_ID", _DEFAULT_STORE_ID)
+    store_id = os.environ.get("MEIJER_STORE_ID") or _resolve_store_id(lat, lon)
     display_name = f"Meijer (store #{store_id})"
     print(f"[Meijer] Pricing at: {display_name}", flush=True)
 

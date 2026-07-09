@@ -129,7 +129,57 @@ export interface ShoppingPlanResponse {
     }[];
 }
 
+// Pricing scrapes several stores (incl. headless-browser stores like Walmart),
+// so a plan can take a while. Give it a generous ceiling instead of relying on
+// React Native's default fetch timeout (~60s), which would abort a valid request.
+const PLAN_TIMEOUT_MS = 180000; // 3 minutes
+
+// Fire-and-forget: the moment the user submits address + shopping time, tell the
+// backend to (1) resolve the nearby stores and (2) mint the Walmart/Target browser
+// cookies, so the eventual generatePlan skips the store search + ~8s-per-store warm.
+// Never throws — a failed prewarm just means no speedup, the plan request does the
+// work itself. timeHours is passed so the store-isochrone cache key matches generate.
+export const prewarm = (location: string, timeHours?: string | number): void => {
+    if (!location?.trim()) return;
+    const t = typeof timeHours === 'string' ? parseFloat(timeHours) : timeHours;
+    fetch(`${DEV_API_URL}/api/prewarm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address: location,
+            shopping_time_hours: Number.isFinite(t as number) ? t : 3,
+        }),
+    }).catch((e) => console.log('[api] prewarm failed (non-fatal):', e));
+};
+
+// Eager warm: fired the instant the user taps an address suggestion. Mints BOTH
+// the Walmart + Target cookies unconditionally (range isn't known yet) — the
+// follow-up prewarm(location, time) on Continue prunes whatever's out of range.
+export const warmStores = (location: string): void => {
+    fetch(`${DEV_API_URL}/api/prewarm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: location || '', warm_only: true }),
+    }).catch((e) => console.log('[api] warmStores failed (non-fatal):', e));
+};
+
+// Address type-ahead for the /location screen. Returns up to 5 suggestion strings
+// from Google Places (via our backend, which holds the key). Never throws.
+export const autocompleteAddress = async (q: string): Promise<string[]> => {
+    if (!q?.trim() || q.trim().length < 3) return [];
+    try {
+        const res = await fetch(`${DEV_API_URL}/api/autocomplete?q=${encodeURIComponent(q.trim())}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data?.suggestions) ? data.suggestions : [];
+    } catch {
+        return [];
+    }
+};
+
 export const generatePlan = async (params: ShoppingPlanRequest): Promise<ShoppingPlanResponse> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PLAN_TIMEOUT_MS);
     try {
         const response = await fetch(`${DEV_API_URL}/api/generate_plan`, {
             method: 'POST',
@@ -154,6 +204,7 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
                     has_costco_card: params.has_costco_card !== undefined ? params.has_costco_card : false
                 }
             }),
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -162,8 +213,14 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
         }
 
         return await response.json();
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.name === 'AbortError') {
+            console.error('API Error: plan request timed out');
+            throw new Error('Generating your plan took too long. Please try again.');
+        }
         console.error('API Error:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 };

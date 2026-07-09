@@ -4,7 +4,7 @@ import { useRouter, useNavigation } from 'expo-router';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
 import { planStore } from '@/services/planStore';
-import { ShoppingPlanResponse } from '@/services/api';
+import { ShoppingPlanResponse, warmStores } from '@/services/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -23,7 +23,11 @@ export default function HomeScreen() {
   }, [navigation]);
 
   const handleStartNew = () => {
-    router.push('/search');
+    // Earliest possible head start: the instant they start a plan, try the cached
+    // cookie (cheap, no browser) or warm both Walmart + Target. No address needed —
+    // cookie minting is location-independent.
+    warmStores('');
+    router.push('/location');
   };
 
   const handleViewSaved = (index: number) => {

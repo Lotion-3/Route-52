@@ -3,12 +3,20 @@ Target pricing pipeline using Target's RedSky aggregations API, driven through
 a stealth CloakBrowser so it bypasses Target's Imperva bot protection.
 
 Why a browser?  redsky.target.com is fronted by Imperva, which validates the
-TLS/JA3 fingerprint of the caller — not just cookies.  Plain `requests` (even
-with valid cookies minted by a real browser) gets a 403 + captcha.  Requests
-issued from inside a live Chrome context (real-Chrome TLS) pass.  CloakBrowser
-is a Chromium with C++-level fingerprint patches that defeats Imperva's
-automation/fingerprint checks even from a datacenter IP (verified: headless,
-no proxy → RedSky 200 with live prices).
+TLS/JA3 fingerprint of the caller AND a JS-minted clearance cookie.  Plain
+`requests` (wrong JA3) gets a 403 + captcha.
+
+Primary path (fast): a CloakBrowser is used ONLY to mint the Imperva clearance
+cookie — a homepage + a REAL Target search-page nav fully clears the challenge.
+Then RedSky is replayed with curl_cffi (impersonating Chrome's JA3), which
+passes Imperva *better* than Playwright's own APIRequestContext (the latter
+gets 403 here).  RedSky is a lean JSON API, so this fetches a whole basket in
+parallel in ~1-2s off a single browser warm.  A too-wide burst throttles the
+cookie, so concurrency is capped and the cookie is re-minted on a wave of
+blocks (up to MAX_IP_REFRESHES).
+
+Fallback path: the original CloakBrowser request-context flow (`ctx.request.get`)
+for when the curl_cffi path yields nothing.
 
 Architecture (in-process singleton):
   * One CloakBrowser + browser context is launched lazily and kept warm.
@@ -43,10 +51,11 @@ for Target — so this integration is strictly additive and never makes Target w
 
 Self-test:  python target_pricing.py
 Env overrides:  TARGET_API_KEY, TARGET_STORE_ID, CLOAK_PROXY,
-                TARGET_MAX_IP_REFRESHES, TARGET_SEARCH_TTL
+                TARGET_MAX_IP_REFRESHES, TARGET_SEARCH_TTL, TARGET_COOKIE_TTL
 """
 from __future__ import annotations
 
+import json
 import os
 import random
 import re
@@ -54,6 +63,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Optional
 
 from kroger_pricing import find_best_purchase, parse_size
@@ -82,14 +92,30 @@ _DEFAULT_STORE_ID = os.environ.get("TARGET_STORE_ID", "1771")
 # socks5://user:pass@host:port.
 #
 # IP rotation: on a captcha we tear down and re-launch on a FRESH exit IP, up to
-# MAX_IP_REFRESHES times, before giving up and falling back to Instacart. For
-# rotating-residential providers that key the exit IP off a session token in the
-# username, put a literal "{session}" in the proxy URL and it's replaced with a
-# new random token on each refresh, e.g.
-#   http://user-session-{session}:pass@gate.provider.com:7000
-# Providers that rotate per-connection need no placeholder — a new launch already
-# gets a new IP.
-_PROXY = os.environ.get("CLOAK_PROXY") or os.environ.get("TARGET_PROXY") or None
+# MAX_IP_REFRESHES times, before giving up and falling back to Instacart. There
+# are two ways to actually get a fresh IP — you MUST configure one, because there
+# is no way to change the machine's egress IP from software alone:
+#   1. A POOL of proxies — set CLOAK_PROXY (or TARGET_PROXY) to a comma- or
+#      whitespace-separated list of URLs. Each refresh round-robins to the next
+#      entry, so even plain static proxies give real IP diversity, e.g.
+#        http://u:p@ip1:8000, http://u:p@ip2:8000, http://u:p@ip3:8000
+#   2. A rotating-residential endpoint that keys the exit IP off a session token
+#      in the username — put a literal "{session}" in the URL and it's replaced
+#      with a fresh random token on each refresh, e.g.
+#        http://user-session-{session}:pass@gate.provider.com:7000
+#      (Providers that rotate per-connection need no placeholder — a new launch
+#      already gets a new IP; a one-URL pool works for them.)
+# With NO proxy configured, "rotation" reuses the same machine IP every time, so
+# Imperva keeps serving the same captcha — _rotate_proxy_session warns about this.
+
+def _parse_proxies(raw: Optional[str]) -> list[str]:
+    """Split a proxy env value into a pool (comma/whitespace separated)."""
+    if not raw:
+        return []
+    return [p.strip() for p in re.split(r"[,\s]+", raw) if p.strip()]
+
+_PROXIES = _parse_proxies(os.environ.get("CLOAK_PROXY") or os.environ.get("TARGET_PROXY"))
+_PROXY = _PROXIES[0] if _PROXIES else None  # kept for back-compat truthiness checks
 
 # How many fresh exit IPs to try before falling back to Instacart.
 MAX_IP_REFRESHES = int(os.environ.get("TARGET_MAX_IP_REFRESHES", "5"))
@@ -98,6 +124,30 @@ MAX_IP_REFRESHES = int(os.environ.get("TARGET_MAX_IP_REFRESHES", "5"))
 # single biggest reliability lever (fewer requests = less flagging). Prices don't
 # change intraday, so a multi-hour TTL is safe.
 _SEARCH_TTL = int(os.environ.get("TARGET_SEARCH_TTL", str(6 * 3600)))
+
+# --- Fast HTTP path (primary) ----------------------------------------------
+# Imperva validates the caller's TLS/JA3 + a JS-minted clearance cookie. We use
+# CloakBrowser ONLY to mint that cookie (a homepage + real search-page nav fully
+# clears the challenge); then we replay RedSky with curl_cffi, which impersonates
+# Chrome's JA3. curl_cffi actually PASSES Imperva where Playwright's
+# APIRequestContext gets a 403 — and RedSky is a lean JSON API, so this is both
+# faster and more reliable than the browser request context. Burst too wide and
+# the cookie throttles, so concurrency is capped and re-minted on a wave of
+# blocks (up to MAX_IP_REFRESHES).
+_HTTP_CONCURRENCY = int(os.environ.get("TARGET_HTTP_CONCURRENCY", "6"))
+_WARM_TRIES = int(os.environ.get("TARGET_WARM_TRIES", "3"))
+_IMPERSONATE = os.environ.get("TARGET_IMPERSONATE", "chrome")
+_WARM_SEARCH_URL = "https://www.target.com/s?searchTerm=eggs"
+
+_http_session: Optional[dict] = None       # {"cookies": {...}, "ua": str}
+_http_lock = threading.Lock()              # serialize warm/re-mint of the session
+_thread_local = threading.local()          # per-worker: .http routes RedSky → curl_cffi
+# Disk cache so the last cookie survives restarts and can be reused next run
+# (validated first). Imperva's clearance cookie lives minutes, so a short max-age
+# is safe. For a low-traffic app this disk reuse — not the in-memory session — is
+# what actually saves the browser warm (requests are too sparse to hit memory).
+_HTTP_SESSION_CACHE = Path(__file__).parent / ".target_http_session.json"
+_HTTP_COOKIE_TTL = int(os.environ.get("TARGET_COOKIE_TTL", str(20 * 60)))
 
 
 class _ImpervaBlocked(Exception):
@@ -122,21 +172,34 @@ _browser = None          # cloakbrowser Browser (lives on the worker thread)
 _ctx = None              # browser context with warmed Imperva cookies
 _session_lock = threading.Lock()
 _proxy_session_id: Optional[str] = None  # current rotating-proxy session token
+_proxy_idx: int = 0                      # round-robin cursor into _PROXIES
+_no_proxy_warned: bool = False           # warn-once guard for the no-proxy case
 
 
 def _rotate_proxy_session() -> None:
-    """Pick a new rotating-proxy session token → next launch gets a fresh exit IP."""
-    global _proxy_session_id
+    """Advance to a fresh exit IP: round-robin the proxy pool AND mint a new
+    session token (for "{session}"-style rotating-residential URLs). With no proxy
+    configured this cannot change the egress IP — so warn once, otherwise the
+    endless captcha loop looks like a mystery when it's just an unset proxy."""
+    global _proxy_session_id, _proxy_idx, _no_proxy_warned
     _proxy_session_id = uuid.uuid4().hex[:12]
+    if _PROXIES:
+        _proxy_idx += 1
+    elif not _no_proxy_warned:
+        _no_proxy_warned = True
+        print("[Target] No CLOAK_PROXY/TARGET_PROXY set — IP 'rotation' reuses the "
+              "same machine IP, so Imperva captchas will persist. Set a rotating "
+              "residential proxy or a comma-separated proxy pool to fix.", flush=True)
 
 
 def _current_proxy() -> Optional[str]:
-    """The proxy URL with the current session token substituted (if any)."""
-    if not _PROXY:
+    """The current pool proxy (round-robin) with the session token substituted."""
+    if not _PROXIES:
         return None
-    if "{session}" in _PROXY:
-        return _PROXY.replace("{session}", _proxy_session_id or uuid.uuid4().hex[:12])
-    return _PROXY
+    base = _PROXIES[_proxy_idx % len(_PROXIES)]
+    if "{session}" in base:
+        return base.replace("{session}", _proxy_session_id or uuid.uuid4().hex[:12])
+    return base
 
 
 def _bootstrap_session():
@@ -193,10 +256,41 @@ def _ensure_ctx():
 
 
 def _redsky_get(url: str) -> str:
-    """(worker thread) GET a RedSky URL through the browser context. Returns the
-    response body on 200, "" on a non-captcha error, and raises _ImpervaBlocked
-    on a captcha challenge. Re-bootstrapping is handled one level up (in
-    _do_pricing) to avoid launch storms that worsen IP reputation."""
+    """GET a RedSky URL. Dispatches to the fast curl_cffi path when this thread
+    holds an HTTP session, else the browser request context. Returns the body on
+    200, "" on a non-captcha error, raises _ImpervaBlocked on a captcha."""
+    http = getattr(_thread_local, "http", None)
+    if http is not None:
+        return _redsky_get_http(url, http)
+    return _redsky_get_browser(url)
+
+
+def _redsky_get_http(url: str, session: dict) -> str:
+    """(curl_cffi) Replay a RedSky call with the warmed Imperva cookie + Chrome
+    JA3. Passes Imperva where the browser's APIRequestContext gets 403."""
+    from curl_cffi import requests as _ccffi
+    headers = {
+        "accept": "application/json",
+        "accept-language": "en-US,en;q=0.9",
+        "origin": "https://www.target.com",
+        "referer": "https://www.target.com/",
+        "user-agent": session["ua"],
+    }
+    try:
+        resp = _ccffi.get(url, headers=headers, cookies=session["cookies"],
+                          impersonate=_IMPERSONATE, timeout=30)
+    except Exception as e:
+        raise _ImpervaBlocked(f"http error: {repr(e)[:60]}")
+    if resp.status_code == 403 or '"captchaRelativeURL"' in resp.text:
+        raise _ImpervaBlocked()
+    if resp.status_code != 200:
+        return ""
+    return resp.text
+
+
+def _redsky_get_browser(url: str) -> str:
+    """(worker thread) GET a RedSky URL through the CloakBrowser request context —
+    the fallback when the curl_cffi path is unavailable."""
     ctx = _ensure_ctx()
     resp = ctx.request.get(url, timeout=30000)
     text = resp.text()
@@ -442,6 +536,192 @@ def _price_one(ingredient: str, qty: float, unit: str, store_id: str) -> Optiona
     return None
 
 
+# ---------------------------------------------------------------------------
+# Fast HTTP session: mint Imperva cookies with a browser, replay via curl_cffi
+# ---------------------------------------------------------------------------
+
+def _warm_http_session() -> dict:
+    """Mint Imperva clearance with CloakBrowser (homepage + a real Target search
+    navigation), harvest the cookie jar + user-agent, and verify a curl_cffi
+    RedSky call returns products. Raises _ImpervaBlocked on a weak/blocked warm."""
+    from cloakbrowser import launch
+    if _proxy_session_id is None:
+        _rotate_proxy_session()
+    proxy = _current_proxy()
+    kwargs: dict = {"headless": True}
+    if proxy:
+        kwargs["proxy"] = proxy
+        kwargs["geoip"] = True
+    try:
+        browser = launch(**kwargs)
+    except Exception:
+        kwargs.pop("geoip", None)
+        browser = launch(**kwargs)
+    try:
+        ctx = browser.new_context()
+        page = ctx.new_page()
+        page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
+        time.sleep(2)
+        # A real search nav (not just the homepage) is what fully clears Imperva
+        # and mints a clearance cookie RedSky will accept.
+        page.goto(_WARM_SEARCH_URL, wait_until="domcontentloaded", timeout=45000)
+        time.sleep(3)
+        ua = page.evaluate("() => navigator.userAgent")
+        cookies = {c["name"]: c["value"] for c in ctx.cookies()}
+    finally:
+        try:
+            browser.close()
+        except Exception:
+            pass
+    session = {"cookies": cookies, "ua": ua}
+    # Validate the warm: a real RedSky call must come back with products.
+    if not _validate_http_session(session):
+        raise _ImpervaBlocked("weak warm — no products")
+    return session
+
+
+def _validate_http_session(session: dict) -> bool:
+    """Cheap liveness check (no browser): one curl_cffi RedSky search must return
+    products. True ⇒ the cookie is still good and can be reused."""
+    url = (f"{_SEARCH_URL}?key={_KEY}&keyword=eggs&channel=WEB&count=8&offset=0"
+           f"&page=/s/eggs&platform=desktop&pricing_store_id={_DEFAULT_STORE_ID}"
+           f"&store_ids={_DEFAULT_STORE_ID}&scheduled_delivery_store_id={_DEFAULT_STORE_ID}"
+           f"&visitor_id={uuid.uuid4().hex.upper()}")
+    try:
+        text = _redsky_get_http(url, session)  # raises _ImpervaBlocked on captcha
+        prods = (json.loads(text).get("data", {}).get("search", {})
+                 .get("products", [])) if text else []
+        return bool(prods)
+    except Exception:
+        return False
+
+
+def _save_http_session(session: dict) -> None:
+    """Persist the warmed cookie to disk so it survives restarts and can be reused
+    next run (validated first) — see _ensure_http_session."""
+    try:
+        _HTTP_SESSION_CACHE.write_text(json.dumps({
+            "cookies": session["cookies"], "ua": session["ua"], "saved_at": time.time(),
+        }))
+    except Exception:
+        pass
+
+
+def _load_http_session() -> Optional[dict]:
+    """Load the disk-cached cookie if it's within the cookie TTL, else None."""
+    try:
+        d = json.loads(_HTTP_SESSION_CACHE.read_text())
+        if time.time() - float(d.get("saved_at", 0)) <= _HTTP_COOKIE_TTL:
+            return {"cookies": d["cookies"], "ua": d["ua"]}
+    except Exception:
+        pass
+    return None
+
+
+def _ensure_http_session() -> dict:
+    """Return the shared HTTP session: reuse the in-memory one, else a still-valid
+    disk-cached cookie (no browser), else warm a fresh one and persist it."""
+    global _http_session
+    if _http_session is not None:
+        return _http_session
+    with _http_lock:
+        if _http_session is None:
+            cached = _load_http_session()
+            if cached and _validate_http_session(cached):
+                _http_session = cached
+                print("[Target] Reused cached HTTP cookie (no warm).", flush=True)
+            else:
+                last: Optional[Exception] = None
+                for _ in range(_WARM_TRIES):
+                    try:
+                        _http_session = _warm_http_session()
+                        _save_http_session(_http_session)
+                        print(f"[Target] HTTP session warmed (curl_cffi"
+                              f"{', proxy' if _PROXY else ''}).", flush=True)
+                        break
+                    except Exception as e:
+                        last = e
+                        _rotate_proxy_session()  # fresh exit IP for the next warm
+                if _http_session is None:
+                    raise _ImpervaBlocked(f"warm failed after {_WARM_TRIES} tries: {repr(last)[:80]}")
+    return _http_session
+
+
+def _drop_http_session() -> None:
+    """Clear the in-memory session (the disk cache is kept for reuse)."""
+    global _http_session
+    _http_session = None
+
+
+def _invalidate_http_session() -> None:
+    """Drop the in-memory session AND delete the disk cache — used on a real block
+    so the next ensure mints a genuinely fresh cookie (never the throttled one)."""
+    global _http_session
+    _http_session = None
+    try:
+        _HTTP_SESSION_CACHE.unlink()
+    except Exception:
+        pass
+
+
+def _price_via_http(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str], dict]:
+    """Primary path: one browser warm, then resolve the store + price every
+    ingredient over parallel curl_cffi RedSky calls. On a wave of Imperva
+    throttles, re-mint the cookie and retry the blocked items (up to
+    MAX_IP_REFRESHES). Returns (store_id, prices)."""
+    prices: dict = {}
+    pending = dict(ingredients)
+    store_id: Optional[str] = None
+    refreshes = 0
+    while pending:
+        session = _ensure_http_session()
+        if store_id is None:
+            _thread_local.http = session
+            try:
+                store_id = _resolve_store_id(lat, lon)
+            finally:
+                _thread_local.http = None
+            print(f"[Target] Pricing at store #{store_id} (curl_cffi)", flush=True)
+
+        def _work(item):
+            name, data = item
+            _thread_local.http = session  # routes _redsky_get → curl_cffi
+            try:
+                r = _price_one(name, float(data.get("qty", 1) or 1),
+                               str(data.get("unit", "whole")), store_id)
+                return name, r, False
+            except _ImpervaBlocked:
+                return name, None, True
+            except Exception as e:
+                print(f"[Target] Error pricing '{name}': {e}", flush=True)
+                return name, None, False
+            finally:
+                _thread_local.http = None
+
+        blocked: dict = {}
+        with ThreadPoolExecutor(max_workers=min(_HTTP_CONCURRENCY, len(pending)),
+                                thread_name_prefix="tg-http") as pool:
+            for name, r, was_blocked in pool.map(_work, list(pending.items())):
+                if was_blocked:
+                    blocked[name] = pending[name]
+                elif r:
+                    prices[name] = r
+        pending = blocked
+        if not pending:
+            break
+        if refreshes >= MAX_IP_REFRESHES:
+            print(f"[Target] Still throttled after {refreshes} re-mints — "
+                  f"{len(pending)} item(s) unpriced.", flush=True)
+            break
+        refreshes += 1
+        print(f"[Target] Imperva throttle — re-minting session "
+              f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
+        _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
+        _rotate_proxy_session()
+        time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))
+    return store_id, prices
+
+
 def _do_pricing(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str], dict]:
     """(worker thread) Resolve store + price all ingredients, healing through
     captchas by rotating to a fresh exit IP.
@@ -512,18 +792,35 @@ def price_all_target(
     """
     Price all ingredients at the nearest Target store via RedSky (CloakBrowser).
 
-    Returns (display_name, store_id, prices). `prices` is empty if CloakBrowser
-    is unavailable or Imperva blocks us, in which case the caller falls back to
-    Instacart.
+    Returns (display_name, store_id, prices). `prices` is empty if Imperva blocks
+    us, in which case the caller falls back to Instacart. Primary path is fast
+    parallel curl_cffi off a single browser-minted Imperva cookie; the original
+    CloakBrowser request-context path is kept as a fallback.
     """
-    with _session_lock:  # serialize concurrent pricing requests onto one browser
+    store_id: Optional[str] = None
+    prices: dict = {}
+    with _session_lock:  # serialize whole-Target runs across requests
+        # Primary: curl_cffi (browser warm → RedSky over HTTP).
         try:
-            store_id, prices = _executor.submit(_do_pricing, ingredients, lat, lon).result()
+            store_id, prices = _price_via_http(ingredients, lat, lon)
         except Exception as e:
-            print(f"[Target] Direct pricing unavailable ({repr(e)[:140]}) — "
-                  "falling back to Instacart.", flush=True)
-            return None, None, {}
+            print(f"[Target] HTTP path unavailable ({repr(e)[:120]}).", flush=True)
+            store_id, prices = None, {}
+        finally:
+            _drop_http_session()
 
+        # Fallback: original CloakBrowser request-context path.
+        if not prices:
+            print("[Target] HTTP path empty — falling back to CloakBrowser request context.", flush=True)
+            try:
+                store_id, prices = _executor.submit(_do_pricing, ingredients, lat, lon).result()
+            except Exception as e:
+                print(f"[Target] Direct pricing unavailable ({repr(e)[:140]}) — "
+                      "falling back to Instacart.", flush=True)
+                return None, None, {}
+
+    if not prices:
+        return None, None, {}
     display_name = f"Target (store #{store_id})"
     print(f"[Target] Priced {len(prices)}/{len(ingredients)} ingredients "
           f"at {display_name}.", flush=True)

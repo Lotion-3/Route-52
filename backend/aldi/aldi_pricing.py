@@ -476,7 +476,10 @@ def price_all_aldi(
     """
     session, zone_id, cached_shop_id = _get_session()
 
-    store_info = find_nearest_aldi_store(lat, lon, session, zone_id, cached_shop_id)
+    # Resolve the nearest ALDI from the caller's coordinates via DefaultShop —
+    # no longer pinned to a hardcoded ALDI_SHOP_ID. (The server passes the ALDI
+    # store's own geocoded location, so DefaultShop returns exactly that store.)
+    store_info = find_nearest_aldi_store(lat, lon, session, zone_id, cached_shop_id="")
     if not store_info:
         print("[ALDI] No ALDI store found near this location.", flush=True)
         return None, None, {}

@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -135,6 +136,10 @@ BASE_HEADERS = {
 
 _mem_cache: dict = {}
 _session: Optional[requests.Session] = None
+# Serializes session bootstrap so concurrent callers (Whole Foods, a Target/
+# Walmart Instacart fallback, Costco) don't each launch a bootstrap browser and
+# clobber the shared session.
+_session_lock = threading.Lock()
 
 
 def _load_disk_session() -> dict:
@@ -217,19 +222,24 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
 
 def _get_session(bootstrap_slug: str = "publix") -> tuple[requests.Session, str]:
     global _mem_cache, _session
-    if not _mem_cache:
-        _mem_cache = _load_disk_session()
-    if not _mem_cache:
-        cookies, qp, zone_id = _bootstrap(bootstrap_slug)
-        _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id,
-                      "expires_at": time.time() + SESSION_TTL}
-        _save_disk_session(cookies, qp, zone_id)
-        _session = None
-    if _session is None:
-        _session = requests.Session()
-        _session.cookies.update(_mem_cache["cookies"])
-        if _mem_cache.get("qp"):
-            _session.headers.update({"x-ic-qp": _mem_cache["qp"]})
+    # Fast path: a built session can be shared across threads without locking.
+    if _session is not None and _mem_cache:
+        return _session, _mem_cache.get("zone_id", "")
+    # Slow path: only one thread bootstraps; the rest wait and reuse the result.
+    with _session_lock:
+        if not _mem_cache:
+            _mem_cache = _load_disk_session()
+        if not _mem_cache:
+            cookies, qp, zone_id = _bootstrap(bootstrap_slug)
+            _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id,
+                          "expires_at": time.time() + SESSION_TTL}
+            _save_disk_session(cookies, qp, zone_id)
+            _session = None
+        if _session is None:
+            _session = requests.Session()
+            _session.cookies.update(_mem_cache["cookies"])
+            if _mem_cache.get("qp"):
+                _session.headers.update({"x-ic-qp": _mem_cache["qp"]})
     return _session, _mem_cache.get("zone_id", "")
 
 

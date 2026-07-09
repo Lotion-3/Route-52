@@ -9,4 +9,5 @@ googlemaps
 shapely
 pillow
 cloakbrowser
+curl_cffi
 supabase

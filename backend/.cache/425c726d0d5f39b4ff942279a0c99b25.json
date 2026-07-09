@@ -1,5 +1,5 @@
 {
-    "timestamp": 1781413405.669014,
+    "timestamp": 1783302886.164319,
     "data": [
         {
             "Walmart Supercenter": [
@@ -11,12 +11,12 @@
                 -86.159088
             ],
             "Kroger": [
-                39.9138261,
-                -86.20537410000001
+                39.9626944,
+                -86.12543389999999
             ],
             "Kroger 1": [
-                39.9114932,
-                -86.13787649999999
+                40.040955,
+                -86.1054915
             ],
             "Target": [
                 39.9365776,
@@ -66,24 +66,20 @@
                 39.9991998,
                 -86.1311636
             ],
-            "The Fresh Market": [
-                40.001951,
-                -86.11847999999999
-            ],
             "Costco Wholesale": [
                 39.9172744,
                 -86.22788849999999
             ],
-            "Costco Food Court": [
-                39.9173631,
-                -86.227131
+            "Costco Bakery": [
+                39.9175087,
+                -86.2273775
             ]
         },
         {
             "Walmart Supercenter": "2001 E 151st St, Carmel",
             "ALDI": "54 E Spring Mill Pointe Dr, Westfield",
-            "Kroger": "2550 Lake Cir Dr, Indianapolis",
-            "Kroger 1": "1365 E 86th St, Indianapolis",
+            "Kroger": "1217 S Rangeline Rd, Carmel",
+            "Kroger 1": "17447 Carey Rd, Westfield",
             "Target": "10401 N Michigan Rd, Carmel",
             "Target 1": "1600 E 151st St, Carmel",
             "Target 2": "1300 E 86th St #35, Indianapolis",
@@ -96,9 +92,8 @@
             "Whole Foods Market 1": "1300 E 86th St, Indianapolis",
             "Whole Foods Bakery": "1300 E 86th St, Indianapolis",
             "Whole Foods Bakery 1": "14598 Clay Terrace Blvd, Carmel",
-            "The Fresh Market": "2490 E 146th St, Carmel",
             "Costco Wholesale": "9010 Michigan Rd, Indianapolis",
-            "Costco Food Court": "9010 N Michigan Rd #347b, Indianapolis"
+            "Costco Bakery": "9010 Michigan Rd, Indianapolis"
         }
     ],
     "key_ref": "{\"center\": [39.9770417, -86.1641087], \"func\": \"find_eligible_stores_google\", \"keywords\": [\"Walmart\", \"Aldi\", \"Kroger\", \"Target\", \"Meijer\", \"Whole Foods\", \"Trader Joe's\", \"Trader Joes\", \"Costco\", \"Jewel Osco\"]}"

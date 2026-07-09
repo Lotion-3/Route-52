@@ -1,6 +1,8 @@
 import asyncio
 import json
 import math
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import uvicorn
 from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
@@ -160,6 +162,164 @@ def read_root():
 @router.get("/")
 def read_root_api():
     return {"message": "Route 52 Backend is running!"}
+
+
+class PrewarmRequest(BaseModel):
+    address: str
+    shopping_time_hours: float = 3.0
+    # warm_only: fired the instant the user taps an address suggestion — mint BOTH
+    # cookies unconditionally (no isochrone known yet). The full call (on Continue)
+    # resolves the isochrone and stops working any chain that's out of range.
+    warm_only: bool = False
+
+
+def _geocode_address(address: str):
+    """Geocode an address to (lat, lon), using the shared geocode cache."""
+    from cache_manager import cache
+    cache_key = {"func": "geocode", "address": address}
+    cached_loc = cache.get(cache_key)
+    if cached_loc:
+        return cached_loc['lat'], cached_loc['lon']
+    location = Nominatim(user_agent="basket_buddy_backend").geocode(address)
+    if not location:
+        return None
+    cache.set(cache_key, {'lat': location.latitude, 'lon': location.longitude})
+    return location.latitude, location.longitude
+
+
+def _warm_chain(name: str, ensure_fn) -> bool:
+    """Mint+persist one chain's cookie (CloakBrowser warm); never raises. The warm
+    saves the cookie to disk on success, so it survives even if the chain later
+    proves out of range. Returns True if the warm succeeded, False otherwise."""
+    try:
+        ensure_fn()
+        return True
+    except Exception as e:
+        print(f"[Prewarm] {name} warm failed ({repr(e)[:80]}).", flush=True)
+        return False
+
+
+def _warm_instacart(reason: str) -> None:
+    """Warm the shared Instacart session so Target's Instacart fallback is already
+    hot. Target's direct (RedSky/Imperva) path fails often; when it does, pricing
+    falls back to Instacart — and without this that fallback pays a cold browser
+    bootstrap on the critical path at plan time. Never raises."""
+    try:
+        print(f"[Prewarm] {reason} — warming Instacart fallback.", flush=True)
+        instacart_pricing._get_session()
+        print("[Prewarm] Instacart fallback warmed.", flush=True)
+    except Exception as e:
+        print(f"[Prewarm] Instacart fallback warm failed ({repr(e)[:80]}).", flush=True)
+
+
+_WARM_CHAINS = (
+    ("Walmart", lambda n: "walmart" in n.lower(), lambda: walmart_pricing._ensure_http_session()),
+    ("Target", lambda n: target_pricing.is_target_store(n), lambda: target_pricing._ensure_http_session()),
+)
+
+
+@router.post("/prewarm")
+def prewarm(request: PrewarmRequest):
+    """Fire-and-forget warm-up. Two phases:
+
+    * warm_only=True (fired the instant the user taps an address suggestion):
+      unconditionally mint BOTH the Walmart + Target cookies. We don't know the
+      isochrone yet, so warm everything that could be needed — the cookies persist
+      to disk, so nothing is wasted even if a chain turns out to be out of range.
+
+    * warm_only=False (fired on Continue, once shopping time is known): geocode,
+      resolve the drive isochrone + Google Places stores (priming the SAME caches
+      generate_plan reads), then for each warm-requiring chain: if it's IN range,
+      ensure it's warmed (a cheap reuse of the eager cookie); if it's OUT of range,
+      stop — do no further work for it, but leave its already-minted cookie on disk.
+
+    Returns immediately; all work happens on a daemon thread. If the user dawdles
+    past a cookie's TTL the pricing run just re-mints (existing fallback) — so this
+    is a best-effort speedup, never a correctness risk."""
+    address = (request.address or "").strip()
+    sh_hours = request.shopping_time_hours
+    warm_only = request.warm_only
+
+    def _warm_both_unconditional():
+        # Eager: mint both cookies the moment an address is picked, range unknown.
+        with ThreadPoolExecutor(max_workers=len(_WARM_CHAINS), thread_name_prefix="prewarm") as pool:
+            futs = {name: pool.submit(_warm_chain, name, ensure_fn)
+                    for name, _in_range, ensure_fn in _WARM_CHAINS}
+            results = {name: f.result() for name, f in futs.items()}
+        print("[Prewarm] Eager warm done (Walmart + Target).", flush=True)
+        # Target's direct path falls back to Instacart, so if its warm failed, get
+        # the Instacart fallback hot now instead of cold at plan time.
+        if not results.get("Target", True):
+            _warm_instacart("Target warm failed")
+
+    def _resolve_then_warm_in_range():
+        loc = None
+        try:
+            loc = _geocode_address(address)  # (lat, lon) or None; primes geocode cache
+        except Exception as e:
+            print(f"[Prewarm] geocode failed ({e}).", flush=True)
+        if not loc:
+            return
+
+        # Resolve nearby stores, priming the same isochrone + store caches
+        # generate_plan reads (mirror its math so the cache keys match).
+        store_names: list[str] = []
+        try:
+            hrs = sh_hours / 60.0 if sh_hours > 12 else sh_hours  # >12 ⇒ minutes
+            one_way_secs = int((hrs * 3600) / 4)
+            iso = geo_utils.get_travel_isochrone(loc, one_way_secs)
+            if iso:
+                stores, _addrs = geo_utils.find_eligible_stores_google(iso, loc)
+                store_names = list(stores.keys())
+                print(f"[Prewarm] Nearby stores resolved + cached ({len(store_names)} found).", flush=True)
+        except Exception as e:
+            print(f"[Prewarm] store search failed ({repr(e)[:80]}).", flush=True)
+
+        warmers, skipped = [], []
+        for name, in_range, ensure_fn in _WARM_CHAINS:
+            (warmers if any(in_range(n) for n in store_names) else skipped).append((name, ensure_fn))
+
+        # Out of isochrone: kill the rest of the process for these chains — no
+        # pricing, no further warm. Their eager-minted cookie stays cached on disk.
+        if skipped:
+            print(f"[Prewarm] Out of isochrone — keeping cached cookie, no further work: "
+                  f"{', '.join(n for n, _ in skipped)}.", flush=True)
+        if not warmers:
+            return
+
+        # In range: ensure warmed (cheap reuse if the eager warm already minted it).
+        with ThreadPoolExecutor(max_workers=len(warmers), thread_name_prefix="prewarm") as pool:
+            futs = {name: pool.submit(_warm_chain, name, ensure_fn) for name, ensure_fn in warmers}
+            results = {name: f.result() for name, f in futs.items()}
+        print(f"[Prewarm] Done (warmed in-range: {', '.join(n for n, _ in warmers)}).", flush=True)
+        # If Target is in range but its warm failed, warm the Instacart fallback it
+        # will drop to during pricing.
+        if not results.get("Target", True):
+            _warm_instacart("Target warm failed")
+
+    work = _warm_both_unconditional if warm_only else _resolve_then_warm_in_range
+    threading.Thread(target=work, name="prewarm", daemon=True).start()
+    return {"status": "warming"}
+
+
+@router.get("/autocomplete")
+def autocomplete(q: str = ""):
+    """Address type-ahead for the /location screen — proxies Google Places
+    Autocomplete with the same key the store search uses. Returns up to 5 US
+    address suggestion strings; never throws (empty list on any error)."""
+    q = (q or "").strip()
+    if len(q) < 3:
+        return {"suggestions": []}
+    try:
+        import googlemaps
+        gmaps = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
+        preds = gmaps.places_autocomplete(q, components={"country": "us"})
+        suggestions = [p.get("description") for p in preds if p.get("description")][:5]
+        return {"suggestions": suggestions}
+    except Exception as e:
+        print(f"[Autocomplete] failed ({repr(e)[:80]}).", flush=True)
+        return {"suggestions": []}
+
 
 @router.post("/generate_plan")
 def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
@@ -327,194 +487,111 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         for name, data in to_buy_quantities.items()
     ]
 
-    # --- Kroger / King Soopers ---
-    try:
-        kroger_store_name, kroger_store_id, kroger_prices = asyncio.run(
-            kroger_async.price_all_async(to_buy_quantities, lat, lon)
-        )
-    except Exception as e:
-        print(f"[Kroger] Async pricing failed ({e}), store will be excluded.", flush=True)
-        kroger_store_name, kroger_prices = None, {}
-
-    if not kroger_prices:
-        ks_key = next((k for k in price_database if is_king_soopers_store(k)), None)
-        if ks_key:
-            print("[KS] Kroger API empty and King Soopers store in route — trying Instacart fallback.", flush=True)
-            try:
-                ks_store_name, ks_store_id, ks_prices = kingsoopers_pricing.price_all_ks(
-                    to_buy_quantities, lat, lon
-                )
-                if ks_prices:
-                    kroger_prices = ks_prices
-                    kroger_store_name = ks_store_name
-                    print(f"[KS] Instacart fallback priced {len(ks_prices)} ingredients.", flush=True)
-            except Exception as e:
-                print(f"[KS] Instacart fallback failed ({e}).", flush=True)
-
-    if kroger_prices:
-        kroger_key = next((k for k in price_database if is_kroger_banner(k)), None)
-        if kroger_key:
-            print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
-            for ing_name, result in kroger_prices.items():
-                total_cost = result.get("total_cost", 0.0)
-                qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                key = ing_name.lower().strip()
-                price_database[kroger_key][key] = total_cost / qty
-                if result.get("description"):
-                    brand = result.get("brand", "")
-                    product_details[(kroger_key, key)] = {
-                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                        "size_str": result.get("size_str", ""),
-                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                    }
-            real_priced_keys.add(kroger_key)
-        else:
-            print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
-
-    # --- ALDI ---
+    # --- Real pricing -------------------------------------------------------
+    # Every store is independent, so they are priced CONCURRENTLY (one thread
+    # each) and the results applied sequentially in this main thread — that
+    # keeps the shared dicts (price_database / product_details / ...) race-free
+    # while collapsing wall-clock from the SUM of all stores to the SLOWEST one.
+    kroger_key = next((k for k in price_database if is_kroger_banner(k)), None)
     aldi_key = next((k for k in price_database if is_aldi_store(k)), None)
-    if aldi_key:
+    meijer_key = next((k for k in price_database if is_meijer_store(k)), None)
+    loop_keys = [
+        k for k in list(price_database.keys())
+        if not is_kroger_banner(k) and not is_aldi_store(k) and not is_meijer_store(k)
+    ]
+
+    def _apply_prices(store_key, prices, log_each=False):
+        """Write one store's real prices into price_database + product_details."""
+        for ing_name, result in prices.items():
+            total_cost = result.get("total_cost", 0.0)
+            qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+            key = ing_name.lower().strip()
+            unit_price = total_cost / qty if qty else total_cost
+            price_database[store_key][key] = unit_price
+            if log_each:
+                print(f"  [ALDI price] {ing_name!r}: total=${total_cost:.2f} qty={qty} unit=${unit_price:.3f} | {result.get('description','')}", flush=True)
+            if result.get("description"):
+                brand = result.get("brand", "")
+                product_details[(store_key, key)] = {
+                    "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
+                    "size_str": result.get("size_str", ""),
+                    "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                }
+        real_priced_keys.add(store_key)
+
+    # ---- Per-store fetchers (network only; no shared-state mutation) ----
+    def _fetch_kroger():
         try:
-            aldi_lat, aldi_lon = STORE_LOCATIONS.get(aldi_key, (lat, lon))
-            aldi_store_name, aldi_store_id, aldi_prices = price_all_aldi(
-                to_buy_quantities, aldi_lat, aldi_lon
+            _, _, prices = asyncio.run(
+                kroger_async.price_all_async(to_buy_quantities, lat, lon, store_name=kroger_key)
             )
+        except Exception as e:
+            print(f"[Kroger] Async pricing failed ({e}), store will be excluded.", flush=True)
+            prices = {}
+        if not prices:
+            ks_key = next((k for k in price_database if is_king_soopers_store(k)), None)
+            if ks_key:
+                print("[KS] Kroger API empty and King Soopers store in route — trying Instacart fallback.", flush=True)
+                try:
+                    _, _, ks_prices = kingsoopers_pricing.price_all_ks(
+                        to_buy_quantities, lat, lon
+                    )
+                    if ks_prices:
+                        prices = ks_prices
+                        print(f"[KS] Instacart fallback priced {len(ks_prices)} ingredients.", flush=True)
+                except Exception as e:
+                    print(f"[KS] Instacart fallback failed ({e}).", flush=True)
+        return prices
+
+    def _fetch_aldi():
+        aldi_lat, aldi_lon = STORE_LOCATIONS.get(aldi_key, (lat, lon))
+        try:
+            _, _, prices = price_all_aldi(to_buy_quantities, aldi_lat, aldi_lon)
+            return prices
         except Exception as e:
             print(f"[ALDI] Pricing failed ({e}), store will be excluded.", flush=True)
-            aldi_prices = {}
+            return {}
 
-        if aldi_prices:
-            print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
-            for ing_name, result in aldi_prices.items():
-                total_cost = result.get("total_cost", 0.0)
-                qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                unit_price = total_cost / qty if qty else total_cost
-                key = ing_name.lower().strip()
-                price_database[aldi_key][key] = unit_price
-                print(f"  [ALDI price] {ing_name!r}: total=${total_cost:.2f} qty={qty} unit=${unit_price:.3f} | {result.get('description','')}", flush=True)
-                if result.get("description"):
-                    brand = result.get("brand", "")
-                    product_details[(aldi_key, key)] = {
-                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                        "size_str": result.get("size_str", ""),
-                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                    }
-            real_priced_keys.add(aldi_key)
-        else:
-            print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
-    else:
-        print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
-
-    # --- Meijer ---
-    meijer_key = next((k for k in price_database if is_meijer_store(k)), None)
-    if meijer_key:
+    def _fetch_meijer():
+        m_lat, m_lon = STORE_LOCATIONS.get(meijer_key, (lat, lon))
         try:
-            meijer_store_name, meijer_store_id, meijer_prices = meijer_pricing.price_all_meijer(
-                to_buy_quantities, lat, lon
-            )
+            _, _, prices = meijer_pricing.price_all_meijer(to_buy_quantities, m_lat, m_lon)
+            return prices
         except Exception as e:
             print(f"[Meijer] Pricing failed ({e}), store will be excluded.", flush=True)
-            meijer_prices = {}
+            return {}
 
-        if meijer_prices:
-            print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
-            for ing_name, result in meijer_prices.items():
-                total_cost = result.get("total_cost", 0.0)
-                qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                key = ing_name.lower().strip()
-                price_database[meijer_key][key] = total_cost / qty
-                if result.get("description"):
-                    brand = result.get("brand", "")
-                    product_details[(meijer_key, key)] = {
-                        "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                        "size_str": result.get("size_str", ""),
-                        "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                    }
-            real_priced_keys.add(meijer_key)
-        else:
-            print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
-    else:
-        print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
-
-    # --- Walmart, Trader Joe's, and generic Instacart retailers ---
-    for store_key in list(price_database.keys()):
-        if store_key in real_priced_keys:
-            continue
-        if is_kroger_banner(store_key) or is_aldi_store(store_key) or is_meijer_store(store_key):
-            continue
-
+    def _fetch_loop_store(store_key):
+        """Full direct→Instacart decision for one non-direct store. Returns
+        {'prices': dict, 'label': str, 'costco_meta': dict}; no shared mutation."""
         if is_trader_joes_store(store_key):
             try:
                 _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
-                if tj_prices:
-                    print(f"[TJ] Applying real prices to '{store_key}'", flush=True)
-                    for ing_name, result in tj_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
+                return {"prices": tj_prices or {}, "label": "TJ"}
             except Exception as e:
                 print(f"[TJ] Pricing failed ({e}), store will be excluded.", flush=True)
-            continue
+                return {"prices": {}, "label": "TJ"}
 
         # Target: try direct RedSky pricing first; on failure fall through to
         # the generic Instacart "target" slug below (zero-regression fallback).
         if is_target_store(store_key):
+            tg_lat, tg_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
             try:
-                _, _, tg_prices = target_pricing.price_all_target(
-                    to_buy_quantities, lat, lon
-                )
+                _, _, tg_prices = target_pricing.price_all_target(to_buy_quantities, tg_lat, tg_lon)
                 if tg_prices:
-                    print(f"[Target] Applying real prices to '{store_key}'", flush=True)
-                    for ing_name, result in tg_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
-                    continue
+                    return {"prices": tg_prices, "label": "Target"}
                 print(f"[Target] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
             except Exception as e:
                 print(f"[Target] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
 
         # Walmart: try direct CloakBrowser pricing first; on failure fall through
-        # to the generic Instacart "walmart" slug below (zero-regression fallback).
+        # to the generic Instacart slug below (Walmart isn't on Instacart, so this
+        # simply yields no prices and the store is excluded — same as before).
         if is_walmart_store(store_key):
             try:
-                _, _, wm_prices = walmart_pricing.price_all_walmart(
-                    to_buy_quantities, lat, lon
-                )
+                _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, lat, lon)
                 if wm_prices:
-                    print(f"[Walmart] Applying real prices to '{store_key}'", flush=True)
-                    for ing_name, result in wm_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
-                    continue
+                    return {"prices": wm_prices, "label": "Walmart"}
                 print(f"[Walmart] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
             except Exception as e:
                 print(f"[Walmart] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
@@ -524,57 +601,72 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         # flag the line as an estimate (instead of dropping Costco entirely).
         if "costco" in store_key.lower():
             try:
-                _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(
-                    to_buy_quantities, lat, lon
-                )
-                if cc_prices:
-                    tag = " (estimate)" if cc_meta.get("is_estimate") else ""
-                    print(f"[IC:costco] Applying real prices to '{store_key}'{tag}", flush=True)
-                    for ing_name, result in cc_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
-                    if cc_meta.get("is_estimate"):
-                        costco_estimates[store_key] = {
-                            "distance_km": cc_meta.get("distance_km"),
-                            "store": cc_meta.get("store", ""),
-                        }
+                _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(to_buy_quantities, lat, lon)
+                return {"prices": cc_prices or {}, "label": "IC:costco", "costco_meta": cc_meta or {}}
             except Exception as e:
                 print(f"[IC:costco] Pricing failed ({e}), store will be excluded.", flush=True)
-            continue
+            return {"prices": {}, "label": "IC:costco"}
 
         slug = get_instacart_slug(store_key)
         if slug:
             try:
-                _, _, ic_prices = instacart_pricing.price_all_instacart(
-                    to_buy_quantities, lat, lon, slug
-                )
-                if ic_prices:
-                    print(f"[IC:{slug}] Applying real prices to '{store_key}'", flush=True)
-                    for ing_name, result in ic_prices.items():
-                        total_cost = result.get("total_cost", 0.0)
-                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
-                        key = ing_name.lower().strip()
-                        price_database[store_key][key] = total_cost / qty
-                        if result.get("description"):
-                            brand = result.get("brand", "")
-                            product_details[(store_key, key)] = {
-                                "product_name": f"{brand} {result['description']}".strip() if brand else result["description"],
-                                "size_str": result.get("size_str", ""),
-                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
-                            }
-                    real_priced_keys.add(store_key)
+                _, _, ic_prices = instacart_pricing.price_all_instacart(to_buy_quantities, lat, lon, slug)
+                return {"prices": ic_prices or {}, "label": f"IC:{slug}"}
             except Exception as e:
                 print(f"[IC:{slug}] Pricing failed ({e}), store will be excluded.", flush=True)
+        return {"prices": {}, "label": ""}
+
+    # ---- Fan out: every store priced at once ----
+    with ThreadPoolExecutor(max_workers=max(4, 3 + len(loop_keys))) as pool:
+        fut_kroger = pool.submit(_fetch_kroger)
+        fut_aldi = pool.submit(_fetch_aldi) if aldi_key else None
+        fut_meijer = pool.submit(_fetch_meijer) if meijer_key else None
+        loop_futs = {k: pool.submit(_fetch_loop_store, k) for k in loop_keys}
+
+        # ---- Fan in: apply results sequentially (main thread, no races) ----
+        kroger_prices = fut_kroger.result()
+        if kroger_prices:
+            if kroger_key:
+                print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
+                _apply_prices(kroger_key, kroger_prices)
+            else:
+                print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
+
+        if aldi_key:
+            aldi_prices = fut_aldi.result()
+            if aldi_prices:
+                print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
+                _apply_prices(aldi_key, aldi_prices, log_each=True)
+            else:
+                print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
+        else:
+            print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
+
+        if meijer_key:
+            meijer_prices = fut_meijer.result()
+            if meijer_prices:
+                print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
+                _apply_prices(meijer_key, meijer_prices)
+            else:
+                print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
+        else:
+            print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
+
+        for store_key in loop_keys:
+            res = loop_futs[store_key].result()
+            prices = res.get("prices") or {}
+            if not prices:
+                continue
+            label = res.get("label", "")
+            cc_meta = res.get("costco_meta") or {}
+            tag = " (estimate)" if cc_meta.get("is_estimate") else ""
+            print(f"[{label}] Applying real prices to '{store_key}'{tag}", flush=True)
+            _apply_prices(store_key, prices)
+            if cc_meta.get("is_estimate"):
+                costco_estimates[store_key] = {
+                    "distance_km": cc_meta.get("distance_km"),
+                    "store": cc_meta.get("store", ""),
+                }
 
     # Drop any store that real pricing couldn't cover — no synthetic fallback.
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]

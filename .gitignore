@@ -10,6 +10,10 @@ config.env
 .ic_session.json
 backend/.ic_session.json
 
+# Anti-bot clearance-cookie caches — IP/machine-specific, churn every ~20 min
+backend/.target_http_session.json
+backend/.walmart_http_session.json
+
 # Python
 __pycache__
 *.py[cod]

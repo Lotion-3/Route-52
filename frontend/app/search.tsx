@@ -4,11 +4,12 @@ import {
     KeyboardAvoidingView, Platform, ScrollView, Switch,
     Modal, FlatList, SafeAreaView,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import Logo from '@/components/Logo';
 import { Ionicons } from '@expo/vector-icons';
 import GradientButton from '@/components/GradientButton';
 import TopBanner from '@/components/TopBanner';
+import LoadingGate from '@/components/LoadingGate';
 
 // ── Static option lists ──────────────────────────────────────────────────────
 
@@ -165,9 +166,14 @@ const CustomRadioButton = ({ label, selected, onSelect }: { label: string; selec
 // ── Main screen ──────────────────────────────────────────────────────────────
 
 export default function SearchScreen() {
+    // Location + shopping time are collected on the previous (/location) screen and
+    // passed in as params; prewarm has already started on the backend by now.
+    const initial = useLocalSearchParams<{ location?: string; time?: string }>();
+    // 5s gate overlay on mount — fake progress that hides the backend prewarm.
+    const [gateVisible, setGateVisible] = useState(true);
     const [budget, setBudget] = useState('150');
-    const [time, setTime] = useState('3');
-    const [location, setLocation] = useState('');
+    const [time, setTime] = useState(typeof initial.time === 'string' ? initial.time : '3');
+    const [location, setLocation] = useState(typeof initial.location === 'string' ? initial.location : '');
 
     const [allergens, setAllergens] = useState<string[]>([]);
     const [healthConditions, setHealthConditions] = useState<string[]>([]);
@@ -337,23 +343,6 @@ export default function SearchScreen() {
                             <Text style={styles.header}>Plan Details</Text>
                         </View>
 
-                        {/* Location */}
-                        <View style={styles.section}>
-                            <View style={styles.card}>
-                                <Text style={styles.label}>Your Location</Text>
-                                <View style={styles.inputRow}>
-                                    <Ionicons name="location-outline" size={18} color="#9CA3AF" />
-                                    <TextInput
-                                        placeholder="Address or Zip Code"
-                                        placeholderTextColor="#9CA3AF"
-                                        style={styles.iconInput}
-                                        value={location}
-                                        onChangeText={setLocation}
-                                    />
-                                </View>
-                            </View>
-                        </View>
-
                         {/* Shopping Mode */}
                         <View style={styles.section}>
                             <View style={styles.card}>
@@ -378,24 +367,13 @@ export default function SearchScreen() {
                             </View>
                         </View>
 
-                        {/* Budget & Time */}
+                        {/* Budget (location + shopping time are collected on /location) */}
                         <View style={styles.section}>
                             <View style={styles.card}>
-                                <View style={styles.row}>
-                                    <View style={styles.half}>
-                                        <Text style={styles.label}>Weekly Budget ($)</Text>
-                                        <View style={styles.inputRow}>
-                                            <Ionicons name="cash-outline" size={18} color="#9CA3AF" />
-                                            <TextInput placeholder="150" placeholderTextColor="#9CA3AF" style={styles.iconInput} keyboardType="numeric" value={budget} onChangeText={setBudget} />
-                                        </View>
-                                    </View>
-                                    <View style={styles.half}>
-                                        <Text style={styles.label}>Shopping Time (hrs)</Text>
-                                        <View style={styles.inputRow}>
-                                            <Ionicons name="time-outline" size={18} color="#9CA3AF" />
-                                            <TextInput placeholder="3" placeholderTextColor="#9CA3AF" style={styles.iconInput} keyboardType="numeric" value={time} onChangeText={setTime} />
-                                        </View>
-                                    </View>
+                                <Text style={styles.label}>Weekly Budget ($)</Text>
+                                <View style={styles.inputRow}>
+                                    <Ionicons name="cash-outline" size={18} color="#9CA3AF" />
+                                    <TextInput placeholder="150" placeholderTextColor="#9CA3AF" style={styles.iconInput} keyboardType="numeric" value={budget} onChangeText={setBudget} />
                                 </View>
                             </View>
                         </View>
@@ -583,6 +561,10 @@ export default function SearchScreen() {
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
+
+            {gateVisible && (
+                <LoadingGate durationMs={5000} onDone={() => setGateVisible(false)} />
+            )}
         </>
     );
 }
