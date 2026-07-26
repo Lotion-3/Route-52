@@ -14,9 +14,18 @@ _TYPE_SEQUENCES = {
 }
 
 
+_MEALS_CACHE: Optional[List[Dict]] = None
+
+
 def _load_meals() -> List[Dict]:
-    with open(_MEALS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """Load meals.json once and cache in memory — the file is static per
+    deploy, so re-reading/parsing it on every plan request is wasted work.
+    (A restart picks up any edited meals.json.)"""
+    global _MEALS_CACHE
+    if _MEALS_CACHE is None:
+        with open(_MEALS_FILE, "r", encoding="utf-8") as f:
+            _MEALS_CACHE = json.load(f)
+    return _MEALS_CACHE
 
 
 def _filter_meals(meals: List[Dict], dietary_restrictions: str, allergens: str) -> List[Dict]:

@@ -71,7 +71,10 @@ _SEARCH_TTL = int(os.environ.get("WALMART_SEARCH_TTL", str(6 * 3600)))
 # A burst that's too wide gets throttled, so we cap concurrency and re-mint the
 # cookie (re-warm a browser) on a wave of blocks, up to MAX_IP_REFRESHES.
 _HTTP_CONCURRENCY = int(os.environ.get("WALMART_HTTP_CONCURRENCY", "8"))
-_WARM_TRIES = int(os.environ.get("WALMART_WARM_TRIES", "3"))
+# 2 (was 3): each warm holds the one shared browser gate for ~30-45s on a slow
+# host; 3 tries could hog it long enough to time out every other chain waiting
+# behind it. Fail to fallback a try sooner.
+_WARM_TRIES = int(os.environ.get("WALMART_WARM_TRIES", "2"))
 _IMPERSONATE = os.environ.get("WALMART_IMPERSONATE", "chrome")
 _NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>')
 

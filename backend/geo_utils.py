@@ -94,68 +94,66 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
 
     gmaps = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
     iso_polygon = shape(isochrone_geometry)
-    
-    stores = {}
-    store_addresses = {}
-    
-    # We search using a large radius to cover the isochrone
-    # Google Places Max Radius is 50000 meters
-    radius = 50000  
-    
-    print(f"Searching for: {', '.join(config.STORE_KEYWORDS)}...")
-    
+
+    stores: Dict[str, Tuple[float, float]] = {}
+    store_addresses: Dict[str, str] = {}
+
+    GROCERY_TYPES = {'grocery_or_supermarket', 'supermarket', 'store',
+                     'department_store', 'shopping_mall', 'food'}
+    _SUPERMARKET_TYPES = {'supermarket', 'grocery_or_supermarket',
+                          'department_store', 'shopping_mall'}
+
+    def _is_valid_grocery(place: dict) -> bool:
+        name = place.get('name', '')
+        if any(term in name.lower() for term in config.EXCLUDED_STORE_TERMS):
+            return False
+        types = place.get('types', [])
+        if not any(t in types for t in GROCERY_TYPES):
+            return False
+        if ('gas_station' in types or 'car_repair' in types) and not any(t in types for t in _SUPERMARKET_TYPES):
+            return False
+        return True
+
+    def _near_existing(lat: float, lng: float) -> bool:
+        # Skip a result physically the same as one we already kept (~120m) —
+        # e.g. "Trader Joe's" and "Trader Joes" resolving to one store.
+        for (elat, elng) in stores.values():
+            if _haversine_km((lat, lng), (elat, elng)) < 0.12:
+                return True
+        return False
+
+    print(f"Searching nearest-first for {len(config.STORE_KEYWORDS)} chains...")
+
+    # rank_by='distance' returns results NEAREST-FIRST, so we take the single
+    # closest in-range valid store per chain and stop — instead of pulling ~20
+    # results per keyword and collecting every store only to filter later. Cuts
+    # the results processed per call from ~20 to ~1 and yields exactly one store
+    # per chain (making the downstream unique-chain filter a no-op).
     for keyword in config.STORE_KEYWORDS:
         try:
             results = gmaps.places_nearby(
-                location=center_point,
-                radius=radius,
-                keyword=keyword
+                location=center_point, keyword=keyword, rank_by='distance',
             )
-            
-            # Filter results by isochrone shape
-            count_for_keyword = 0
             for place in results.get('results', []):
-                lat = place['geometry']['location']['lat']
-                lng = place['geometry']['location']['lng']
-                point = Point(lng, lat)
-                
-                # Check if inside isochrone
-                if iso_polygon.contains(point):
-                    name = place['name']
-                    
-                    # --- FILTER: Exclude unwanted store sub-types ---
-                    # Check 1: Exclude if name contains specific banned terms
-                    if any(term in name.lower() for term in config.EXCLUDED_STORE_TERMS):
-                        # print(f"Skipping {name} (Excluded term)")
-                        continue
-
-                    # Check 2: Must be a retail/grocery type — filters attorneys, doctors, clinics, etc.
-                    place_types = place.get('types', [])
-                    GROCERY_TYPES = {'grocery_or_supermarket', 'supermarket', 'store', 'department_store', 'shopping_mall', 'food'}
-                    if not any(t in place_types for t in GROCERY_TYPES):
-                        continue
-
-                    if 'gas_station' in place_types or 'car_repair' in place_types:
-                        if not any(t in place_types for t in ['supermarket', 'grocery_or_supermarket', 'department_store', 'shopping_mall']):
-                            continue
-
-                    # Ensure name uniqueness
-                    original_name = name
-                    count = 1
-                    while name in stores:
-                        name = f"{original_name} {count}"
-                        count += 1
-                        
-                    stores[name] = (lat, lng)
-                    store_addresses[name] = place.get('vicinity', 'Unknown Address')
-                    count_for_keyword += 1
-                    
-            # print(f"  Found {count_for_keyword} {keyword}s in range.")
-            
+                loc = place['geometry']['location']
+                lat, lng = loc['lat'], loc['lng']
+                if not iso_polygon.contains(Point(lng, lat)):
+                    continue                # out of reachable range
+                if not _is_valid_grocery(place):
+                    continue                # wrong type / excluded
+                if _near_existing(lat, lng):
+                    break                   # same store another keyword already found
+                name = place['name']
+                original, n = name, 1
+                while name in stores:
+                    name = f"{original} {n}"; n += 1
+                stores[name] = (lat, lng)
+                store_addresses[name] = place.get('vicinity', 'Unknown Address')
+                break                       # nearest valid store for this chain — done
         except Exception as e:
             print(f"Error searching for {keyword}: {e}")
 
-    print(f"Found {len(stores)} eligible store(s).")
+    print(f"Found {len(stores)} eligible store(s) (nearest per chain).")
     cache.set(cache_key, (stores, store_addresses))
     return stores, store_addresses
 

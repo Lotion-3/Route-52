@@ -38,7 +38,12 @@ import os
 import threading
 
 _LOWMEM = os.environ.get("LOW_MEMORY_MODE", "1") != "0"
-_GATE_TIMEOUT = float(os.environ.get("BROWSER_GATE_TIMEOUT", "180"))
+# 45s (was 180): with browsers serialized one-at-a-time, a chain waiting on the
+# gate should give up FAST and fall back (Instacart / cached / skip) rather than
+# stall the whole plan request for minutes while earlier browser chains grind
+# through on a slow host. Observed in prod: ALDI waited the full 180s behind
+# Walmart's warm and timed out anyway — better to bail at 45s and move on.
+_GATE_TIMEOUT = float(os.environ.get("BROWSER_GATE_TIMEOUT", "45"))
 
 # Validated to still clear Imperva/Akamai. --disable-dev-shm-usage is essential
 # in containers; the site-per-process disable + renderer cap collapse Chrome's
