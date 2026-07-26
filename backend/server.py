@@ -2,7 +2,8 @@ import asyncio
 import json
 import math
 import threading
-from concurrent.futures import ThreadPoolExecutor
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import uvicorn
 from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
@@ -741,14 +742,37 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         return {"prices": {}, "label": ""}
 
     # ---- Fan out: every store priced at once ----
-    with ThreadPoolExecutor(max_workers=max(4, 3 + len(loop_keys))) as pool:
+    # Price every store concurrently, but under a hard wall-clock BUDGET so a
+    # plan request always returns promptly with whatever priced — never blocking
+    # on a slow browser chain (Target's warm, ALDI's mint on a small host). Any
+    # chain still running at the deadline is skipped (its store excluded) and
+    # left to finish in the background rather than held onto. Already-finished
+    # chains are still collected regardless of order (result() on a done future
+    # returns instantly), so the fast chains never get starved by a slow one.
+    budget = float(os.environ.get("PRICING_BUDGET_SECONDS", "75"))
+    pool = ThreadPoolExecutor(max_workers=max(4, 3 + len(loop_keys)))
+    try:
         fut_kroger = pool.submit(_fetch_kroger)
         fut_aldi = pool.submit(_fetch_aldi) if aldi_key else None
         fut_meijer = pool.submit(_fetch_meijer) if meijer_key else None
         loop_futs = {k: pool.submit(_fetch_loop_store, k) for k in loop_keys}
 
+        deadline = time.time() + budget
+
+        def _within_budget(fut, label):
+            if fut is None:
+                return None
+            try:
+                return fut.result(timeout=max(0.1, deadline - time.time()))
+            except FuturesTimeout:
+                print(f"[Pricing] {label} exceeded the {budget:.0f}s budget — skipping.", flush=True)
+                return None
+            except Exception as e:
+                print(f"[Pricing] {label} errored: {repr(e)[:100]}", flush=True)
+                return None
+
         # ---- Fan in: apply results sequentially (main thread, no races) ----
-        kroger_prices = fut_kroger.result()
+        kroger_prices = _within_budget(fut_kroger, "Kroger")
         if kroger_prices:
             if kroger_key:
                 print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
@@ -757,7 +781,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
 
         if aldi_key:
-            aldi_prices = fut_aldi.result()
+            aldi_prices = _within_budget(fut_aldi, "ALDI")
             if aldi_prices:
                 print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
                 _apply_prices(aldi_key, aldi_prices, log_each=True)
@@ -767,7 +791,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
 
         if meijer_key:
-            meijer_prices = fut_meijer.result()
+            meijer_prices = _within_budget(fut_meijer, "Meijer")
             if meijer_prices:
                 print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
                 _apply_prices(meijer_key, meijer_prices)
@@ -777,7 +801,9 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
 
         for store_key in loop_keys:
-            res = loop_futs[store_key].result()
+            res = _within_budget(loop_futs[store_key], store_key)
+            if not res:
+                continue
             prices = res.get("prices") or {}
             if not prices:
                 continue
@@ -791,6 +817,10 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                     "distance_km": cc_meta.get("distance_km"),
                     "store": cc_meta.get("store", ""),
                 }
+    finally:
+        # Don't block the response on chains still running at the deadline —
+        # abandon them (the browser gate caps them at one at a time anyway).
+        pool.shutdown(wait=False, cancel_futures=True)
 
     # Drop any store that real pricing couldn't cover — no synthetic fallback.
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
