@@ -1,7 +1,16 @@
 from itertools import combinations, permutations
 from typing import List, Dict, Tuple, Union, Optional, Set, Any
+import os
 import re
 import config
+
+# A route (single store or split) must price at least this fraction of the
+# shopping list to be usable. Below it, its low total is just an artifact of
+# missing items, so it's treated as infeasible. Above it, unpriced items are
+# skipped (not counted) rather than poisoning the whole route to infinity — the
+# old behavior discarded a store that priced 91/92 items over one fuzzy-match
+# miss, producing an empty plan even where a chain priced everything.
+_MIN_COVERAGE = float(os.environ.get("OPTIMIZER_MIN_COVERAGE", "0.5"))
 
 # --- CORE OPTIMIZATION FUNCTIONS ---
 def calculate_split_shopping_price(
@@ -15,15 +24,16 @@ def calculate_split_shopping_price(
     the total quantity of units assigned to each store.
     """
     total_price = 0.0
-    item_assignment_counts: Dict[str, int] = {s: 0 for s in store_ids} 
-    
-    for item_data in shopping_list: 
+    item_assignment_counts: Dict[str, int] = {s: 0 for s in store_ids}
+    priced_items = 0
+
+    for item_data in shopping_list:
         item = item_data["name"].lower().strip()
         quantity = item_data["qty"]
-        
-        min_item_cost = float('inf') 
+
+        min_item_cost = float('inf')
         best_store = None
-        
+
         # Find the cheapest price for this item among the selected stores
         for store_id in store_ids:
             s_id = store_id.strip() # Standardize inside lookup
@@ -32,20 +42,29 @@ def calculate_split_shopping_price(
                 cost = unit_price * quantity
                 if cost < min_item_cost:
                     min_item_cost = cost
-                    best_store = store_id 
-        
+                    best_store = store_id
+
         if min_item_cost == float('inf'):
-            return float('inf'), item_assignment_counts 
-            
+            # This item isn't priced at any store in the route. Skip it instead
+            # of throwing away the whole route (the coverage check below still
+            # rejects routes that miss too much).
+            continue
+
+        priced_items += 1
         total_price += min_item_cost
-        
+
         # Optimization: Early exit if we already exceed the best known price
         if total_price >= max_cost_threshold:
             return float('inf'), item_assignment_counts
 
         if best_store:
             item_assignment_counts[best_store] += int(quantity)
-            
+
+    # Reject a route that couldn't price a meaningful share of the list — its low
+    # total would just reflect missing items, not real savings.
+    if not shopping_list or (priced_items / len(shopping_list)) < _MIN_COVERAGE:
+        return float('inf'), item_assignment_counts
+
     return total_price, item_assignment_counts
 
 def find_fastest_travel_permutation(
