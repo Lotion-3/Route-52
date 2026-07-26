@@ -157,13 +157,13 @@ def _cache_static_assets(resp) -> None:
 # objects are never shared across threads.
 # ---------------------------------------------------------------------------
 
-# Worker count scales with basket size (one browser per ~_ITEMS_PER_WORKER
-# items), capped at _MAX_POOL. Each worker is a headless Chromium, so this trades
-# RAM for speed; per-navigation time is a fixed ~3s floor (server-render bound,
-# not client-render — blocking images/CSS does NOT help), so concurrency is the
-# only real lever. Validated: 8 concurrent browsers from one IP still pass
-# PerimeterX. Bump WALMART_POOL_SIZE on a beefy machine; lower it if RAM is tight.
-_MAX_POOL = int(os.environ.get("WALMART_POOL_SIZE", "6"))
+# Worker count for the browser-pool FALLBACK (used only when the primary
+# curl_cffi path yields nothing). Default 1: browser_gate now serializes all
+# CloakBrowsers to one-at-a-time process-wide, so a pool >1 just spawns extra
+# threads that block on the gate — no parallelism gained, only overhead. Bump
+# WALMART_POOL_SIZE only if you disable the gate (LOW_MEMORY_MODE=0) on a
+# high-RAM host, where real concurrent browsers help a big basket.
+_MAX_POOL = int(os.environ.get("WALMART_POOL_SIZE", "1"))
 _ITEMS_PER_WORKER = int(os.environ.get("WALMART_ITEMS_PER_WORKER", "12"))
 _run_lock = threading.Lock()       # serialize whole-Walmart runs across requests
 _thread_local = threading.local()  # per-worker: browser, ctx, proxy_session
