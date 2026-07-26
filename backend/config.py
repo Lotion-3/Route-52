@@ -34,7 +34,13 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter" 
 
 # --- STORE SEARCH CONFIG ---
-STORE_KEYWORDS = ['Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco']
+STORE_KEYWORDS = [
+    'Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco',
+    # Australia — Google Places is location-scoped, so mixing these in with the
+    # US keywords is harmless (an AU address just won't return Walmart/Kroger
+    # results, and vice versa).
+    'Coles', 'Woolworths', 'IGA',
+]
 
 # Keywords to exclude from store results (e.g. specialized departments)
 EXCLUDED_STORE_TERMS = [
@@ -95,13 +101,23 @@ MAX_TIME_SECONDS = SHOPPING_TIME_HOURS * 3600 * 1.1  # 10% buffer
 
 # --- STORE TIME MULTIPLIERS ---
 STORE_TIME_MULTIPLIERS: Dict[str, float] = {
-    "Aldi": 0.8,         
-    "Trader Joe's": 0.9, 
-    "Kroger": 1.0,       
-    "Meijer": 1.1,       
-    "Walmart": 1.2,      
-    "Costco": 1.5         
+    "Aldi": 0.8,
+    "Trader Joe's": 0.9,
+    "Kroger": 1.0,
+    "Meijer": 1.1,
+    "Walmart": 1.2,
+    "Costco": 1.5,
+    "IGA": 0.9,
+    "Coles": 1.1,
+    "Woolworths": 1.1,
 }
+
+# --- AU STORE ID DEFAULTS ---
+# Coles/IGA pricing is store-resolved but there's no lat/lon -> storeId lookup
+# yet (see coles_pricing.py / iga_pricing.py) — every AU request prices
+# against these fixed test stores until that's built.
+COLES_DEFAULT_STORE_ID = os.getenv("COLES_DEFAULT_STORE_ID", "7674")
+IGA_DEFAULT_STORE_ID = os.getenv("IGA_DEFAULT_STORE_ID", "32600")
 
 # --- TIME MODEL CONSTANTS ---
 BASE_CHECKOUT_TIME_MINUTES = 7 

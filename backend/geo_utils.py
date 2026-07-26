@@ -1,6 +1,7 @@
 
 import requests
 import time
+import math
 import os
 from typing import Dict, List, Tuple, Union, Any, Optional
 import config
@@ -213,31 +214,72 @@ def find_eligible_stores_overpass(bbox: Tuple[float, float, float, float]) -> Di
 def convert_locations_to_ors_format(locations: List[Tuple[float, float]]) -> List[List[float]]:
     return [[loc[1], loc[0]] for loc in locations]
 
-def get_distance_matrix(locations: List[Tuple[float, float]]) -> Union[Dict[str, Any], None]:
+def _haversine_km(loc1: Tuple[float, float], loc2: Tuple[float, float]) -> float:
+    lat1, lon1 = loc1
+    lat2, lon2 = loc2
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2 * 6371.0 * math.asin(math.sqrt(a))
+
+def build_fallback_duration_matrix(locations: List[Tuple[float, float]]) -> List[List[float]]:
+    """Estimate driving durations (seconds) from straight-line distances.
+
+    Straight-line km × 1.3 road-winding factor at a 40 km/h average city
+    driving speed — rough, but enough for the optimizer to rank routes.
+    """
+    ROAD_FACTOR = 1.3
+    AVG_SPEED_KMH = 40.0
+    n = len(locations)
+    matrix = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(i + 1, n):
+            secs = _haversine_km(locations[i], locations[j]) * ROAD_FACTOR / AVG_SPEED_KMH * 3600.0
+            matrix[i][j] = matrix[j][i] = secs
+    return matrix
+
+def get_distance_matrix(locations: List[Tuple[float, float]]) -> Dict[str, Any]:
     ors_locations = convert_locations_to_ors_format(locations)
+
+    cache_key = {"func": "get_distance_matrix", "locations": ors_locations}
+    cached_result = cache.get(cache_key, max_age_seconds=86400 * 7) # 1 week cache
+    if cached_result:
+        print("Using cached distance matrix.")
+        return cached_result
+
     headers = {
         'Accept': 'application/json',
         'Authorization': config.ORS_API_KEY,
         'Content-Type': 'application/json'
     }
     payload = {"locations": ors_locations}
-    
+
     for attempt in range(3):
         try:
             response = requests.post(config.ORS_MATRIX_URL, headers=headers, json=payload, timeout=10)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if data.get('durations'):
+                cache.set(cache_key, data)
+            return data
         except requests.exceptions.HTTPError as e:
             if response.status_code >= 500 and attempt < 2:
                 time.sleep(2 ** attempt)
                 continue
-            return None
-        except requests.exceptions.RequestException:
-            return None
-    
-    return None
+            break
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching ORS matrix: {e}")
+            break
 
-def process_matrix_result(matrix_response: Dict) -> List[List[float]]:
+    # Fallback: estimate durations from straight-line distances (not cached —
+    # a later request should retry ORS for real road times).
+    print("[Server] ORS matrix failed — using haversine duration estimates.", flush=True)
+    return {"durations": build_fallback_duration_matrix(locations), "fallback": True}
+
+def process_matrix_result(matrix_response: Optional[Dict]) -> List[List[float]]:
+    if not matrix_response:
+        return []
     durations_matrix = matrix_response.get('durations')
     return durations_matrix if durations_matrix else []
 

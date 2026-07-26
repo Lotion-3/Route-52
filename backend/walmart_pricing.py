@@ -50,7 +50,15 @@ _SEARCH_URL = "https://www.walmart.com/search?q={q}&affinityOverride=default&ps=
 _WARM_URL = "https://www.walmart.com/"
 _STORE_ID = "national"  # Walmart online pricing isn't store-resolved here
 
-_PROXY = os.environ.get("CLOAK_PROXY") or os.environ.get("WALMART_PROXY") or None
+def _parse_proxies(raw: Optional[str]) -> list[str]:
+    """Split a proxy env value into a pool (comma/whitespace separated) — same
+    convention as target_pricing.py, so CLOAK_PROXY works identically everywhere."""
+    if not raw:
+        return []
+    return [p.strip() for p in re.split(r"[,\s]+", raw) if p.strip()]
+
+_PROXIES = _parse_proxies(os.environ.get("CLOAK_PROXY") or os.environ.get("WALMART_PROXY"))
+_PROXY = _PROXIES[0] if _PROXIES else None  # kept for back-compat truthiness checks
 MAX_IP_REFRESHES = int(os.environ.get("WALMART_MAX_IP_REFRESHES", "5"))
 _SEARCH_TTL = int(os.environ.get("WALMART_SEARCH_TTL", str(6 * 3600)))
 
@@ -84,6 +92,63 @@ def is_walmart_store(store_name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Bandwidth trim for the warm navigation — same technique as coles_pricing.py
+# / woolworths_pricing.py. Measured 2026-07-25: walmart.com's warm (home +
+# search) is ~6.6MB unblocked, almost entirely a Next.js JS/CSS bundle on
+# i5.walmartimages.com loaded twice (once per nav). Blocks images/fonts/media
+# and third-party ad-tech outright; caches i5.walmartimages.com's
+# content-hashed `_next/static/` chunks via route.fulfill() so the second nav
+# reuses them for free instead of re-fetching. Deliberately does NOT touch
+# anything on walmart.com itself (where PerimeterX's challenge lives) or
+# PerimeterX's own script (px/PXu6b0qd2S/init.js) — only the site's own
+# static-asset CDN is cached, same conservative scoping as Woolworths.
+# ---------------------------------------------------------------------------
+_BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+_BLOCKED_DOMAIN_SUBSTRINGS = (
+    "doubleclick", "googletagmanager", "google-analytics", "googlesyndication",
+    "googleadservices", "facebook.com", "fbcdn", "fbevents", "adobedtm",
+    "demdex", "everesttech", "tealiumiq", "omtrdc", "adsrvr", "tiktok",
+    "bing.com/p", "clarity.ms", "hotjar", "criteo", "outbrain", "taboola",
+    "spotxchange", "pinterest", "bat.bing",
+)
+_CACHEABLE_TYPES = {"script", "stylesheet"}
+_CACHEABLE_HOST = "i5.walmartimages.com"
+_static_asset_cache: dict[str, dict] = {}
+
+
+def _block_heavy_resources(ctx) -> None:
+    def _handle(route):
+        req = route.request
+        url = req.url.lower()
+        if req.resource_type in _BLOCKED_RESOURCE_TYPES or any(
+            d in url for d in _BLOCKED_DOMAIN_SUBSTRINGS
+        ):
+            route.abort()
+            return
+        if req.resource_type in _CACHEABLE_TYPES and _CACHEABLE_HOST in req.url and "_next/static/" in req.url:
+            cached = _static_asset_cache.get(req.url)
+            if cached:
+                route.fulfill(status=cached["status"], headers=cached["headers"], body=cached["body"])
+                return
+        route.continue_()
+    ctx.route("**/*", _handle)
+
+
+def _cache_static_assets(resp) -> None:
+    req = resp.request
+    if (req.resource_type in _CACHEABLE_TYPES and _CACHEABLE_HOST in req.url
+            and "_next/static/" in req.url and req.url not in _static_asset_cache):
+        try:
+            _static_asset_cache[req.url] = {
+                "status": resp.status,
+                "headers": dict(resp.headers),
+                "body": resp.body(),
+            }
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
 # CloakBrowser worker pool — one browser per worker thread.
 # PerimeterX blocks bare fetch() but permits real navigations, and tolerates a
 # handful of concurrent browsers from one IP, so Walmart is parallelized by
@@ -106,15 +171,25 @@ _thread_local = threading.local()  # per-worker: browser, ctx, proxy_session
 
 def _rotate_proxy_session() -> None:
     _thread_local.proxy_session = os.urandom(6).hex()
+    if _PROXIES:
+        # Random (not round-robin) so concurrent worker threads in the browser
+        # pool naturally spread across different proxies instead of racing a
+        # shared cursor.
+        _thread_local.proxy_idx = random.randrange(len(_PROXIES))
 
 
 def _current_proxy() -> Optional[str]:
-    if not _PROXY:
+    if not _PROXIES:
         return None
-    sid = getattr(_thread_local, "proxy_session", None)
-    if "{session}" in _PROXY:
-        return _PROXY.replace("{session}", sid or os.urandom(6).hex())
-    return _PROXY
+    idx = getattr(_thread_local, "proxy_idx", None)
+    if idx is None:
+        idx = random.randrange(len(_PROXIES))
+        _thread_local.proxy_idx = idx
+    base = _PROXIES[idx % len(_PROXIES)]
+    if "{session}" in base:
+        sid = getattr(_thread_local, "proxy_session", None)
+        return base.replace("{session}", sid or os.urandom(6).hex())
+    return base
 
 
 def _bootstrap_session():
@@ -138,7 +213,9 @@ def _bootstrap_session():
         browser = launch(**kwargs)
 
     ctx = browser.new_context()
+    _block_heavy_resources(ctx)
     page = ctx.new_page()
+    page.on("response", _cache_static_assets)
     page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
     time.sleep(2)
     page.close()
@@ -231,6 +308,7 @@ def _fetch_items_browser(term: str) -> list[dict]:
     Raises _Blocked when PerimeterX serves a challenge (no __NEXT_DATA__)."""
     ctx = _ensure_ctx()
     page = ctx.new_page()
+    page.on("response", _cache_static_assets)
     try:
         page.goto(_SEARCH_URL.format(q=requests_quote(term)),
                   wait_until="domcontentloaded", timeout=45000)
@@ -283,14 +361,32 @@ def _extract_size(name: str) -> str:
     return "1 each"
 
 
-def _price_from_lineprice(price_info: dict) -> Optional[float]:
-    raw = (price_info.get("linePrice") or price_info.get("linePriceDisplay")
-           or price_info.get("itemPrice") or "")
-    m = re.search(r"(\d+(?:\.\d{1,2})?)", str(raw).replace(",", ""))
+def _extract_price_number(raw) -> Optional[float]:
+    m = re.search(r"(\d+(?:\.\d{1,2})?)", str(raw or "").replace(",", ""))
     if not m:
         return None
     val = float(m.group(1))
     return val if 0.01 <= val <= 500 else None
+
+
+def _price_from_lineprice(price_info: dict) -> Optional[float]:
+    raw = (price_info.get("linePrice") or price_info.get("linePriceDisplay")
+           or price_info.get("itemPrice") or "")
+    val = _extract_price_number(raw)
+    if val is not None:
+        return val
+    # Walmart migrated to this structure ~2026-07 — the flat linePrice/itemPrice
+    # fields now come back as empty strings for every item; the real price
+    # lives in priceDetails.priceLines[lineType=CURRENT_PRICE].values[key=PRICE].
+    for line in (price_info.get("priceDetails") or {}).get("priceLines") or []:
+        if line.get("lineType") != "CURRENT_PRICE":
+            continue
+        for v in line.get("values") or []:
+            if v.get("key") == "PRICE":
+                val = _extract_price_number(v.get("value"))
+                if val is not None:
+                    return val
+    return None
 
 
 def _item_to_kroger_format(item: dict) -> Optional[dict]:
@@ -387,7 +483,9 @@ def _warm_http_session() -> dict:
         browser = launch(**kwargs)
     try:
         ctx = browser.new_context()
+        _block_heavy_resources(ctx)
         page = ctx.new_page()
+        page.on("response", _cache_static_assets)
         page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
         time.sleep(2)
         # The search nav (not just the homepage) is what makes PerimeterX fully

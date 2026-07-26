@@ -15,6 +15,17 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Chromium needs OS-level shared libraries (libnss3, libgbm1, fonts, etc.) that
+# this slim base image doesn't have — `pip install` alone never provides these.
+# `playwright install-deps` installs just those system libraries via apt (the
+# `playwright` package is already present as a CloakBrowser dependency).
+RUN python -m playwright install-deps chromium
+
+# CloakBrowser ships its OWN patched Chromium binary (fingerprint-evasion
+# patches), separate from Playwright's stock browser — `cloakbrowser install`
+# downloads it. Without this, every browser launch fails at runtime.
+RUN python -m cloakbrowser install
+
 # Copy the rest of the backend code
 COPY . .
 

@@ -164,6 +164,63 @@ def is_target_store(store_name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Bandwidth trim for the warm navigation — same technique as coles_pricing.py
+# / woolworths_pricing.py / walmart_pricing.py. Measured 2026-07-25: target.com's
+# warm (home + search) is ~9.1MB unblocked, dominated by a Next.js JS/CSS bundle
+# on assets.targetimg1.com loaded twice. Blocks images/fonts/media and
+# third-party ad-tech; caches only assets.targetimg1.com's content-hashed
+# `_next/static/` chunks via route.fulfill(). Deliberately excludes
+# assets.targetimg1.com/ssx/ssx.mod.js (its `?seed=...` query param looks
+# request-specific, same caution as Woolworths' obfuscated paths) and
+# anything on px-cloud.net (PerimeterX's own domain) or target.com itself
+# (where the Imperva challenge actually lives).
+# ---------------------------------------------------------------------------
+_BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+_BLOCKED_DOMAIN_SUBSTRINGS = (
+    "doubleclick", "googletagmanager", "google-analytics", "googlesyndication",
+    "googleadservices", "facebook.com", "fbcdn", "fbevents", "adobedtm",
+    "demdex", "everesttech", "tealiumiq", "omtrdc", "adsrvr", "tiktok",
+    "bing.com/p", "clarity.ms", "hotjar", "criteo", "outbrain", "taboola",
+    "spotxchange", "pinterest", "bat.bing",
+)
+_CACHEABLE_TYPES = {"script", "stylesheet"}
+_CACHEABLE_HOST = "assets.targetimg1.com"
+_static_asset_cache: dict[str, dict] = {}
+
+
+def _block_heavy_resources(ctx) -> None:
+    def _handle(route):
+        req = route.request
+        url = req.url.lower()
+        if req.resource_type in _BLOCKED_RESOURCE_TYPES or any(
+            d in url for d in _BLOCKED_DOMAIN_SUBSTRINGS
+        ):
+            route.abort()
+            return
+        if req.resource_type in _CACHEABLE_TYPES and _CACHEABLE_HOST in req.url and "_next/static/" in req.url:
+            cached = _static_asset_cache.get(req.url)
+            if cached:
+                route.fulfill(status=cached["status"], headers=cached["headers"], body=cached["body"])
+                return
+        route.continue_()
+    ctx.route("**/*", _handle)
+
+
+def _cache_static_assets(resp) -> None:
+    req = resp.request
+    if (req.resource_type in _CACHEABLE_TYPES and _CACHEABLE_HOST in req.url
+            and "_next/static/" in req.url and req.url not in _static_asset_cache):
+        try:
+            _static_asset_cache[req.url] = {
+                "status": resp.status,
+                "headers": dict(resp.headers),
+                "body": resp.body(),
+            }
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
 # CloakBrowser singleton — all access pinned to one worker thread
 # ---------------------------------------------------------------------------
 
@@ -227,7 +284,9 @@ def _bootstrap_session():
         _browser = launch(**kwargs)
 
     _ctx = _browser.new_context()
+    _block_heavy_resources(_ctx)
     page = _ctx.new_page()
+    page.on("response", _cache_static_assets)
     page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
     # Let Imperva's JS challenge run and set its clearance cookie before we hit
     # the API — calling RedSky too eagerly returns a captcha.
@@ -559,7 +618,9 @@ def _warm_http_session() -> dict:
         browser = launch(**kwargs)
     try:
         ctx = browser.new_context()
+        _block_heavy_resources(ctx)
         page = ctx.new_page()
+        page.on("response", _cache_static_assets)
         page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
         time.sleep(2)
         # A real search nav (not just the homepage) is what fully clears Imperva

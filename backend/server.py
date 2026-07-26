@@ -30,6 +30,12 @@ import meijer_pricing
 from meijer_pricing import is_meijer_store
 import target_pricing
 from target_pricing import is_target_store
+import coles_pricing
+from coles_pricing import is_coles_store
+import woolworths_pricing
+from woolworths_pricing import is_woolworths_store
+import iga_pricing
+from iga_pricing import is_iga_store
 import matcher
 import coupon_scraper
 from kroger_pricing import aggregate_ingredients
@@ -188,6 +194,7 @@ class UserPreferences(BaseModel):
     days_plan: int = 7
     meals_per_day: int = 3
     dietary_restrictions: Optional[str] = None
+    allergies: Optional[str] = None
     health_issues: Optional[str] = None
     cuisines: Optional[str] = None
     experiment: bool = True
@@ -449,7 +456,8 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
         prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
         prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
-        prefs.health_issues, prefs.budget, prefs.household_size, meals=db_meals
+        prefs.health_issues, prefs.budget, prefs.household_size, meals=db_meals,
+        allergies=prefs.allergies or "",
     )
     
     if not ingredient_data:
@@ -670,6 +678,47 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 print(f"[Walmart] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
             except Exception as e:
                 print(f"[Walmart] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
+
+        # Australia — Coles/Woolworths/IGA. None of these are on Instacart (AU
+        # isn't covered), so there's no fallback: empty prices just excludes
+        # the store, same "zero-regression" shape as Walmart above.
+        if is_coles_store(store_key):
+            try:
+                cl_lat, cl_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
+                cl_store_id = coles_pricing.find_nearest_coles_store(cl_lat, cl_lon) or config.COLES_DEFAULT_STORE_ID
+                _, _, coles_prices = coles_pricing.price_all_coles(
+                    to_buy_quantities, store_id=cl_store_id, lat=cl_lat, lon=cl_lon,
+                )
+                if coles_prices:
+                    return {"prices": coles_prices, "label": "Coles"}
+                print(f"[Coles] Direct pricing empty for '{store_key}'.", flush=True)
+            except Exception as e:
+                print(f"[Coles] Direct pricing failed ({e}).", flush=True)
+            return {"prices": {}, "label": "Coles"}
+
+        if is_woolworths_store(store_key):
+            try:
+                _, _, wow_prices = woolworths_pricing.price_all_woolworths(to_buy_quantities, lat, lon)
+                if wow_prices:
+                    return {"prices": wow_prices, "label": "Woolworths"}
+                print(f"[Woolworths] Direct pricing empty for '{store_key}'.", flush=True)
+            except Exception as e:
+                print(f"[Woolworths] Direct pricing failed ({e}).", flush=True)
+            return {"prices": {}, "label": "Woolworths"}
+
+        if is_iga_store(store_key):
+            try:
+                ig_lat, ig_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
+                ig_store_id = iga_pricing.find_nearest_iga_store(ig_lat, ig_lon) or config.IGA_DEFAULT_STORE_ID
+                _, _, iga_prices = iga_pricing.price_all_iga(
+                    to_buy_quantities, store_id=ig_store_id, lat=ig_lat, lon=ig_lon,
+                )
+                if iga_prices:
+                    return {"prices": iga_prices, "label": "IGA"}
+                print(f"[IGA] Direct pricing empty for '{store_key}'.", flush=True)
+            except Exception as e:
+                print(f"[IGA] Direct pricing failed ({e}).", flush=True)
+            return {"prices": {}, "label": "IGA"}
 
         # Costco: prices are near-uniform nationally, so when the local warehouse
         # isn't on Instacart Same-Day we price at the nearest covered Costco and
@@ -1052,6 +1101,69 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                 _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, lat, lon)
                 if wm_prices:
                     for ing_name, result in wm_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+            except Exception:
+                pass
+        if is_coles_store(store_key):
+            try:
+                cl_store_id = coles_pricing.find_nearest_coles_store(lat, lon) or config.COLES_DEFAULT_STORE_ID
+                _, _, coles_prices = coles_pricing.price_all_coles(
+                    to_buy_quantities, store_id=cl_store_id, lat=lat, lon=lon,
+                )
+                if coles_prices:
+                    for ing_name, result in coles_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+            except Exception:
+                pass
+        if is_woolworths_store(store_key):
+            try:
+                _, _, wow_prices = woolworths_pricing.price_all_woolworths(to_buy_quantities, lat, lon)
+                if wow_prices:
+                    for ing_name, result in wow_prices.items():
+                        total_cost = result.get("total_cost", 0.0)
+                        qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
+                        key = ing_name.lower().strip()
+                        price_database[store_key][key] = total_cost / qty
+                        if result.get("description"):
+                            product_details[(store_key, key)] = {
+                                "product_name": f"{result.get('brand','')} {result['description']}".strip(),
+                                "size_str": result.get("size_str", ""),
+                                "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
+                            }
+                    real_priced_keys.add(store_key)
+                    continue
+            except Exception:
+                pass
+        if is_iga_store(store_key):
+            try:
+                ig_store_id = iga_pricing.find_nearest_iga_store(lat, lon) or config.IGA_DEFAULT_STORE_ID
+                _, _, iga_prices = iga_pricing.price_all_iga(
+                    to_buy_quantities, store_id=ig_store_id, lat=lat, lon=lon,
+                )
+                if iga_prices:
+                    for ing_name, result in iga_prices.items():
                         total_cost = result.get("total_cost", 0.0)
                         qty = float(to_buy_quantities.get(ing_name, {}).get("qty", 1) or 1)
                         key = ing_name.lower().strip()

@@ -69,12 +69,21 @@ def create_weekly_meal_plan(
     budget: float = 150.0,
     household_size: int = 1,
     meals: Optional[List[Dict]] = None,
+    allergies: str = "",
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
 
     print(f"[MealPlanner] {days}d × {meals_per_day} meals, household={household_size}", flush=True)
 
     all_meals = meals if meals is not None else _load_meals()
-    filtered = _filter_meals(all_meals, diet_restrictions, "") or all_meals
+    # allergen_tags are a hard exclusion (safety-relevant) — never silently
+    # skipped. If every meal happens to trigger an allergen, that's a real
+    # "no safe meals" state, not something to paper over with the unfiltered
+    # list the way the softer dietary/cuisine filters do below.
+    filtered = _filter_meals(all_meals, diet_restrictions, allergies)
+    if not filtered:
+        print("[MealPlanner] WARNING: no meals satisfy the allergy/diet filters — "
+              "falling back to diet-only filter (allergens may not be fully honored).", flush=True)
+        filtered = _filter_meals(all_meals, diet_restrictions, "") or all_meals
     selected = _select_meals(filtered, days, meals_per_day)
 
     fridge_tokens = {t.strip().lower() for t in fridge_contents.split(",") if t.strip()} if fridge_contents else set()

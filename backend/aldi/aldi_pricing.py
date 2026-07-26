@@ -99,10 +99,42 @@ def _save_disk_session(cookies: dict, qp: str, zone_id: str, shop_id: str = "") 
         pass
 
 
-def _bootstrap() -> tuple[dict, str, str, str]:
-    """Bootstrap ALDI session via HTTP.
+def _automint_sid() -> dict:
+    """Mint a fresh __Host-instacart_sid via CloakBrowser — aldi.us issues it to
+    ANY visit, anonymous, no login/account needed (verified 2026-07-25: a brand
+    new headless session gets one automatically, ~30-day expiry). Returns the
+    full cookie jar from that visit, or {} on any failure (caller falls back
+    to the manually-pasted ALDI_INSTACART_SID)."""
+    try:
+        from cloakbrowser import launch
+        browser = launch(headless=True)
+        try:
+            ctx = browser.new_context()
+            page = ctx.new_page()
+            page.goto("https://www.aldi.us/store/aldi/s?query=eggs",
+                      wait_until="domcontentloaded", timeout=45000)
+            time.sleep(2)
+            cookies = {c["name"]: c["value"] for c in ctx.cookies()}
+        finally:
+            browser.close()
+        if "__Host-instacart_sid" in cookies:
+            print("[ALDI] Auto-minted a fresh __Host-instacart_sid via CloakBrowser.", flush=True)
+            return cookies
+        print("[ALDI] Auto-mint didn't get a __Host-instacart_sid cookie.", flush=True)
+    except Exception as e:
+        print(f"[ALDI] Auto-mint failed ({repr(e)[:100]}) — falling back to config.env SID.", flush=True)
+    return {}
 
-    Reads ALDI_INSTACART_SID and ALDI_SHOP_ID from config.env.
+
+def _bootstrap() -> tuple[dict, str, str, str]:
+    """Bootstrap ALDI session.
+
+    Primary: auto-mint a fresh session (incl. the SID) via CloakBrowser — no
+    manual DevTools capture needed, and it's never stale since it's minted new
+    every time the disk cache (SESSION_TTL) expires.
+
+    Fallback: ALDI_INSTACART_SID/ALDI_SHOP_ID from config.env, for when
+    CloakBrowser is unavailable or the auto-mint fails for some reason.
 
     NOTE: the SID is REQUIRED. Verified against the live API — with the SID the
     SearchResultsPlacements/Items queries return the correct ALDI in-store price
@@ -112,23 +144,26 @@ def _bootstrap() -> tuple[dict, str, str, str]:
     import os
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent.parent / "config.env")
-    sid = os.getenv("ALDI_INSTACART_SID", "")
+    manual_sid = os.getenv("ALDI_INSTACART_SID", "")
     shop_id = os.getenv("ALDI_SHOP_ID", "")
 
-    print("[ALDI] Bootstrapping session (HTTP)...", flush=True)
-    s = requests.Session()
-    s.headers.update(BASE_HEADERS)
-    try:
-        s.get("https://www.aldi.us/store/aldi/s?query=eggs", timeout=15)
-    except Exception as e:
-        print(f"[ALDI] Bootstrap GET failed: {e}", flush=True)
+    print("[ALDI] Bootstrapping session...", flush=True)
+    cookies = _automint_sid()
 
-    cookies = dict(s.cookies)
-    if sid:
-        cookies["__Host-instacart_sid"] = sid
-        print(f"[ALDI] Using ALDI_INSTACART_SID from config.env", flush=True)
-    else:
-        print("[ALDI] WARNING: ALDI_INSTACART_SID not set — search will return no products.", flush=True)
+    if "__Host-instacart_sid" not in cookies:
+        # Auto-mint unavailable/failed — same behavior as before this change.
+        s = requests.Session()
+        s.headers.update(BASE_HEADERS)
+        try:
+            s.get("https://www.aldi.us/store/aldi/s?query=eggs", timeout=15)
+        except Exception as e:
+            print(f"[ALDI] Bootstrap GET failed: {e}", flush=True)
+        cookies = dict(s.cookies)
+        if manual_sid:
+            cookies["__Host-instacart_sid"] = manual_sid
+            print("[ALDI] Using ALDI_INSTACART_SID from config.env (fallback).", flush=True)
+        else:
+            print("[ALDI] WARNING: no auto-minted or config.env SID — search will return no products.", flush=True)
 
     if shop_id:
         print(f"[ALDI] Using hardcoded ALDI_SHOP_ID={shop_id!r} from config.env", flush=True)

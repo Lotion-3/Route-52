@@ -21,6 +21,7 @@ prices format (same as kroger_async / aldi_pricing):
 from __future__ import annotations
 
 import os
+import random
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -30,6 +31,38 @@ import requests
 
 from kroger_pricing import find_best_purchase
 from kroger_search_map import get_all_terms
+
+# ---------------------------------------------------------------------------
+# Proxy — same CLOAK_PROXY convention as walmart_pricing.py/target_pricing.py/
+# coles_pricing.py/woolworths_pricing.py: a single URL, a single URL with a
+# {session} placeholder, or a comma/whitespace-separated pool. Meijer has no
+# CloakBrowser step to mint a reusable cookie — every request is a direct
+# curl_cffi/requests call, so the proxy is applied per-request rather than
+# just at a "warm" step.
+# ---------------------------------------------------------------------------
+
+
+def _parse_proxies(raw: Optional[str]) -> list[str]:
+    if not raw:
+        return []
+    return [p.strip() for p in re.split(r"[,\s]+", raw) if p.strip()]
+
+
+_PROXIES = _parse_proxies(os.environ.get("CLOAK_PROXY") or os.environ.get("MEIJER_PROXY"))
+
+
+def _pick_proxy() -> Optional[str]:
+    if not _PROXIES:
+        return None
+    base = random.choice(_PROXIES)
+    if "{session}" in base:
+        return base.replace("{session}", os.urandom(6).hex())
+    return base
+
+
+def _proxy_dict() -> Optional[dict]:
+    p = _pick_proxy()
+    return {"http": p, "https": p} if p else None
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -107,17 +140,42 @@ def _resolve_store_id(lat: float, lon: float) -> str:
 
     try:
         from curl_cffi import requests as _ccffi
-        resp = _ccffi.get(
-            _STORE_LOCATOR,
-            params={"locationQuery": postal, "radius": "50"},
-            headers={**HEADERS, "accept": "application/json",
-                     "referer": "https://www.meijer.com/shopping/store-finder.html"},
-            impersonate="chrome", timeout=15,
-        )
-        if resp.status_code != 200:
-            print(f"[Meijer] Store locator HTTP {resp.status_code}; using #{_DEFAULT_STORE_ID}.", flush=True)
+        # Direct first — Meijer's WAF (Akamai) has repeatedly tested cleaner
+        # from this server's own IP than from Webshare's free *datacenter*
+        # pool, which is a known blocklist target for Akamai precisely because
+        # it's a heavily-shared scraping range. Measured 2026-07-25: only 2/10
+        # of the free pool's IPs are actually clean for this endpoint — Akamai
+        # returns a 200 with an HTML block page for the rest (NOT a 4xx), so a
+        # single fallback attempt has just a ~20% chance of working. Walk the
+        # whole (shuffled) pool on failure rather than trying just one.
+        proxy_attempts = list(_PROXIES)
+        random.shuffle(proxy_attempts)
+        attempts: list[Optional[dict]] = [None] + [
+            {"http": p, "https": p} for p in proxy_attempts
+        ]
+        resp = None
+        body = None
+        for proxies in attempts:
+            resp = _ccffi.get(
+                _STORE_LOCATOR,
+                params={"locationQuery": postal, "radius": "50"},
+                headers={**HEADERS, "accept": "application/json",
+                         "referer": "https://www.meijer.com/shopping/store-finder.html"},
+                impersonate="chrome", timeout=15,
+                proxies=proxies,
+            )
+            if resp.status_code == 200:
+                try:
+                    body = resp.json()
+                    if "pointsOfService" in body or "data" in body:
+                        break  # a real API response, not an HTML block page
+                except Exception:
+                    pass
+            body = None
+        if body is None:
+            print(f"[Meijer] Store locator blocked on direct IP + all {len(proxy_attempts)} "
+                  f"proxies; using #{_DEFAULT_STORE_ID}.", flush=True)
             return _DEFAULT_STORE_ID
-        body = resp.json()
         stores = (body.get("data", {}).get("pointsOfService")
                   or body.get("pointsOfService") or [])
         best = None  # (distance_miles, store_id, display_name)
