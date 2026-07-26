@@ -255,11 +255,19 @@ def _ensure_http_session(store_id: str) -> dict:
         return _http_session
     with _http_lock:
         if _http_session is None:
-            cached = _load_http_session()
+            # Prefer an off-box cookie (minted by GitHub Actions -> Supabase) so
+            # the 512MB server can skip launching a browser; then local disk;
+            # then, only if both miss, warm a browser here.
+            cached = _load_remote_session()
             if cached and _validate_http_session(cached, store_id):
                 _http_session = cached
-                print("[Coles] Reused cached HTTP cookie (no warm).", flush=True)
+                print("[Coles] Reused off-box cookie (Supabase, no warm).", flush=True)
             else:
+                cached = _load_http_session()
+                if cached and _validate_http_session(cached, store_id):
+                    _http_session = cached
+                    print("[Coles] Reused cached HTTP cookie (no warm).", flush=True)
+            if _http_session is None:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
                     try:
@@ -274,6 +282,18 @@ def _ensure_http_session(store_id: str) -> dict:
                 if _http_session is None:
                     raise _Blocked(f"warm failed after {_WARM_TRIES} tries: {repr(last)[:80]}")
     return _http_session
+
+
+def _load_remote_session() -> Optional[dict]:
+    """Off-box cookie from Supabase (published by mint_sessions.py on GitHub
+    Actions). Returns None if unavailable/stale — the caller then falls back to
+    disk cache / a local browser warm, so this is a pure speedup, never a
+    dependency."""
+    try:
+        import session_store
+        return session_store.load("coles")
+    except Exception:
+        return None
 
 
 def _drop_http_session() -> None:

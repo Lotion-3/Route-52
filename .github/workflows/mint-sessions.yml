@@ -1,0 +1,64 @@
+name: Mint WAF sessions
+
+# Mints each browser chain's WAF cookie on a 7GB runner (where a real browser
+# fits) and publishes it to Supabase, so the 512MB web server can replay via
+# curl_cffi without launching a browser. See backend/mint_sessions.py.
+#
+# BUDGET NOTE: GitHub Actions gives PRIVATE repos ~2000 free minutes/month.
+# At ~2-3 min/run, every-30-min (this default) ~= 48 runs/day ~= 3600 min/mo,
+# which OVER-runs the free budget. Realistic free-tier options:
+#   - raise the interval to hourly (~1800 min/mo, fits) — but Walmart's cookie
+#     (~20 min TTL) will often be stale; Target/Coles/Woolworths last longer;
+#   - make the repo PUBLIC (unlimited Actions) — only after scrubbing secrets
+#     from git history (config.env is in history);
+#   - keep 30-min and accept the paid Actions overage (cheap) once launching.
+# Tune the cron below to your budget.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}          # lets you run it manually from the Actions tab
+
+concurrency:
+  group: mint-sessions
+  cancel-in-progress: true       # never stack runs
+
+jobs:
+  mint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Cache CloakBrowser binary
+        uses: actions/cache@v4
+        with:
+          # CloakBrowser caches its Chromium here; if the path differs it just
+          # re-downloads (slower run), no correctness impact.
+          path: ~/.cache/cloakbrowser
+          key: cloakbrowser-${{ runner.os }}-v1
+
+      - name: Install browser + system deps
+        run: |
+          python -m playwright install-deps chromium
+          python -m cloakbrowser install
+
+      - name: Mint + publish sessions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CLOAK_PROXY: ${{ secrets.CLOAK_PROXY }}
+          MINT_CHAINS: ${{ vars.MINT_CHAINS }}   # optional: e.g. "walmart,target"
+        run: python mint_sessions.py

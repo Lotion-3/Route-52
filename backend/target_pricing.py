@@ -679,6 +679,16 @@ def _load_http_session() -> Optional[dict]:
     return None
 
 
+def _load_remote_session() -> Optional[dict]:
+    """Off-box cookie from Supabase (published by mint_sessions.py on GitHub
+    Actions). None if unavailable/stale — caller falls back to disk/warm."""
+    try:
+        import session_store
+        return session_store.load("target")
+    except Exception:
+        return None
+
+
 def _ensure_http_session() -> dict:
     """Return the shared HTTP session: reuse the in-memory one, else a still-valid
     disk-cached cookie (no browser), else warm a fresh one and persist it."""
@@ -687,8 +697,12 @@ def _ensure_http_session() -> dict:
         return _http_session
     with _http_lock:
         if _http_session is None:
-            cached = _load_http_session()
+            # Off-box cookie (GitHub Actions -> Supabase) first, then disk, then warm.
+            cached = _load_remote_session()
             if cached and _validate_http_session(cached):
+                _http_session = cached
+                print("[Target] Reused off-box cookie (Supabase, no warm).", flush=True)
+            elif (cached := _load_http_session()) and _validate_http_session(cached):
                 _http_session = cached
                 print("[Target] Reused cached HTTP cookie (no warm).", flush=True)
             else:

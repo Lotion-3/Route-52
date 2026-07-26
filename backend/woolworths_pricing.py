@@ -255,14 +255,28 @@ def _validate_http_session(session: dict) -> bool:
         return False
 
 
+def _load_remote_session() -> Optional[dict]:
+    """Off-box cookie from Supabase (published by mint_sessions.py on GitHub
+    Actions). None if unavailable/stale — caller falls back to disk/warm."""
+    try:
+        import session_store
+        return session_store.load("woolworths")
+    except Exception:
+        return None
+
+
 def _ensure_http_session() -> dict:
     global _http_session
     if _http_session is not None:
         return _http_session
     with _http_lock:
         if _http_session is None:
-            cached = _load_http_session()
+            # Off-box cookie (GitHub Actions -> Supabase) first, then disk, then warm.
+            cached = _load_remote_session()
             if cached and _validate_http_session(cached):
+                _http_session = cached
+                print("[Woolworths] Reused off-box cookie (Supabase, no warm).", flush=True)
+            elif (cached := _load_http_session()) and _validate_http_session(cached):
                 _http_session = cached
                 print("[Woolworths] Reused cached HTTP cookie (no warm).", flush=True)
             else:
