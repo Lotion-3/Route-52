@@ -264,7 +264,7 @@ def _bootstrap_session():
     context, and warm Imperva cookies. Raises on failure so the caller can fall
     back to Instacart."""
     global _browser, _ctx
-    from cloakbrowser import launch  # imported here so a missing dep degrades gracefully
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
 
     # Tear down any half-dead session first.
     _teardown_session()
@@ -603,7 +603,7 @@ def _warm_http_session() -> dict:
     """Mint Imperva clearance with CloakBrowser (homepage + a real Target search
     navigation), harvest the cookie jar + user-agent, and verify a curl_cffi
     RedSky call returns products. Raises _ImpervaBlocked on a weak/blocked warm."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
     if _proxy_session_id is None:
         _rotate_proxy_session()
     proxy = _current_proxy()

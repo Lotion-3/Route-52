@@ -164,7 +164,7 @@ def _save_disk_session(cookies: dict, qp: str, zone_id: str) -> None:
 
 def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     """Open the given retailer's Instacart storefront and capture session data."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
 
     cookies: dict = {}
     qp: str = ""

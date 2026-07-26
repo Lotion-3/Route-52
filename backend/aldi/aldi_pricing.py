@@ -106,7 +106,7 @@ def _automint_sid() -> dict:
     full cookie jar from that visit, or {} on any failure (caller falls back
     to the manually-pasted ALDI_INSTACART_SID)."""
     try:
-        from cloakbrowser import launch
+        from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
         browser = launch(headless=True)
         try:
             ctx = browser.new_context()

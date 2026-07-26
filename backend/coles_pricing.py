@@ -185,7 +185,7 @@ def _warm_http_session() -> dict:
     """Launch CloakBrowser, warm Imperva via the homepage + a real search
     navigation, then harvest the full cookie jar (reese84, incap_ses_*,
     visid_incap_*, nlbi_*, ...) and user-agent. Raises _Blocked on a weak warm."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
     if getattr(_thread_local, "proxy_session", None) is None:
         _rotate_proxy_session()
     proxy = _current_proxy()

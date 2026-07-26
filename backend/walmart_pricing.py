@@ -195,7 +195,7 @@ def _current_proxy() -> Optional[str]:
 def _bootstrap_session():
     """(worker thread) Launch this thread's CloakBrowser on its proxy session and
     warm PerimeterX cookies via the homepage. Raises on launch failure → Instacart."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
 
     _teardown_session()
     if getattr(_thread_local, "proxy_session", None) is None:
@@ -468,7 +468,7 @@ def _warm_http_session() -> dict:
     """Launch CloakBrowser, warm PerimeterX via the homepage + a real search
     navigation (which fully clears the challenge and mints a strong _px3), then
     harvest the cookie jar and user-agent. Raises _Blocked on a weak warm."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
     if getattr(_thread_local, "proxy_session", None) is None:
         _rotate_proxy_session()
     proxy = _current_proxy()

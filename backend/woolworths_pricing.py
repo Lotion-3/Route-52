@@ -194,7 +194,7 @@ def _current_proxy() -> Optional[str]:
 def _warm_http_session() -> dict:
     """Launch CloakBrowser, warm Akamai via the homepage + a real search
     navigation, then harvest the full cookie jar and user-agent."""
-    from cloakbrowser import launch
+    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
     if getattr(_thread_local, "proxy_session", None) is None:
         _rotate_proxy_session()
     proxy = _current_proxy()
