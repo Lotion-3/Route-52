@@ -39,10 +39,8 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 # --- STORE SEARCH CONFIG ---
 STORE_KEYWORDS = [
     'Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco',
-    # Australia — Google Places is location-scoped, so mixing these in with the
-    # US keywords is harmless (an AU address just won't return Walmart/Kroger
-    # results, and vice versa).
-    'Coles', 'Woolworths', 'IGA',
+    # Australia.
+    'IGA',
 ]
 
 # Keywords to exclude from store results. There used to be TWO assignments to
@@ -89,14 +87,10 @@ STORE_TIME_MULTIPLIERS: Dict[str, float] = {
     "Walmart": 1.2,
     "Costco": 1.5,
     "IGA": 0.9,
-    "Coles": 1.1,
-    "Woolworths": 1.1,
+
 }
 
 # --- AU STORE ID DEFAULTS ---
-# Fallback only — coles_pricing.find_nearest_coles_store and
-# iga_pricing.find_nearest_iga_store resolve a real store from lat/lon first.
-COLES_DEFAULT_STORE_ID = os.getenv("COLES_DEFAULT_STORE_ID", "7674")
 IGA_DEFAULT_STORE_ID = os.getenv("IGA_DEFAULT_STORE_ID", "32600")
 
 # --- TIME MODEL CONSTANTS ---

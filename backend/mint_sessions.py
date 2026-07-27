@@ -35,12 +35,10 @@ def _mint_via_warm(module_name: str, warm_attr: str = "_warm_http_session") -> d
     return warm()  # returns {"cookies": {...}, "ua": str}; may raise on block
 
 
-# chain_key -> (module, how to mint). All four use _warm_http_session().
+# chain_key -> (module, how to mint). Both use _warm_http_session().
 _CHAINS = {
     "walmart":    ("walmart_pricing", "_warm_http_session"),
     "target":     ("target_pricing", "_warm_http_session"),
-    "coles":      ("coles_pricing", "_warm_http_session"),
-    "woolworths": ("woolworths_pricing", "_warm_http_session"),
 }
 
 

@@ -27,8 +27,6 @@ const STORE_SITES: { match: string; url: string }[] = [
   { match: 'costco', url: 'https://www.costco.com/grocery-household.html' },
   { match: 'trader joe', url: 'https://www.traderjoes.com/home/products' },
   { match: 'jewel', url: 'https://www.jewelosco.com/' },
-  { match: 'coles', url: 'https://www.coles.com.au/' },
-  { match: 'woolworths', url: 'https://www.woolworths.com.au/' },
   { match: 'iga', url: 'https://www.iga.com.au/' },
 ];
 

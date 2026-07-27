@@ -34,7 +34,7 @@ from kroger_search_map import get_all_terms
 
 # ---------------------------------------------------------------------------
 # Proxy — same CLOAK_PROXY convention as walmart_pricing.py/target_pricing.py/
-# coles_pricing.py/woolworths_pricing.py: a single URL, a single URL with a
+# walmart_pricing.py: a single URL, a single URL with a
 # {session} placeholder, or a comma/whitespace-separated pool. Meijer has no
 # CloakBrowser step to mint a reusable cookie — every request is a direct
 # curl_cffi/requests call, so the proxy is applied per-request rather than

@@ -97,8 +97,7 @@ def is_walmart_store(store_name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Bandwidth trim for the warm navigation — same technique as coles_pricing.py
-# / woolworths_pricing.py. Measured 2026-07-25: walmart.com's warm (home +
+# Bandwidth trim for the warm navigation. Measured 2026-07-25: walmart.com's warm (home +
 # search) is ~6.6MB unblocked, almost entirely a Next.js JS/CSS bundle on
 # i5.walmartimages.com loaded twice (once per nav). Blocks images/fonts/media
 # and third-party ad-tech outright; caches i5.walmartimages.com's

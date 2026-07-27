@@ -21,8 +21,6 @@ config.env
 **/.ks_session.json
 **/.walmart_http_session.json
 **/.target_http_session.json
-**/.coles_http_session.json
-**/.woolworths_http_session.json
 
 # Python
 __pycache__

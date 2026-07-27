@@ -168,8 +168,8 @@ def is_target_store(store_name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Bandwidth trim for the warm navigation — same technique as coles_pricing.py
-# / woolworths_pricing.py / walmart_pricing.py. Measured 2026-07-25: target.com's
+# Bandwidth trim for the warm navigation — same technique as walmart_pricing.py.
+# Measured 2026-07-25: target.com's
 # warm (home + search) is ~9.1MB unblocked, dominated by a Next.js JS/CSS bundle
 # on assets.targetimg1.com loaded twice. Blocks images/fonts/media and
 # third-party ad-tech; caches only assets.targetimg1.com's content-hashed
