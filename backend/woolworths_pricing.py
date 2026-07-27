@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import pickle
 import random
 import threading
 import time
@@ -95,7 +96,8 @@ _IMPERSONATE = os.environ.get("WOOLWORTHS_IMPERSONATE", "chrome")
 _http_session: Optional[dict] = None
 _http_lock = threading.Lock()
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".woolworths_http_session.json"
-_HTTP_COOKIE_TTL = int(os.environ.get("WOOLWORTHS_COOKIE_TTL", str(20 * 60)))
+_HTTP_COOKIE_TTL = int(os.environ.get("WOOLWORTHS_COOKIE_TTL", str(60 * 60)))
+_STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".woolworths_asset_cache.pkl"
 
 
 class _Blocked(Exception):
@@ -147,7 +149,23 @@ def _block_heavy_resources(ctx) -> None:
 # being ineffective — not worth the risk for a much smaller payoff anyway.
 _CACHEABLE_TYPES = {"script", "stylesheet"}
 _CACHEABLE_HOST = "cdn1.woolworths.media"
-_static_asset_cache: dict[str, dict] = {}
+def _load_asset_cache() -> dict:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return {}
+
+
+def _save_asset_cache() -> None:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "wb") as f:
+            pickle.dump(_static_asset_cache, f)
+    except Exception:
+        pass
+
+
+_static_asset_cache = _load_asset_cache()
 
 
 def _cache_static_assets(resp) -> None:
@@ -159,6 +177,7 @@ def _cache_static_assets(resp) -> None:
                 "headers": dict(resp.headers),
                 "body": resp.body(),
             }
+            _save_asset_cache()
         except Exception:
             pass
 

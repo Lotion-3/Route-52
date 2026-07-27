@@ -1116,7 +1116,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         shopping_list=formatted_shopping_list, route=optimal_route or [],
         total_cost=res["total_cost"],
         cheapest_store_name=cheapest_single_store_name or "",
-        cheapest_store_cost=cheapest_single_store_cost or 0,
+        cheapest_store_cost=cheapest_single_store_cost if cheapest_single_store_cost != float('inf') else 0,
         total_time_minutes=res["total_time_minutes"],
     )
 
@@ -1279,7 +1279,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
             continue
         if is_target_store(store_key):
             try:
-                _, _, tg_prices = target_pricing.price_all_target(to_buy_quantities, lat, lon)
+                tg_lat, tg_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
+                _, _, tg_prices = target_pricing.price_all_target(to_buy_quantities, tg_lat, tg_lon)
                 if tg_prices:
                     for ing_name, result in tg_prices.items():
                         total_cost = result.get("total_cost", 0.0)
@@ -1298,7 +1299,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                 pass
         if is_walmart_store(store_key):
             try:
-                _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, lat, lon)
+                wm_lat, wm_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
+                _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, wm_lat, wm_lon)
                 if wm_prices:
                     for ing_name, result in wm_prices.items():
                         total_cost = result.get("total_cost", 0.0)

@@ -163,6 +163,26 @@ def _save_disk_session(cookies: dict, qp: str, zone_id: str) -> None:
         pass
 
 
+_IC_BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+_IC_BLOCKED_DOMAIN_SUBSTRINGS = (
+    "doubleclick", "googletagmanager", "google-analytics", "googlesyndication",
+    "googleadservices", "facebook.com", "fbcdn", "fbevents",
+)
+
+
+def _ic_block_heavy_resources(ctx) -> None:
+    def _handle(route):
+        req = route.request
+        url = req.url.lower()
+        if req.resource_type in _IC_BLOCKED_RESOURCE_TYPES or any(
+            d in url for d in _IC_BLOCKED_DOMAIN_SUBSTRINGS
+        ):
+            route.abort()
+            return
+        route.continue_()
+    ctx.route("**/*", _handle)
+
+
 def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     """Open the given retailer's Instacart storefront and capture session data."""
     from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
@@ -194,12 +214,13 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     # lock that is only released by .close(). Without this, one page.goto
     # timeout leaks the gate forever and every other browser chain (ALDI,
     # Walmart, Target, Coles, Woolworths) dead-locks for the life of the process.
-    browser = launch(headless=False)
+    browser = launch(headless=True)
     try:
         ctx = browser.new_context(
             viewport={"width": 1366, "height": 768}, locale="en-US",
             user_agent=BASE_HEADERS["user-agent"],
         )
+        _ic_block_heavy_resources(ctx)
         page = ctx.new_page()
         page.on("request", on_req)
         print(f"[IC] Bootstrapping session via {slug}...", flush=True)
@@ -207,7 +228,7 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
             f"https://www.instacart.com/store/{slug}/storefront",
             wait_until="domcontentloaded", timeout=30000,
         )
-        time.sleep(4)
+        time.sleep(2)
         for sel in ["button:has-text('Accept All')", "button:has-text('Accept')",
                     "[aria-label='Close']"]:
             try:
@@ -217,7 +238,7 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
             except Exception:
                 pass
         page.keyboard.press("Escape")
-        time.sleep(8)
+        time.sleep(4)
         cookies = {c["name"]: c["value"] for c in ctx.cookies()}
     finally:
         try:

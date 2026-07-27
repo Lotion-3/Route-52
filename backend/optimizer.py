@@ -174,7 +174,11 @@ def find_optimal_store(
         total_time_seconds = min_travel_time + total_shopping_time_seconds
 
         # --- BENCHMARK CALCULATION (Independent of Time) ---
-        if item_cost < cheapest_single_store_cost:
+        # Only report a single-store benchmark the user can actually visit:
+        # the old code tracked the cheapest single store by COST regardless of the
+        # time budget, then surfaced it as the route's "cheaper than single stop"
+        # reference even when that store was unreachable inside their window.
+        if total_time_seconds <= max_time_seconds and item_cost < cheapest_single_store_cost:
             cheapest_single_store_cost = item_cost
             cheapest_single_store_name = store_id
 

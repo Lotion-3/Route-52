@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import pickle
 import random
 import re
 import threading
@@ -83,7 +84,8 @@ _http_lock = threading.Lock()              # serialize warm/re-mint of the sessi
 # Disk cache so the last cookie survives restarts and can be reused next run
 # (validated first). PerimeterX _px3 lives minutes, so a short max-age is safe.
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".walmart_http_session.json"
-_HTTP_COOKIE_TTL = int(os.environ.get("WALMART_COOKIE_TTL", str(20 * 60)))
+_HTTP_COOKIE_TTL = int(os.environ.get("WALMART_COOKIE_TTL", str(60 * 60)))
+_STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".walmart_asset_cache.pkl"
 
 
 class _Blocked(Exception):
@@ -116,7 +118,25 @@ _BLOCKED_DOMAIN_SUBSTRINGS = (
 )
 _CACHEABLE_TYPES = {"script", "stylesheet"}
 _CACHEABLE_HOST = "i5.walmartimages.com"
-_static_asset_cache: dict[str, dict] = {}
+
+
+def _load_asset_cache() -> dict:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return {}
+
+
+def _save_asset_cache() -> None:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "wb") as f:
+            pickle.dump(_static_asset_cache, f)
+    except Exception:
+        pass
+
+
+_static_asset_cache = _load_asset_cache()
 
 
 def _block_heavy_resources(ctx) -> None:
@@ -147,6 +167,7 @@ def _cache_static_assets(resp) -> None:
                 "headers": dict(resp.headers),
                 "body": resp.body(),
             }
+            _save_asset_cache()
         except Exception:
             pass
 

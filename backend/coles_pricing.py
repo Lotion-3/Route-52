@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import os
+import pickle
 import random
 import threading
 import time
@@ -83,7 +84,8 @@ _http_lock = threading.Lock()              # serialize warm/re-mint of the sessi
 # cookies are longer-lived than PerimeterX's _px3 but still session-scoped, so
 # keep the TTL conservative.
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".coles_http_session.json"
-_HTTP_COOKIE_TTL = int(os.environ.get("COLES_COOKIE_TTL", str(20 * 60)))
+_HTTP_COOKIE_TTL = int(os.environ.get("COLES_COOKIE_TTL", str(60 * 60)))
+_STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".coles_asset_cache.pkl"
 
 
 class _Blocked(Exception):
@@ -137,7 +139,23 @@ def _block_heavy_resources(ctx) -> None:
 # reason) — route.fulfill() serves the second hit from memory, which also
 # means it never touches the network/proxy at all for the repeat.
 _CACHEABLE_TYPES = {"script", "stylesheet"}
-_static_asset_cache: dict[str, dict] = {}
+def _load_asset_cache() -> dict:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return {}
+
+
+def _save_asset_cache() -> None:
+    try:
+        with open(_STATIC_ASSET_CACHE_PATH, "wb") as f:
+            pickle.dump(_static_asset_cache, f)
+    except Exception:
+        pass
+
+
+_static_asset_cache = _load_asset_cache()
 
 
 def _cache_static_assets(resp) -> None:
@@ -149,6 +167,7 @@ def _cache_static_assets(resp) -> None:
                 "headers": dict(resp.headers),
                 "body": resp.body(),
             }
+            _save_asset_cache()
         except Exception:
             pass
 
