@@ -137,6 +137,55 @@ def _save_asset_cache() -> None:
 
 _static_asset_cache = _load_asset_cache()
 
+_PRE_SEED_CACHE_RE = re.compile(r'(/_next/static/[^"\']+\.(?:js|css))')
+_PRE_SEED_URL = _WARM_URL
+
+
+def _pre_seed_asset_cache() -> None:
+    """Download static JS/CSS assets from _CACHEABLE_HOST outside the browser
+    using curl_cffi and populate _static_asset_cache on disk. This lets the
+    browser warm phase serve cached assets via route.fulfill() without ever
+    hitting the CDN.
+
+    Handles cache freshness by comparing expected URLs (from the current HTML)
+    against the cached keys — stale entries from previous deploys are pruned
+    and new entries are fetched. Idempotent and safe to call at module import.
+    """
+    try:
+        from curl_cffi import requests as ccffi
+        resp = ccffi.get(_PRE_SEED_URL, impersonate=_IMPERSONATE, timeout=15)
+        if resp.status_code != 200:
+            return
+        expected = {"https://" + _CACHEABLE_HOST + m.group(1) for m in _PRE_SEED_CACHE_RE.finditer(resp.text)}
+        if not expected:
+            return
+        stale = set(_static_asset_cache) - expected
+        if stale:
+            for k in stale:
+                _static_asset_cache.pop(k, None)
+        missing = expected - set(_static_asset_cache)
+        if not missing and not stale:
+            return
+        for url in sorted(missing):
+            try:
+                asset = ccffi.get(url, impersonate=_IMPERSONATE, timeout=15)
+                _static_asset_cache[url] = {
+                    "status": asset.status_code,
+                    "headers": {"content-type": "text/css" if url.endswith(".css") else "text/javascript"},
+                    "body": asset.content,
+                }
+            except Exception:
+                pass
+        _save_asset_cache()
+        print(f"[Walmart] Pre-seeded {len(_static_asset_cache)} static assets"
+              f" ({'pruned ' + str(len(stale)) + ' stale, ' if stale else ''}"
+              f"{len(missing)} new)", flush=True)
+    except Exception as e:
+        print(f"[Walmart] Pre-seed failed ({e}) — fallback to browser download", flush=True)
+
+
+_pre_seed_asset_cache()
+
 
 def _block_heavy_resources(ctx) -> None:
     def _handle(route):
