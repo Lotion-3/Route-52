@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useRouter, useNavigation } from 'expo-router';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
-import { planStore } from '@/services/planStore';
-import { ShoppingPlanResponse, warmStores } from '@/services/api';
+import { planStore, SavedPlan } from '@/services/planStore';
+import { warmStores } from '@/services/api';
 
 export default function HomeScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [savedPlans, setSavedPlans] = useState<ShoppingPlanResponse[]>([]);
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
 
   // Initial load and update whenever the screen comes into focus
   useEffect(() => {
@@ -30,11 +30,10 @@ export default function HomeScreen() {
     router.push('/location');
   };
 
-  const handleViewSaved = (index: number) => {
-    router.push({
-      pathname: '/results',
-      params: { savedIndex: index.toString() }
-    });
+  // Address the plan by its stable id, not its position. With an index, deleting
+  // any plan shifted every later one and the link opened the wrong plan.
+  const handleViewSaved = (id: string) => {
+    router.push({ pathname: '/results', params: { savedId: id } });
   };
 
   return (
@@ -58,16 +57,16 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
           </View>
         ) : (
-          savedPlans.map((plan, index) => (
-            <View key={index} style={styles.savedCardContainer}>
+          savedPlans.map((entry, index) => (
+            <View key={entry.id} style={styles.savedCardContainer}>
               <TouchableOpacity
                 style={styles.savedCard}
-                onPress={() => handleViewSaved(index)}
+                onPress={() => handleViewSaved(entry.id)}
               >
                 <View style={styles.savedCardContent}>
                   <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
                   <Text style={styles.savedCardMeta}>
-                    {plan.meal_plan.length} meals • ${plan.total_cost.toFixed(2)}
+                    {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
                   </Text>
                 </View>
                 <Text style={styles.viewLink}>View →</Text>
@@ -75,7 +74,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => {
-                  planStore.deletePlan(index);
+                  planStore.deleteById(entry.id);
                   setSavedPlans(planStore.getSavedPlans());
                 }}
               >
@@ -84,8 +83,10 @@ export default function HomeScreen() {
             </View>
           ))
         )}
-        {savedPlans.length >= 5 && (
-          <Text style={styles.limitText}>Cap reached (5/5). Discard a plan to save a new one.</Text>
+        {planStore.isFull && (
+          <Text style={styles.limitText}>
+            Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
+          </Text>
         )}
       </View>
     </ScrollView>

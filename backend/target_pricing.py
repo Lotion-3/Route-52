@@ -62,10 +62,12 @@ import re
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from pathlib import Path
 from typing import Optional
 
+import pricing_pool
 from kroger_pricing import find_best_purchase, parse_size
 from kroger_search_map import get_all_terms
 
@@ -228,6 +230,13 @@ _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cloak-target")
 _browser = None          # cloakbrowser Browser (lives on the worker thread)
 _ctx = None              # browser context with warmed Imperva cookies
 _session_lock = threading.Lock()
+
+# Hard ceiling on the CloakBrowser fallback path. It holds the process-global
+# browser gate the whole time it runs, so it must be bounded well inside the
+# server's PRICING_BUDGET_SECONDS rather than running unbounded.
+_BROWSER_PATH_BUDGET = float(os.environ.get("TARGET_BROWSER_BUDGET", "50"))
+# How long a Target run will wait behind another Target run before giving up.
+_RUN_LOCK_TIMEOUT = float(os.environ.get("TARGET_RUN_LOCK_TIMEOUT", "20"))
 _proxy_session_id: Optional[str] = None  # current rotating-proxy session token
 _proxy_idx: int = 0                      # round-robin cursor into _PROXIES
 _no_proxy_warned: bool = False           # warn-once guard for the no-proxy case
@@ -264,7 +273,7 @@ def _bootstrap_session():
     context, and warm Imperva cookies. Raises on failure so the caller can fall
     back to Instacart."""
     global _browser, _ctx
-    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
+    from browser_gate import launch_geoip_optional  # gated: 1 browser at a time + low-mem flags
 
     # Tear down any half-dead session first.
     _teardown_session()
@@ -276,22 +285,28 @@ def _bootstrap_session():
     if proxy:
         kwargs["proxy"] = proxy
         kwargs["geoip"] = True  # match timezone/locale to the proxy exit IP
-    try:
-        _browser = launch(**kwargs)
-    except Exception:
-        # geoip extra may be missing; retry without it.
-        kwargs.pop("geoip", None)
-        _browser = launch(**kwargs)
+    browser = launch_geoip_optional(**kwargs)
 
-    _ctx = _browser.new_context()
-    _block_heavy_resources(_ctx)
-    page = _ctx.new_page()
-    page.on("response", _cache_static_assets)
-    page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
-    # Let Imperva's JS challenge run and set its clearance cookie before we hit
-    # the API — calling RedSky too eagerly returns a captcha.
-    time.sleep(3)
-    page.close()
+    # Only publish to the module globals once the warm succeeded — otherwise a
+    # mid-warm failure leaves a browser nobody closes, holding the browser gate.
+    try:
+        ctx = browser.new_context()
+        _block_heavy_resources(ctx)
+        page = ctx.new_page()
+        page.on("response", _cache_static_assets)
+        page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
+        # Let Imperva's JS challenge run and set its clearance cookie before we hit
+        # the API — calling RedSky too eagerly returns a captcha.
+        time.sleep(3)
+        page.close()
+    except BaseException:
+        try:
+            browser.close()
+        except Exception:
+            pass
+        raise
+
+    _browser, _ctx = browser, ctx
     print(f"[Target] CloakBrowser session warmed{' (proxy)' if proxy else ''}.", flush=True)
 
 
@@ -304,6 +319,24 @@ def _teardown_session():
     except Exception:
         pass
     _browser, _ctx = None, None
+
+
+def _release_browser() -> None:
+    """Close the CloakBrowser on its owning worker thread, freeing the global
+    browser gate. Called at the end of every run that may have started one.
+
+    The browser MUST NOT outlive the request: browser_gate hands out a lease
+    that is only released by .close(), so a browser held across requests blocks
+    every other browser chain until the max-hold backstop reclaims it. Bounded
+    so a hung worker can't turn cleanup into a second stall — the gate's
+    max-hold backstop is the safety net if this times out."""
+    try:
+        _executor.submit(_teardown_session).result(timeout=15)
+    except FuturesTimeout:
+        print("[Target] Browser teardown didn't finish in 15s — leaving it to the "
+              "browser-gate max-hold backstop.", flush=True)
+    except Exception as e:
+        print(f"[Target] Browser teardown failed ({repr(e)[:100]}).", flush=True)
 
 
 def _ensure_ctx():
@@ -528,7 +561,32 @@ def _resolve_store_id(lat: float, lon: float) -> str:
 # ---------------------------------------------------------------------------
 
 # (store_id, query) → (expiry_ts, products). In-memory, per-process.
-_search_cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+# Bounded + LRU: the key includes store_id, so a long-lived server serving many
+# markets accumulated an entry per (store, term) pair forever. Entries are also
+# evicted on expiry rather than lingering as dead weight.
+_SEARCH_CACHE_MAX = int(os.environ.get("TARGET_SEARCH_CACHE_MAX", "2000"))
+_search_cache: "OrderedDict[tuple[str, str], tuple[float, list[dict]]]" = OrderedDict()
+_search_cache_lock = threading.Lock()
+
+
+def _search_cache_get(key: tuple[str, str]) -> Optional[list[dict]]:
+    with _search_cache_lock:
+        hit = _search_cache.get(key)
+        if hit is None:
+            return None
+        if hit[0] <= time.time():
+            _search_cache.pop(key, None)   # expired — drop it
+            return None
+        _search_cache.move_to_end(key)     # LRU touch
+        return hit[1]
+
+
+def _search_cache_put(key: tuple[str, str], products: list[dict]) -> None:
+    with _search_cache_lock:
+        _search_cache[key] = (time.time() + _SEARCH_TTL, products)
+        _search_cache.move_to_end(key)
+        while len(_search_cache) > _SEARCH_CACHE_MAX:
+            _search_cache.popitem(last=False)
 
 
 def _search(query: str, store_id: str, num_results: int = 24) -> list[dict]:
@@ -536,9 +594,9 @@ def _search(query: str, store_id: str, num_results: int = 24) -> list[dict]:
     # candidates to reliably surface the cheapest matching size/variant; with
     # only ~10 the cheapest option is sometimes outside the result window.
     cache_key = (store_id, query.lower())
-    cached = _search_cache.get(cache_key)
-    if cached and cached[0] > time.time():
-        return cached[1]
+    cached = _search_cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     url = (f"{_SEARCH_URL}?key={_KEY}&keyword={requests_quote(query)}&channel=WEB"
            f"&count={num_results}&offset=0&page=/s/{requests_quote(query)}"
@@ -571,7 +629,7 @@ def _search(query: str, store_id: str, num_results: int = 24) -> list[dict]:
                 fmt = _to_kroger_format(p)
                 if fmt:
                     out.append(fmt)
-    _search_cache[cache_key] = (time.time() + _SEARCH_TTL, out)
+    _search_cache_put(cache_key, out)
     return out
 
 
@@ -603,7 +661,7 @@ def _warm_http_session() -> dict:
     """Mint Imperva clearance with CloakBrowser (homepage + a real Target search
     navigation), harvest the cookie jar + user-agent, and verify a curl_cffi
     RedSky call returns products. Raises _ImpervaBlocked on a weak/blocked warm."""
-    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
+    from browser_gate import launch_geoip_optional  # gated: 1 browser at a time + low-mem flags
     if _proxy_session_id is None:
         _rotate_proxy_session()
     proxy = _current_proxy()
@@ -611,11 +669,7 @@ def _warm_http_session() -> dict:
     if proxy:
         kwargs["proxy"] = proxy
         kwargs["geoip"] = True
-    try:
-        browser = launch(**kwargs)
-    except Exception:
-        kwargs.pop("geoip", None)
-        browser = launch(**kwargs)
+    browser = launch_geoip_optional(**kwargs)
     try:
         ctx = browser.new_context()
         _block_heavy_resources(ctx)
@@ -822,6 +876,13 @@ def _do_pricing(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str
                 print(f"[Target] Pricing at store #{store_id}", flush=True)
 
             for name in list(pending):
+                # The request that started us may already have given up (the
+                # server's pricing budget elapsed). Stop rather than grind
+                # through the rest of the basket for a response nobody reads.
+                if pricing_pool.expired():
+                    print(f"[Target] Pricing budget elapsed — stopping with "
+                          f"{len(prices)}/{len(ingredients)} priced.", flush=True)
+                    return store_id, prices
                 data = pending[name]
                 try:
                     result = _price_one(
@@ -874,7 +935,14 @@ def price_all_target(
     """
     store_id: Optional[str] = None
     prices: dict = {}
-    with _session_lock:  # serialize whole-Target runs across requests
+    # Serialize whole-Target runs across requests, but never wait forever for a
+    # hung predecessor — a stuck run must degrade to Instacart, not stall the
+    # caller's pricing budget.
+    if not _session_lock.acquire(timeout=_RUN_LOCK_TIMEOUT):
+        print(f"[Target] Another Target run held the lock > {_RUN_LOCK_TIMEOUT:.0f}s "
+              "— falling back to Instacart.", flush=True)
+        return None, None, {}
+    try:
         # Primary: curl_cffi (browser warm → RedSky over HTTP).
         try:
             store_id, prices = _price_via_http(ingredients, lat, lon)
@@ -888,11 +956,25 @@ def price_all_target(
         if not prices:
             print("[Target] HTTP path empty — falling back to CloakBrowser request context.", flush=True)
             try:
-                store_id, prices = _executor.submit(_do_pricing, ingredients, lat, lon).result()
+                store_id, prices = _executor.submit(
+                    _do_pricing, ingredients, lat, lon
+                ).result(timeout=_BROWSER_PATH_BUDGET)
+            except FuturesTimeout:
+                print(f"[Target] CloakBrowser path exceeded {_BROWSER_PATH_BUDGET:.0f}s "
+                      "— falling back to Instacart.", flush=True)
+                return None, None, {}
             except Exception as e:
                 print(f"[Target] Direct pricing unavailable ({repr(e)[:140]}) — "
                       "falling back to Instacart.", flush=True)
                 return None, None, {}
+            finally:
+                # The CloakBrowser path leaves `_browser` alive, and browser_gate
+                # only frees the gate on .close(). Keeping it across requests
+                # starved every other browser chain (ALDI/Walmart/Coles/IC) until
+                # process exit, so the browser is strictly request-scoped now.
+                _release_browser()
+    finally:
+        _session_lock.release()
 
     if not prices:
         return None, None, {}

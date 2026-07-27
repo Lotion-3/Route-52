@@ -10,7 +10,6 @@ from cache_manager import cache
 import googlemaps
 from shapely.geometry import shape, Point
 
-from pydantic import BaseModel
 
 # --- HELPER FUNCTION: Get the GeoJSON Bounding Box ---
 def get_geojson_bounding_box(geometry: Dict) -> Tuple[float, float, float, float]:
@@ -142,7 +141,11 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
                 if not _is_valid_grocery(place):
                     continue                # wrong type / excluded
                 if _near_existing(lat, lng):
-                    break                   # same store another keyword already found
+                    # Same physical store another keyword already captured. Keep
+                    # scanning this keyword's results — `break` here abandoned the
+                    # whole chain, so a distinct store sharing a strip mall with an
+                    # already-found one was dropped entirely.
+                    continue
                 name = place['name']
                 original, n = name, 1
                 while name in stores:
@@ -156,57 +159,6 @@ def find_eligible_stores_google(isochrone_geometry: Dict, center_point: Tuple[fl
     print(f"Found {len(stores)} eligible store(s) (nearest per chain).")
     cache.set(cache_key, (stores, store_addresses))
     return stores, store_addresses
-
-# --- FUNCTION: Find Eligible Stores (Legacy Overpass) ---
-def find_eligible_stores_overpass(bbox: Tuple[float, float, float, float]) -> Dict[str, Tuple[float, float]]:
-    """Find grocery stores within bounding box using Overpass API."""
-    # ... (Kept for reference or fallback if needed)
-    print(f"\nSearching for stores within area...")
-    
-    min_lat, min_lon, max_lat, max_lon = bbox
-    overpass_query = f"""
-        [out:json][timeout:25];
-        node["shop"~"supermarket|convenience|grocer|grocery"]({min_lat},{min_lon},{max_lat},{max_lon});
-        out center;
-    """
-    
-    for attempt in range(3):
-        try:
-            response = requests.post(config.OVERPASS_URL, data={"data": overpass_query}, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            stores = {}
-            
-            for element in data.get('elements', []):
-                if element['type'] == 'node':
-                    lat = element.get('lat')
-                    lon = element.get('lon')
-                    name = element.get('tags', {}).get('name')
-                    
-                    if not name:
-                        shop_type = element.get('tags', {}).get('shop', 'Store')
-                        name = f"{shop_type.capitalize()} ({int(lat * 1000)})"
-                    
-                    if lat and lon:
-                        # Ensure unique names
-                        original_name = name
-                        count = 1
-                        while name in stores:
-                            name = f"{original_name} {count}"
-                            count += 1
-                        
-                        stores[name] = (lat, lon)
-            
-            print(f"Found {len(stores)} eligible store(s).")
-            return stores
-            
-        except requests.exceptions.RequestException:
-            if attempt < 2:
-                time.sleep(2 ** attempt)
-                continue
-            return {}
-    
-    return {}
 
 # --- TRAVEL TIME MATRIX FUNCTIONS ---
 def convert_locations_to_ors_format(locations: List[Tuple[float, float]]) -> List[List[float]]:
@@ -281,21 +233,6 @@ def process_matrix_result(matrix_response: Optional[Dict]) -> List[List[float]]:
     durations_matrix = matrix_response.get('durations')
     return durations_matrix if durations_matrix else []
 
-# --- CITY-TO-STATE MAPPING ---
-def get_city_for_store(store_name: str) -> str:
-    store_lower = store_name.lower()
-    common_cities = ["indianapolis", "chicago", "new york", "los angeles", "houston"]
-    
-    for city in common_cities:
-        if city in store_lower:
-            return city.title()
-    
-    for store_pattern, city in config.STORE_CITY_MAPPING.items():
-        if store_pattern.lower() in store_lower:
-            return city
-    
-    return "Indianapolis"
-
 # --- FUNCTION: Filter to Unique Chains ---
 def filter_unique_closest_chains(
     stores: Dict[str, Tuple[float, float]], 
@@ -345,97 +282,10 @@ def filter_unique_closest_chains(
                 unique_stores[original_name] = entry["loc"]
                 unique_addresses[original_name] = entry["address"]
                 found_chains.add(matched_result)
-                print(f"  ✅ Keeping closest {matched_result}: {original_name} ({int(entry['dist'])}m²)")
+                print(f"  ✅ Keeping closest {matched_result}: {original_name} "
+                      f"({_haversine_km(user_loc, entry['loc']):.1f} km)")
             else:
                 print(f"  ❌ Skipping duplicate {matched_result}: {original_name} (Further away)")
             
     print(f"Filtered {len(stores)} locations -> {len(unique_stores)} unique chains.")
     return unique_stores, unique_addresses
-
-# --- FUNCTION: Filter Stores via Gemini ---
-def filter_stores_with_gemini(
-    store_locations: Dict[str, Tuple[float, float]], 
-    shopping_list_keys: List[str], 
-    max_stores: int = 10,
-    user_loc: Tuple[float, float] = None
-) -> Dict[str, Tuple[float, float]]:
-    """
-    Uses Gemini to intelligently filter stores based on relevance to the shopping list.
-    Falls back to distance-based filtering if Gemini fails.
-    """
-    print(f"\n--- AI Store Filtering (Gemini) ---")
-    print(f"Raw store count: {len(store_locations)}")
-    
-    if not store_locations:
-        return {}
-        
-    try:
-        class StoreSelectionResponse(BaseModel):
-            selected_stores: List[str]
-            reasoning: str
-
-        gemini_api_key = os.environ.get("GEMINI_API_KEY_V")
-        if not gemini_api_key:
-            raise ValueError("GEMINI_API_KEY_V not found in environment variables.")
-
-        client = genai.Client(api_key=gemini_api_key)
-        
-        store_names = list(store_locations.keys())
-        store_list_str = ", ".join(store_names)
-        
-        prompt = (
-            f"I have a list of places found on a map: {store_list_str}. "
-            f"I need to buy vegetables: {', '.join(shopping_list_keys)}. "
-            "Identify the actual grocery stores, supermarkets, and places suitable for buying fresh produce. "
-            "Exclude gas stations, dollar stores (unless they sell produce), pharmacies, and extensive duplicates of the same chain if they are redundant (keep 2-3 closest if unsure, or all if distinct). "
-            f"Select up to {max_stores} best options. "
-            "Return the exact names from the list that should be kept."
-        )
-
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=StoreSelectionResponse,
-            )
-        )
-        
-        selection = response.parsed
-        print(f"Gemini Reasoning: {selection.reasoning}")
-        
-        # Filter the main dictionary
-        gemini_selected_stores = {}
-        for name in selection.selected_stores:
-            # Try exact match first
-            if name in store_locations:
-                gemini_selected_stores[name] = store_locations[name]
-            else:
-                # Content matching for minor hallucinations/formatting diffs
-                for original_name in store_locations:
-                    if name.lower() in original_name.lower():
-                        gemini_selected_stores[original_name] = store_locations[original_name]
-                        break
-        
-        if gemini_selected_stores:
-            print(f"Gemini selected {len(gemini_selected_stores)} stores.")
-            return gemini_selected_stores
-        else:
-            print("Gemini returned no stores. Falling back to simple distance filtering.")
-            
-    except Exception as e:
-        print(f"Gemini Filtering Failed: {e}")
-        print("Falling back to distance filtering.")
-
-    # Fallback: Distance-based filtering
-    if user_loc:
-        distances = []
-        start_lat, start_lon = user_loc
-        for name, (lat, lon) in store_locations.items():
-            dist_sq = (lat - start_lat)**2 + (lon - start_lon)**2
-            distances.append((dist_sq, name, (lat, lon)))
-        distances.sort(key=lambda x: x[0])
-        return {name: loc for _, name, loc in distances[:max_stores]}
-    else:
-        # If no user_loc provided, just return the first N stores
-        return {k: store_locations[k] for k in list(store_locations.keys())[:max_stores]}

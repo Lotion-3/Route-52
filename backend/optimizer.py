@@ -101,25 +101,36 @@ def find_optimal_store(
     durations_matrix: List[List[float]],
     price_database: Dict[str, Dict[str, float]],
     location_names: List[str],
-    shopping_list: List[Dict[str, Union[str, int]]]
+    shopping_list: List[Dict[str, Union[str, int]]],
+    max_time_seconds: Optional[float] = None,
 ) -> Tuple[List[str], float, float, Dict[str, List[Dict[str, Any]]], float, str]:
     """
-    Finds the route (1 to N stores) with the lowest combined shopping price 
+    Finds the route (1 to N stores) with the lowest combined shopping price
     that meets the total time constraint.
+
+    max_time_seconds is the caller's shopping-time budget. It is a PARAMETER,
+    not a global: the server used to publish it as `config.MAX_TIME_SECONDS`
+    right before calling in, and FastAPI runs sync endpoints on a threadpool —
+    so two concurrent users raced and one could have the other's time limit
+    applied to their optimization. Defaults to the config value so the CLI
+    (main.py) keeps working unchanged.
     """
+    if max_time_seconds is None:
+        max_time_seconds = config.MAX_TIME_SECONDS
+
     start_index = location_names.index("Start")
     optimal_route: List[str] = []
     min_cost = float('inf')
     best_total_time = 0.0
-    
+
     # Check if there are any items to shop for
     if not shopping_list:
         print("No items to shop for. Cannot run optimization.")
         return [], 0.0, 0.0, {}, 0.0, ""
-    
+
     print(f"\n=== OPTIMIZER: CRUNCHING PRE-FETCHED PRICES ===")
     print(f"Items to buy: {len(shopping_list)}")
-    print(f"Time limit: {int(config.MAX_TIME_SECONDS / 60)} minutes.")
+    print(f"Time limit: {int(max_time_seconds / 60)} minutes.")
     
     store_indices = list(range(1, len(location_names)))
     
@@ -168,7 +179,7 @@ def find_optimal_store(
             cheapest_single_store_name = store_id
 
         # 4. Update Optimal
-        if total_time_seconds <= config.MAX_TIME_SECONDS:
+        if total_time_seconds <= max_time_seconds:
             if item_cost < min_cost:
                 min_cost = item_cost 
                 optimal_route = route_store_ids
@@ -209,7 +220,10 @@ def find_optimal_store(
     # --- Phase 3: Run k=2 to max_k using only eligible_multistop_indices ---
     print(f"\nPhase 3: Running k>1 Optimization on {len(eligible_multistop_indices)} Eligible Stores ---")
     
-    max_k_eligible = min(len(eligible_multistop_indices), 3) # Cap at 3 for performance
+    # Cap route length. config.MAX_STORES_TO_USE stores get priced, but a route
+    # never visits more than this many — the rest can still win an individual
+    # item as the cheapest source, they just can't add a stop.
+    max_k_eligible = min(len(eligible_multistop_indices), config.MAX_STORES_PER_ROUTE)
     
     for k in range(2, max_k_eligible + 1):
         found_any_time_feasible_subset_at_k = False 
@@ -251,7 +265,7 @@ def find_optimal_store(
 
             # --- EFFICIENCY: AGGRESSIVE TIME PRUNING ---
             lower_bound_total_time = (2 * min_one_way_travel) + total_shopping_time_seconds
-            if lower_bound_total_time > config.MAX_TIME_SECONDS:
+            if lower_bound_total_time > max_time_seconds:
                  continue
             
             found_any_time_feasible_subset_at_k = True 
@@ -264,7 +278,7 @@ def find_optimal_store(
             # --- 3. Calculate Full Time ---
             total_time_seconds = min_travel_time + total_shopping_time_seconds
             
-            if total_time_seconds > config.MAX_TIME_SECONDS:
+            if total_time_seconds > max_time_seconds:
                 failed_time_subsets.add(current_set) 
                 continue 
             

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import GradientButton from '@/components/GradientButton';
 import TopBanner from '@/components/TopBanner';
 import LoadingGate from '@/components/LoadingGate';
+import { notify } from '@/services/notify';
 
 // ── Static option lists ──────────────────────────────────────────────────────
 
@@ -220,27 +221,47 @@ export default function SearchScreen() {
         setAvoidIngredients(prev => prev.includes(ing) ? prev.filter(x => x !== ing) : [...prev, ing]);
 
     const calculateTDEE = () => {
-        try {
-            const w = parseFloat(weight) * 0.453592;
-            const h = ((parseInt(heightFt) * 12) + parseInt(heightIn)) * 2.54;
-            const a = parseInt(age);
-            let bmr = gender === 'M'
-                ? (10 * w) + (6.25 * h) - (5 * a) + 5
-                : (10 * w) + (6.25 * h) - (5 * a) - 161;
-            const multipliers: Record<string, number> = { '1': 1.2, '2': 1.375, '3': 1.55, '4': 1.725 };
-            let tdee = bmr * (multipliers[activityLevel] || 1.375);
-            if (goal === '1') tdee -= 500;
-            else if (goal === '3') tdee += 500;
-            setCalories(Math.max(1200, Math.round(tdee)).toString());
-            setShowCalculator(false);
-        } catch {
-            alert('Please fill in all calorie calculator fields correctly.');
+        // parseFloat('') is NaN and NaN arithmetic does NOT throw, so the old
+        // try/catch never fired: an empty field produced Math.round(NaN) and
+        // wrote the literal string "NaN" into the calorie box. Validate the
+        // inputs explicitly instead of relying on an exception that can't happen.
+        const w = parseFloat(weight);
+        const ft = parseFloat(heightFt);
+        const inch = heightIn.trim() === '' ? 0 : parseFloat(heightIn);
+        const a = parseFloat(age);
+
+        const invalid: string[] = [];
+        if (!Number.isFinite(w) || w < 50 || w > 1000) invalid.push('weight (50–1000 lbs)');
+        if (!Number.isFinite(ft) || ft < 3 || ft > 8) invalid.push('height in feet (3–8)');
+        if (!Number.isFinite(inch) || inch < 0 || inch >= 12) invalid.push('height in inches (0–11)');
+        if (!Number.isFinite(a) || a < 13 || a > 120) invalid.push('age (13–120)');
+        if (invalid.length) {
+            notify('Check these fields', `Please enter a valid ${invalid.join(', ')}.`);
+            return;
         }
+
+        const kg = w * 0.453592;
+        const cm = ((ft * 12) + inch) * 2.54;
+        const bmr = gender === 'M'
+            ? (10 * kg) + (6.25 * cm) - (5 * a) + 5
+            : (10 * kg) + (6.25 * cm) - (5 * a) - 161;
+        const multipliers: Record<string, number> = { '1': 1.2, '2': 1.375, '3': 1.55, '4': 1.725 };
+        let tdee = bmr * (multipliers[activityLevel] || 1.375);
+        if (goal === '1') tdee -= 500;
+        else if (goal === '3') tdee += 500;
+
+        // Clamp to the same range the API accepts so the box can't hold a value
+        // the server will reject.
+        setCalories(Math.min(8000, Math.max(1200, Math.round(tdee))).toString());
+        setShowCalculator(false);
     };
 
     const handleSearch = () => {
-        if (!budget && !time && !location) {
-            alert('Please enter at least one of: Location, Budget, or Time.');
+        // Location is not optional — without it the backend silently defaulted
+        // to Indianapolis. The old check passed as long as ANY of the three
+        // fields was set, so a blank address sailed through.
+        if (!location.trim()) {
+            notify('Location needed', 'Go back and enter the address you shop from.');
             return;
         }
         const params = {

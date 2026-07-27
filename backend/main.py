@@ -198,10 +198,12 @@ if __name__ == "__main__":
     
     # Step 1: Create meal plan using Gemini (No longer loading CSVs)
     print(f"\n📦 FINAL FRIDGE LIST FOR MEAL PLANNER: {repr(FRIDGE_ITEMS)}", flush=True)
-    meal_plan, ingredient_quantities = meal_planner.create_weekly_meal_plan(
+    meal_plan, ingredient_quantities, plan_warnings = meal_planner.create_weekly_meal_plan(
         DAYS_PLAN, MEALS_PER_DAY, CAL_TARGET,
         DIET_RESTRICTIONS, CUISINES, FRIDGE_ITEMS, EXPERIMENT, COOK_TIME
     )
+    for w in plan_warnings:
+        print(f"  ⚠️  {w}")
     
     # Step 2: Skip filtering (Done by Gemini)
     

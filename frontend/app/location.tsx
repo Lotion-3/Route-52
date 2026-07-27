@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
 import { prewarm, warmStores, autocompleteAddress } from '@/services/api';
+import { notify } from '@/services/notify';
 
 /**
  * Step 1 of the meal-plan flow: collect location + shopping time FIRST.
@@ -28,6 +29,8 @@ export default function LocationScreen() {
     const suppressFetch = useRef(false);
 
     // Debounced address autocomplete: fetch suggestions ~300ms after typing stops.
+    // The in-flight request is aborted when the query changes, so a slow earlier
+    // keystroke can't resolve late and overwrite newer suggestions.
     useEffect(() => {
         if (suppressFetch.current) {
             suppressFetch.current = false;
@@ -38,10 +41,17 @@ export default function LocationScreen() {
             setSuggestions([]);
             return;
         }
+        const controller = new AbortController();
+        let cancelled = false;
         const t = setTimeout(async () => {
-            setSuggestions(await autocompleteAddress(q));
+            const next = await autocompleteAddress(q, controller.signal);
+            if (!cancelled) setSuggestions(next);
         }, 300);
-        return () => clearTimeout(t);
+        return () => {
+            cancelled = true;
+            clearTimeout(t);
+            controller.abort();
+        };
     }, [location]);
 
     const selectSuggestion = (s: string) => {
@@ -55,7 +65,9 @@ export default function LocationScreen() {
 
     const handleContinue = () => {
         if (!location.trim()) {
-            alert('Please enter your location so we can find stores near you.');
+            // Bare alert() is web-only — on iOS/Android it's undefined, so
+            // submitting an empty address used to do nothing at all.
+            notify('Location needed', 'Please enter your location so we can find stores near you.');
             return;
         }
         // Fire-and-forget: resolve nearby stores + warm the browser sessions now,

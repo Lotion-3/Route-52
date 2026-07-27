@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions, Linking } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -13,6 +13,35 @@ import BeigeLoadingDots from '@/components/BeigeLoadingDots';
 import GroupedCart, { CartItem } from '@/components/GroupedCart';
 import Route52SavingsFooter from '@/components/Route52SavingsFooter';
 import { planStore } from '@/services/planStore';
+import { notify, notifyThen } from '@/services/notify';
+
+// Best-effort deep link to the retailer's own ordering page. No affiliate or
+// ordering integration exists, so a plain search on their site is the honest
+// behaviour — better than a button that silently does nothing.
+const STORE_SITES: { match: string; url: string }[] = [
+  { match: 'walmart', url: 'https://www.walmart.com/grocery' },
+  { match: 'target', url: 'https://www.target.com/c/grocery/-/N-5xt1a' },
+  { match: 'kroger', url: 'https://www.kroger.com/' },
+  { match: 'aldi', url: 'https://www.aldi.us/' },
+  { match: 'meijer', url: 'https://www.meijer.com/shopping/store-selection.html' },
+  { match: 'costco', url: 'https://www.costco.com/grocery-household.html' },
+  { match: 'trader joe', url: 'https://www.traderjoes.com/home/products' },
+  { match: 'jewel', url: 'https://www.jewelosco.com/' },
+  { match: 'coles', url: 'https://www.coles.com.au/' },
+  { match: 'woolworths', url: 'https://www.woolworths.com.au/' },
+  { match: 'iga', url: 'https://www.iga.com.au/' },
+];
+
+const openStoreSite = (storeName: string, delivery: boolean) => {
+  const lower = (storeName || '').toLowerCase();
+  const hit = STORE_SITES.find((s) => lower.includes(s.match));
+  const url = hit
+    ? hit.url
+    : `https://www.google.com/search?q=${encodeURIComponent(
+        `${storeName} grocery ${delivery ? 'delivery' : 'pickup'}`
+      )}`;
+  Linking.openURL(url).catch(() => notify('Could not open', 'No browser is available to open that link.'));
+};
 
 export default function ResultsScreen() {
   const {
@@ -20,16 +49,20 @@ export default function ResultsScreen() {
     dietary_restrictions, cuisines, experiment, cook_time,
     days, meals_per_day, household_size, calories,
     fridge_items, health_issues,
+    // Collected on /search and previously never read here, so they never
+    // reached the backend — an allergy the user selected did nothing.
+    allergens, avoid_ingredients,
     has_costco_card,
-    savedIndex,
+    savedId,
     shopping_mode
   } = useLocalSearchParams<{
     budget?: string, time?: string, location?: string,
     dietary_restrictions?: string, cuisines?: string, experiment?: string, cook_time?: string,
     days?: string, meals_per_day?: string, household_size?: string, calories?: string,
     fridge_items?: string, health_issues?: string,
+    allergens?: string, avoid_ingredients?: string,
     has_costco_card?: string,
-    savedIndex?: string,
+    savedId?: string,
     shopping_mode?: string
   }>();
 
@@ -53,16 +86,16 @@ export default function ResultsScreen() {
       try {
         setLoading(true);
 
-        // Check if we are loading a saved plan
-        if (savedIndex !== undefined) {
-          const idx = parseInt(Array.isArray(savedIndex) ? savedIndex[0] : savedIndex);
-          const savedPlan = planStore.getPlanByIndex(idx);
+        // Check if we are loading a saved plan (by stable id, not position)
+        if (savedId !== undefined) {
+          const id = Array.isArray(savedId) ? savedId[0] : savedId;
+          const savedPlan = planStore.getPlanById(id);
           if (savedPlan) {
             setPlan(savedPlan);
             setLoading(false);
             return;
           } else {
-            throw new Error("Saved plan not found");
+            throw new Error("That saved plan is no longer available.");
           }
         }
         const costcoParam = Array.isArray(has_costco_card) ? has_costco_card[0] : has_costco_card;
@@ -82,8 +115,9 @@ export default function ResultsScreen() {
           experiment: (Array.isArray(experiment) ? experiment[0] : experiment) === 'true',
           cook_time: Array.isArray(cook_time) ? cook_time[0] : (cook_time || '30-45 minutes'),
           fridge_items: Array.isArray(fridge_items) ? fridge_items[0] : (fridge_items || ''),
+          allergies: Array.isArray(allergens) ? allergens[0] : (allergens || ''),
+          avoid_ingredients: Array.isArray(avoid_ingredients) ? avoid_ingredients[0] : (avoid_ingredients || ''),
           has_costco_card: costcoParam === 'true',
-          fake_data: true
         };
 
         console.log('DEBUG: Final request parameters:', requestParams);
@@ -94,31 +128,28 @@ export default function ResultsScreen() {
         setPlan(data);
       } catch (err: any) {
         console.error("Plan Error", err);
+        // Show the ACTUAL message (the backend explains 422/503/429 clearly)
+        // rather than always blaming a dead backend.
         setError(err.message || "Failed to generate plan");
-        Alert.alert("Error", "Could not generate plan. Is the backend running?");
       } finally {
         setLoading(false);
       }
     }
 
     fetchPlan();
-  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedIndex, has_costco_card, fridge_items, health_issues]);
+  }, [budget, time, location, dietary_restrictions, cuisines, experiment, cook_time, days, meals_per_day, household_size, calories, savedId, has_costco_card, fridge_items, health_issues, allergens, avoid_ingredients]);
 
   const handleSave = () => {
-    if (plan) {
-      const success = planStore.savePlan(plan);
-      if (success) {
-        if (Platform.OS === 'web') {
-          alert("Meal plan saved!");
-          router.navigate('/');
-        } else {
-          Alert.alert("Success", "Meal plan saved!", [
-            { text: "OK", onPress: () => router.navigate('/') }
-          ]);
-        }
-      } else {
-        Alert.alert("Limit Reached", "You can only save up to 5 meal plans. Please discard an old one first.");
-      }
+    if (!plan) return;
+    const id = planStore.savePlan(plan);
+    if (id) {
+      notifyThen(
+        'Saved',
+        'Meal plan saved. Note: saved plans are kept for this session only.',
+        () => router.navigate('/'),
+      );
+    } else {
+      notify('Limit reached', `You can only save up to ${planStore.max} meal plans. Discard an old one first.`);
     }
   };
 
@@ -172,13 +203,13 @@ export default function ResultsScreen() {
       });
     } catch (error) {
       console.error("PDF Export Error:", error);
-      Alert.alert("Export Failed", "There was an error generating your shopping list PDF.");
+      notify("Export failed", "There was an error generating your shopping list PDF.");
     }
   };
 
   const ListFooter = () => (
     <View style={styles.footerButtons}>
-      {savedIndex === undefined ? (
+      {savedId === undefined ? (
         <>
           <TouchableOpacity
             style={[styles.actionButton, styles.saveButton]}
@@ -267,21 +298,11 @@ export default function ResultsScreen() {
   const renderStoreCard = ({ item, index }: { item: ShoppingPlanResponse['shopping_list'][0], index: number }) => {
     const storeHasCoupon = item.items.some((it) => !!it.coupon);
     const storeTotal = item.items.reduce((sum, prod) => sum + prod.price, 0);
-
-    // Niche requirement: alternate comparison stores so they aren't all Whole Foods
-    const comparisonStores = ["Whole Foods", "Trader Joe's", "Wegmans"];
-    const targetComparison = comparisonStores[index % comparisonStores.length];
-
-    // Higher-end stores usually cost more; use different multipliers for variety
-    const multipliers: Record<string, number> = {
-      "Whole Foods": 1.35,
-      "Trader Joe's": 1.22,
-      "Wegmans": 1.28
-    };
-    const multiplier = multipliers[targetComparison] || 1.3;
-
-    const savings = (storeTotal * multiplier) - storeTotal;
-    const showSavings = savings >= 1.0;
+    // NOTE: a block here used to invent "savings" by multiplying this store's
+    // total by a hardcoded 1.22-1.35 for a comparison store picked by array
+    // index. It was never rendered, but it was one JSX line away from showing
+    // users fabricated numbers as if they were real comparisons. Removed. Any
+    // savings figure must come from the backend's real cheapest-store data.
 
     return (
       <View style={styles.storeCard}>
@@ -307,6 +328,13 @@ export default function ResultsScreen() {
           </View>
         </View>
 
+        {!!item.pricing_note && (
+          <View style={styles.estimateNote}>
+            <Ionicons name="information-circle-outline" size={13} color="#92400E" />
+            <Text style={styles.estimateNoteText}>{item.pricing_note}</Text>
+          </View>
+        )}
+
         <View style={styles.divider} />
 
         {/* Use the new GroupedCart component instead of manual itemList mapping */}
@@ -326,11 +354,15 @@ export default function ResultsScreen() {
             else if (nameLower.includes('frozen') || nameLower.includes('ice cream')) category = 'Frozen';
             else if (nameLower.includes('rice') || nameLower.includes('pasta') || nameLower.includes('bread') || nameLower.includes('oil') || nameLower.includes('salt') || nameLower.includes('oat')) category = 'Pantry';
 
-            // Use real coupon data from backend; compute discount fraction from savings
-            const hasCoupon = !!it.coupon;
-            const couponDiscount = (hasCoupon && it.coupon.savings && it.price > 0)
-              ? it.coupon.savings / (it.original_price ?? it.price)
+            // Use real coupon data from backend; compute discount fraction from savings.
+            // Narrow through a local so TypeScript can see the guard, and guard the
+            // denominator — original_price could be 0 and produce Infinity.
+            const coupon = it.coupon;
+            const base = it.original_price ?? it.price;
+            const couponDiscount = (coupon && coupon.savings > 0 && base > 0)
+              ? coupon.savings / base
               : undefined;
+            const hasCoupon = !!coupon;
 
             return {
               id: `${index}-${iIdx}`,
@@ -348,18 +380,31 @@ export default function ResultsScreen() {
           cardStyle={styles.groupedCartContainer}
         />
 
-        {/* Store Action Button based on shopping mode */}
-        {shopping_mode === 'order_online' && (
+        {/* Store action. These buttons previously had no onPress at all — they
+            looked functional and did nothing. There's no ordering integration,
+            so they now do the honest useful thing: open the retailer's own
+            site, or directions for an in-person trip. */}
+        {(shopping_mode === 'order_online' || shopping_mode === 'delivery') && (
           <View style={styles.storeActionContainer}>
-            <TouchableOpacity style={styles.storeActionButton}>
-              <Text style={styles.storeActionButtonText}>Order</Text>
+            <TouchableOpacity
+              style={styles.storeActionButton}
+              onPress={() => openStoreSite(item.store, shopping_mode === 'delivery')}
+            >
+              <Text style={styles.storeActionButtonText}>
+                {shopping_mode === 'delivery' ? 'Find delivery →' : 'Open store site →'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
-        {shopping_mode === 'delivery' && (
+        {shopping_mode === 'shop_in_person' && !!item.address && (
           <View style={styles.storeActionContainer}>
-            <TouchableOpacity style={styles.storeActionButton}>
-              <Text style={styles.storeActionButtonText}>Start Delivery</Text>
+            <TouchableOpacity
+              style={styles.storeActionButton}
+              onPress={() => Linking.openURL(
+                `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(item.address)}`
+              )}
+            >
+              <Text style={styles.storeActionButtonText}>Directions →</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -437,6 +482,41 @@ export default function ResultsScreen() {
               </View>
             </View>
 
+            {/* Constraints the backend could not fully honour. Showing these is
+                the whole point of the warnings field — an unenforced allergen
+                the user never hears about is the worst possible outcome. */}
+            {!!plan.warnings?.length && (
+              <View style={styles.warningCard}>
+                <View style={styles.warningHeader}>
+                  <Ionicons name="alert-circle" size={16} color="#92400E" />
+                  <Text style={styles.warningTitle}>Before you shop</Text>
+                </View>
+                {plan.warnings.map((w, i) => (
+                  <Text
+                    key={i}
+                    style={[styles.warningText, /NOT ENFORCED|PARTLY ENFORCED/.test(w) && styles.warningTextStrong]}
+                  >
+                    • {w}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {plan.budget !== undefined && plan.budget > 0 && plan.total_cost > 0 && (
+              <View style={[styles.budgetCard, plan.over_budget ? styles.budgetOver : styles.budgetUnder]}>
+                <Ionicons
+                  name={plan.over_budget ? 'trending-up' : 'checkmark-circle'}
+                  size={15}
+                  color={plan.over_budget ? '#B91C1C' : '#15803D'}
+                />
+                <Text style={[styles.budgetText, { color: plan.over_budget ? '#B91C1C' : '#15803D' }]}>
+                  {plan.over_budget
+                    ? `$${(plan.total_cost - plan.budget).toFixed(2)} over your $${plan.budget.toFixed(2)} budget`
+                    : `$${(plan.budget - plan.total_cost).toFixed(2)} under your $${plan.budget.toFixed(2)} budget`}
+                </Text>
+              </View>
+            )}
+
             {shopping_mode && (
               <View style={styles.shoppingModeContainer}>
                 <Text style={styles.shoppingModeLabel}>
@@ -467,16 +547,17 @@ export default function ResultsScreen() {
                 key={columns}
                 numColumns={columns}
                 columnWrapperStyle={columns > 1 ? { gap: GAP } : undefined}
-                data={Object.values(plan.meal_plan.reduce((acc, meal) => {
+                data={Object.values(plan.meal_plan.reduce((acc, meal, i) => {
                   const day = meal.day;
-                  if (!acc[day]) acc[day] = { day, meals: [] };
+                  if (!acc[day]) acc[day] = { day, order: meal.day_index ?? i, meals: [] };
                   acc[day].meals.push(meal);
                   return acc;
-                }, {} as Record<string, { day: string, meals: MealPlanItem[] }>))
-                  .sort((a, b) => {
-                    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-                    return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
-                  })
+                }, {} as Record<string, { day: string, order: number, meals: MealPlanItem[] }>))
+                  // Sort on the backend's day_index. The old comparator looked
+                  // `day` up in a Monday..Sunday array, which returns -1 for
+                  // every label in a multi-week plan ("Monday (Week 2)") and
+                  // left the ordering arbitrary.
+                  .sort((a, b) => a.order - b.order)
                 }
                 keyExtractor={(item) => item.day}
                 renderItem={renderMealCard}
@@ -873,6 +954,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+
+  warningCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  warningHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  warningTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+  warningText: { fontSize: 12, color: '#78350F', lineHeight: 18, marginBottom: 4 },
+  warningTextStrong: { fontWeight: '700', color: '#B91C1C' },
+
+  budgetCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 20,
+  },
+  budgetUnder: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  budgetOver: { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' },
+  budgetText: { fontSize: 13, fontWeight: '600' },
+
+  estimateNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFFBEB',
+  },
+  estimateNoteText: { flex: 1, fontSize: 11, color: '#78350F', lineHeight: 16 },
 
   shoppingModeContainer: {
     backgroundColor: '#FFF5E6',

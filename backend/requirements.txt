@@ -1,13 +1,38 @@
-fastapi
-uvicorn
-pydantic
-requests
-aiohttp
-python-dotenv
-geopy
-googlemaps
-shapely
-pillow
-cloakbrowser
-curl_cffi
-supabase
+# Pinned to the versions this app is actually verified against.
+#
+# These were unpinned, so a fresh deploy resolved whatever was latest that day.
+# That is not hypothetical here: supabase, curl_cffi and cloakbrowser all make
+# breaking changes across minor releases, and a pydantic v1 resolution would
+# break the Field(...) constraints the request models rely on.
+#
+# Compatible-release (~=) where the project follows semver and we want patch
+# fixes; exact (==) for the anti-bot stack, where a minor bump has historically
+# changed browser/TLS behaviour and needs a deliberate re-test against the
+# retailer WAFs.
+
+# --- Web framework ---
+fastapi~=0.128.8
+uvicorn~=0.40.0
+pydantic~=2.12.5
+
+# --- HTTP / async ---
+requests~=2.32.3
+aiohttp~=3.10.5
+
+# --- Config ---
+python-dotenv~=0.21.0
+
+# --- Geo ---
+geopy~=2.4.1
+googlemaps~=4.10.0
+shapely~=2.1.2
+
+# --- Imaging ---
+pillow~=10.4.0
+
+# --- Anti-bot stack: pin exactly, re-test the WAF pass before bumping ---
+cloakbrowser==0.3.31
+curl_cffi==0.15.0
+
+# --- Database ---
+supabase~=2.31.0

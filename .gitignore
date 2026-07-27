@@ -9,16 +9,20 @@ backend/recipes_ready_to_merge.jsonl
 .env.*.local
 config.env
 
-# Instacart session cache — contains LIVE auth cookies, never commit
-.ic_session.json
-backend/.ic_session.json
-backend/aldi/.aldi_session.json
-
-# Anti-bot clearance-cookie caches — IP/machine-specific, churn every ~20 min
-backend/.target_http_session.json
-backend/.walmart_http_session.json
-backend/.coles_http_session.json
-backend/.woolworths_http_session.json
+# Session caches — contain LIVE auth cookies (__Host-instacart_sid et al).
+# NEVER commit. Glob-matched rather than listed one path at a time: the old
+# list named `backend/aldi/.aldi_session.json` while the file actually written
+# is `backend/.aldi_session.json`, so real Instacart cookies for ALDI and King
+# Soopers were committed and are still in git history.
+*_session.json
+.*_session.json
+**/.ic_session.json
+**/.aldi_session.json
+**/.ks_session.json
+**/.walmart_http_session.json
+**/.target_http_session.json
+**/.coles_http_session.json
+**/.woolworths_http_session.json
 
 # Python
 __pycache__

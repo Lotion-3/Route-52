@@ -32,6 +32,7 @@ from typing import Optional
 
 import requests
 
+import pricing_pool
 from kroger_pricing import find_best_purchase
 from kroger_search_map import get_all_terms
 
@@ -170,13 +171,6 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     qp: str = ""
     zone_id: str = ""
 
-    browser = launch(headless=False)
-    ctx = browser.new_context(
-        viewport={"width": 1366, "height": 768}, locale="en-US",
-        user_agent=BASE_HEADERS["user-agent"],
-    )
-    page = ctx.new_page()
-
     def on_req(req):
         nonlocal qp, zone_id
         if "graphql" not in req.url:
@@ -196,25 +190,40 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
             except Exception:
                 pass
 
-    page.on("request", on_req)
-    print(f"[IC] Bootstrapping session via {slug}...", flush=True)
-    page.goto(
-        f"https://www.instacart.com/store/{slug}/storefront",
-        wait_until="domcontentloaded", timeout=30000,
-    )
-    time.sleep(4)
-    for sel in ["button:has-text('Accept All')", "button:has-text('Accept')",
-                "[aria-label='Close']"]:
+    # try/finally is load-bearing: browser_gate.launch holds a PROCESS-GLOBAL
+    # lock that is only released by .close(). Without this, one page.goto
+    # timeout leaks the gate forever and every other browser chain (ALDI,
+    # Walmart, Target, Coles, Woolworths) dead-locks for the life of the process.
+    browser = launch(headless=False)
+    try:
+        ctx = browser.new_context(
+            viewport={"width": 1366, "height": 768}, locale="en-US",
+            user_agent=BASE_HEADERS["user-agent"],
+        )
+        page = ctx.new_page()
+        page.on("request", on_req)
+        print(f"[IC] Bootstrapping session via {slug}...", flush=True)
+        page.goto(
+            f"https://www.instacart.com/store/{slug}/storefront",
+            wait_until="domcontentloaded", timeout=30000,
+        )
+        time.sleep(4)
+        for sel in ["button:has-text('Accept All')", "button:has-text('Accept')",
+                    "[aria-label='Close']"]:
+            try:
+                el = page.locator(sel).first
+                if el.is_visible(timeout=1500):
+                    el.click(); time.sleep(1); break
+            except Exception:
+                pass
+        page.keyboard.press("Escape")
+        time.sleep(8)
+        cookies = {c["name"]: c["value"] for c in ctx.cookies()}
+    finally:
         try:
-            el = page.locator(sel).first
-            if el.is_visible(timeout=1500):
-                el.click(); time.sleep(1); break
+            browser.close()
         except Exception:
             pass
-    page.keyboard.press("Escape")
-    time.sleep(8)
-    cookies = {c["name"]: c["value"] for c in ctx.cookies()}
-    browser.close()
 
     print(f"[IC] Session ready. cookies={len(cookies)}, qp={'yes' if qp else 'no'}, zoneId={zone_id!r}", flush=True)
     return cookies, qp, zone_id
@@ -585,6 +594,10 @@ def _price_one(
     session: requests.Session, slug: str,
 ) -> Optional[dict]:
     for term in get_all_terms(ingredient):
+        # Stop once the request that started this chain has given up on us,
+        # instead of working through the rest of the basket for nobody.
+        if pricing_pool.expired():
+            return None
         products = _search_and_fetch(term, shop_id, zone_id, postal, session, slug)
         if products:
             result = find_best_purchase(ingredient, qty, unit, products)
@@ -631,10 +644,13 @@ def price_all_instacart(
     print(f"[IC:{slug}] Pricing at: {display_name} (shopId={shop_id})", flush=True)
 
     prices: dict = {}
+    # Carry this chain's budget onto the nested workers — the deadline lives on
+    # a thread-local, so they would otherwise run with no budget at all.
+    price_one = pricing_pool.bind_current_deadline(_price_one)
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
             pool.submit(
-                _price_one,
+                price_one,
                 name,
                 float(data.get("qty", 1)),
                 str(data.get("unit", "whole")),
@@ -661,10 +677,11 @@ def _price_ingredients_at(
 ) -> dict:
     """Run the search+price loop for every ingredient at a resolved store."""
     prices: dict = {}
+    price_one = pricing_pool.bind_current_deadline(_price_one)  # see price_all_instacart
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
             pool.submit(
-                _price_one,
+                price_one,
                 name,
                 float(data.get("qty", 1)),
                 str(data.get("unit", "whole")),

@@ -198,7 +198,7 @@ def _current_proxy() -> Optional[str]:
 def _bootstrap_session():
     """(worker thread) Launch this thread's CloakBrowser on its proxy session and
     warm PerimeterX cookies via the homepage. Raises on launch failure → Instacart."""
-    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
+    from browser_gate import launch_geoip_optional  # gated: 1 browser at a time + low-mem flags
 
     _teardown_session()
     if getattr(_thread_local, "proxy_session", None) is None:
@@ -209,19 +209,26 @@ def _bootstrap_session():
     if proxy:
         kwargs["proxy"] = proxy
         kwargs["geoip"] = True
-    try:
-        browser = launch(**kwargs)
-    except Exception:
-        kwargs.pop("geoip", None)
-        browser = launch(**kwargs)
+    browser = launch_geoip_optional(**kwargs)
 
-    ctx = browser.new_context()
-    _block_heavy_resources(ctx)
-    page = ctx.new_page()
-    page.on("response", _cache_static_assets)
-    page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
-    time.sleep(2)
-    page.close()
+    # The browser is only handed to _thread_local once the warm SUCCEEDS, so a
+    # failure here must close it explicitly — otherwise nothing ever calls
+    # .close() and the browser gate stays held until the max-hold backstop.
+    try:
+        ctx = browser.new_context()
+        _block_heavy_resources(ctx)
+        page = ctx.new_page()
+        page.on("response", _cache_static_assets)
+        page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
+        time.sleep(2)
+        page.close()
+    except BaseException:
+        try:
+            browser.close()
+        except Exception:
+            pass
+        raise
+
     _thread_local.browser = browser
     _thread_local.ctx = ctx
     print(f"[Walmart] CloakBrowser worker warmed{' (proxy)' if proxy else ''}.", flush=True)
@@ -471,7 +478,7 @@ def _warm_http_session() -> dict:
     """Launch CloakBrowser, warm PerimeterX via the homepage + a real search
     navigation (which fully clears the challenge and mints a strong _px3), then
     harvest the cookie jar and user-agent. Raises _Blocked on a weak warm."""
-    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
+    from browser_gate import launch_geoip_optional  # gated: 1 browser at a time + low-mem flags
     if getattr(_thread_local, "proxy_session", None) is None:
         _rotate_proxy_session()
     proxy = _current_proxy()
@@ -479,11 +486,7 @@ def _warm_http_session() -> dict:
     if proxy:
         kwargs["proxy"] = proxy
         kwargs["geoip"] = True
-    try:
-        browser = launch(**kwargs)
-    except Exception:
-        kwargs.pop("geoip", None)
-        browser = launch(**kwargs)
+    browser = launch_geoip_optional(**kwargs)
     try:
         ctx = browser.new_context()
         _block_heavy_resources(ctx)

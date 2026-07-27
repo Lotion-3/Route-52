@@ -5,17 +5,19 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import uvicorn
-from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header
+from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import os
+import uuid
 import config
 import meal_planner
 import fridge_manager
 import geo_utils
 import optimizer
+import pricing_pool
 import kroger_async
 from kroger_async import is_kroger_banner
 from aldi.aldi_pricing import price_all_aldi, is_aldi_store
@@ -127,14 +129,19 @@ def _overlay_coupon_prices(store_key: str, price_db: dict[str, dict],
                            postal: str, to_buy: dict[str, dict]) -> dict[str, str]:
     """Check coupons for this store and overlay coupon prices on price_db.
     Returns a dict {item_key: source} for items that had coupon matches.
+
+    Never raises. Coupons are an optional overlay — a DB/network failure (e.g.
+    Supabase unreachable, or bad credentials) must not sink an otherwise-complete
+    plan. NB the `import` has to be inside the try as well: db.py builds its
+    Supabase client at module scope, so a misconfigured SUPABASE_URL raises on
+    import, not on the query — which used to 500 the whole request from a line
+    that was deliberately outside the guard.
     """
-    from db import db
     merchant = _resolve_merchant(store_key)
     try:
+        from db import db
         coupons = db.get_coupons_by_postal(postal, merchant=merchant)
     except Exception as e:
-        # Coupons are an optional overlay — a DB/network failure (e.g. Supabase
-        # unreachable) must never sink an otherwise-complete plan.
         print(f"[Coupon] Lookup failed for {store_key} ({repr(e)[:80]}) — skipping coupons.", flush=True)
         return {}
     if not coupons:
@@ -170,38 +177,137 @@ async def catch_exceptions_middleware(request, call_next):
     try:
         return await call_next(request)
     except Exception as exc:
-        err_msg = f"Unhandled exception: {exc}\n{traceback.format_exc()}"
-        print(f"CRITICAL ERROR:\n{err_msg}")
-        logging.error(err_msg)
-        return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
+        # Log the full traceback SERVER-SIDE only. It used to be serialised into
+        # the response body, handing every caller our file paths, module layout
+        # and local variable context on any 500.
+        ref = uuid.uuid4().hex[:8]
+        tb = traceback.format_exc()
+        logging.error("[%s] Unhandled exception: %s\n%s", ref, exc, tb)
+        # Never let the error REPORTER raise. On a Windows console (cp1252) any
+        # traceback quoting a non-ASCII source line — this file has emoji in its
+        # log strings — made print() itself throw, replacing the real exception
+        # with a UnicodeEncodeError and hiding the actual failure.
+        try:
+            print(f"CRITICAL ERROR [{ref}]:\n{exc}\n{tb}", flush=True)
+        except Exception:
+            safe = tb.encode("ascii", "replace").decode("ascii")
+            print(f"CRITICAL ERROR [{ref}] (non-ascii stripped):\n{safe}", flush=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Something went wrong generating your plan. "
+                               f"Please try again. (ref {ref})", "ref": ref},
+        )
 
 # --- CORS CONFIGURATION START ---
+# `allow_origins=["*"]` together with `allow_credentials=True` is rejected by
+# browsers per the CORS spec (a wildcard origin can't be used with credentials),
+# so that combination never actually worked — it only appeared to because no
+# credentialed request was ever made. Allow an explicit list from the
+# environment; fall back to wildcard WITHOUT credentials, which is what the app
+# genuinely needs (the API takes a bearer token, not cookies).
+_cors_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for local dev to prevent connectivity issues with physical devices
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins or ["*"],
+    allow_credentials=bool(_cors_origins),
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 # --- CORS CONFIGURATION END ---
 
+
+# ── Rate limiting ──────────────────────────────────────────────────────────
+# Every endpoint was unauthenticated and unthrottled. /autocomplete bills a
+# Google Places call per request, /generate_plan drives a multi-store scrape,
+# and /prewarm used to spawn a browser warm per call — all reachable by anyone
+# who knows the URL. This is a small in-process limiter (fixed window per
+# client IP); it needs no extra dependency and no shared store, which is right
+# for a single-instance deploy.
+class _RateLimiter:
+    def __init__(self):
+        self._hits: dict[tuple[str, str], list[float]] = {}
+        self._lock = threading.Lock()
+
+    def check(self, bucket: str, client: str, limit: int, window: float) -> bool:
+        """True if allowed. Prunes as it goes so the dict can't grow forever."""
+        now = time.time()
+        key = (bucket, client)
+        with self._lock:
+            if len(self._hits) > 10_000:            # cheap guard against IP churn
+                self._hits = {k: v for k, v in self._hits.items() if v and v[-1] > now - window}
+            times = [t for t in self._hits.get(key, ()) if t > now - window]
+            if len(times) >= limit:
+                self._hits[key] = times
+                return False
+            times.append(now)
+            self._hits[key] = times
+            return True
+
+
+_rate_limiter = _RateLimiter()
+
+_RATE_LIMITS = {                     # bucket → (max requests, window seconds)
+    "plan": (int(os.getenv("RATE_LIMIT_PLAN", "10")), 600.0),
+    "prewarm": (int(os.getenv("RATE_LIMIT_PREWARM", "60")), 600.0),
+    "autocomplete": (int(os.getenv("RATE_LIMIT_AUTOCOMPLETE", "120")), 60.0),
+}
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def rate_limit(bucket: str):
+    """FastAPI dependency enforcing `bucket`'s limit for the calling IP."""
+    if bucket not in _RATE_LIMITS:
+        raise KeyError(f"unknown rate-limit bucket {bucket!r}")
+
+    def _dep(request: Request):
+        # Read the limit per call rather than closing over it at import time, so
+        # it stays adjustable (and testable) without recreating the dependency.
+        limit, window = _RATE_LIMITS[bucket]
+        if not _rate_limiter.check(bucket, _client_ip(request), limit, window):
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many requests. Try again in a few minutes "
+                       f"(limit: {limit} per {int(window / 60)} min).",
+            )
+
+    return _dep
+
 # Data Models
 class UserPreferences(BaseModel):
-    address: str
-    shopping_time_hours: float = 3.0
-    budget: float = 150.0
-    calorie_target: int = 2000
-    household_size: int = 1
-    days_plan: int = 7
-    meals_per_day: int = 3
-    dietary_restrictions: Optional[str] = None
-    allergies: Optional[str] = None
-    health_issues: Optional[str] = None
-    cuisines: Optional[str] = None
+    """Plan inputs.
+
+    The numeric fields are BOUNDED. They used to be unconstrained, so
+    meals_per_day=0 was a ZeroDivisionError, days_plan=-5 a 500, and
+    days_plan=365 a 2000-meal basket fanned out across ten retailers. The web
+    build renders `keyboardType="numeric"` as a plain text input, so negatives
+    and exponents were reachable from the UI, not just from curl.
+    """
+    address: str = Field(min_length=1, max_length=300)
+    # Not bounded to 12: the server reads values > 12 as MINUTES (see the
+    # normalisation in generate_plan), so the upper bound is a day in minutes.
+    shopping_time_hours: float = Field(default=3.0, gt=0, le=1440)
+    budget: float = Field(default=150.0, ge=0, le=100_000)
+    calorie_target: int = Field(default=2000, ge=800, le=8000)
+    household_size: int = Field(default=1, ge=1, le=meal_planner.MAX_HOUSEHOLD)
+    days_plan: int = Field(default=7, ge=1, le=meal_planner.MAX_DAYS)
+    meals_per_day: int = Field(default=3, ge=1, le=meal_planner.MAX_MEALS_PER_DAY)
+    dietary_restrictions: Optional[str] = Field(default=None, max_length=2000)
+    allergies: Optional[str] = Field(default=None, max_length=2000)
+    # Free-form "never include these" list from the ingredient picker. This used
+    # to be collected by the UI and dropped on the floor before the request.
+    avoid_ingredients: Optional[str] = Field(default=None, max_length=4000)
+    health_issues: Optional[str] = Field(default=None, max_length=2000)
+    cuisines: Optional[str] = Field(default=None, max_length=500)
     experiment: bool = True
-    cook_time: str = "30-45 minutes"
-    fridge_image_path: Optional[str] = None 
-    fridge_items: Optional[str] = None
+    cook_time: str = Field(default="30-45 minutes", max_length=100)
+    fridge_image_path: Optional[str] = None
+    fridge_items: Optional[str] = Field(default=None, max_length=4000)
     has_costco_card: bool = False
     dev_mode: int = 1
 
@@ -209,14 +315,15 @@ class PlanRequest(BaseModel):
     preferences: UserPreferences
 
 class PriceListItem(BaseModel):
-    name: str
-    qty: float = 1.0
-    unit: str = "ct"
+    name: str = Field(min_length=1, max_length=200)
+    qty: float = Field(default=1.0, gt=0, le=10_000)
+    unit: str = Field(default="ct", max_length=40)
 
 class PriceListRequest(BaseModel):
-    address: str
-    shopping_time_hours: float = 3.0
-    items: List[PriceListItem]
+    address: str = Field(min_length=1, max_length=300)
+    shopping_time_hours: float = Field(default=3.0, gt=0, le=1440)
+    # Bounded: each item fans out a search across every store in range.
+    items: List[PriceListItem] = Field(min_length=1, max_length=300)
     has_costco_card: bool = False
 
 @app.get("/")
@@ -312,7 +419,7 @@ _WARM_CHAINS = (
 )
 
 
-@router.post("/prewarm")
+@router.post("/prewarm", dependencies=[Depends(rate_limit("prewarm"))])
 def prewarm(request: PrewarmRequest):
     """Fire-and-forget warm-up. Two phases:
 
@@ -336,10 +443,11 @@ def prewarm(request: PrewarmRequest):
 
     def _warm_both_unconditional():
         # Eager: mint both cookies the moment an address is picked, range unknown.
-        with ThreadPoolExecutor(max_workers=len(_WARM_CHAINS), thread_name_prefix="prewarm") as pool:
-            futs = {name: pool.submit(_warm_chain, name, ensure_fn)
-                    for name, _in_range, ensure_fn in _WARM_CHAINS}
-            results = {name: f.result() for name, f in futs.items()}
+        # Sequential on purpose: the browser gate lets exactly one warm run at a
+        # time, so warming in parallel just made the loser burn a 45s gate
+        # timeout and fail for no reason.
+        results = {name: _warm_chain(name, ensure_fn)
+                   for name, _in_range, ensure_fn in _WARM_CHAINS}
         print("[Prewarm] Eager warm done (Walmart + Target).", flush=True)
         # Target's direct path falls back to Instacart, so if its warm failed, get
         # the Instacart fallback hot now instead of cold at plan time.
@@ -382,21 +490,30 @@ def prewarm(request: PrewarmRequest):
             return
 
         # In range: ensure warmed (cheap reuse if the eager warm already minted it).
-        with ThreadPoolExecutor(max_workers=len(warmers), thread_name_prefix="prewarm") as pool:
-            futs = {name: pool.submit(_warm_chain, name, ensure_fn) for name, ensure_fn in warmers}
-            results = {name: f.result() for name, f in futs.items()}
+        # Sequential — see _warm_both_unconditional: the browser gate serializes
+        # these anyway, so parallelism only manufactures gate timeouts.
+        results = {name: _warm_chain(name, ensure_fn) for name, ensure_fn in warmers}
         print(f"[Prewarm] Done (warmed in-range: {', '.join(n for n, _ in warmers)}).", flush=True)
         # If Target is in range but its warm failed, warm the Instacart fallback it
         # will drop to during pricing.
         if not results.get("Target", True):
             _warm_instacart("Target warm failed")
 
+    # Run on the shared bounded pool under a single-flight key rather than a
+    # fresh unbounded daemon thread per call. /prewarm is unauthenticated and
+    # fires on every address keystroke-batch, so a raw thread-per-call let a
+    # user (or a bot) stack arbitrarily many browser warms, all fighting over
+    # the same one-at-a-time browser gate. One warm of each kind at a time is
+    # all that was ever useful — the cookies are shared and cached on disk.
+    key = "prewarm:eager" if warm_only else "prewarm:scoped"
     work = _warm_both_unconditional if warm_only else _resolve_then_warm_in_range
-    threading.Thread(target=work, name="prewarm", daemon=True).start()
+    if pricing_pool.submit_chain(key, None, work) is None:
+        print(f"[Prewarm] '{key}' already running — not starting another.", flush=True)
+        return {"status": "already_warming"}
     return {"status": "warming"}
 
 
-@router.get("/autocomplete")
+@router.get("/autocomplete", dependencies=[Depends(rate_limit("autocomplete"))])
 def autocomplete(q: str = ""):
     """Address type-ahead for the /location screen — proxies Google Places
     Autocomplete with the same key the store search uses. Returns up to 5 US
@@ -415,7 +532,7 @@ def autocomplete(q: str = ""):
         return {"suggestions": []}
 
 
-@router.post("/generate_plan")
+@router.post("/generate_plan", dependencies=[Depends(rate_limit("plan"))])
 def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
     print(f"\nRECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request.preferences
@@ -427,17 +544,28 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         raise HTTPException(status_code=400, detail="Address not found")
     print(f"Using location for: {prefs.address}")
     
-    # 2. Update Config
-    # Each person needs calorie_target, so total is target * days * size
-    config.TOTAL_WEEKLY_CALORIES = prefs.calorie_target * prefs.days_plan * prefs.household_size
-    
+    # 2. (was: publish this request's calorie total to config.TOTAL_WEEKLY_CALORIES)
+    # Removed. Nothing reads that global — meal_planner takes calorie_target as an
+    # argument — so the only thing the assignment did was let concurrent requests
+    # stomp each other's value on the threadpool. Don't reintroduce it; pass
+    # per-request values as arguments.
+
     # 3. Handle Fridge Items
+    plan_warnings: list[str] = []
     fridge_items = prefs.fridge_items or ""
     if prefs.fridge_image_path and os.path.exists(prefs.fridge_image_path):
+        # fridge_manager.analyze_fridge_image is a stub that always returns "" —
+        # there is no vision backend wired up. Say so instead of appearing to
+        # have read the photo and found nothing in it.
         vision_items = fridge_manager.analyze_fridge_image(prefs.fridge_image_path)
         if vision_items:
             fridge_items = f"{fridge_items}, {vision_items}"
-    
+        else:
+            plan_warnings.append(
+                "Fridge-photo scanning isn't available yet — list your at-home "
+                "items as text so they can be excluded from the shopping list."
+            )
+
     # 4. Generate Meal Plan
     # Fetch meals from Supabase (fall back to meals.json if DB unavailable)
     print(f"\nFINAL FRIDGE LIST FOR MEAL PLANNER: {repr(fridge_items)}", flush=True)
@@ -454,13 +582,21 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     except Exception as e:
         print(f"[Supabase] Could not fetch meals from DB ({e}), falling back to meals.json", flush=True)
         db_meals = None
-    meal_plan, ingredient_data = meal_planner.create_weekly_meal_plan(
-        prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
-        prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
-        prefs.health_issues, prefs.budget, prefs.household_size, meals=db_meals,
-        allergies=prefs.allergies or "",
-    )
-    
+    try:
+        meal_plan, ingredient_data, mp_warnings = meal_planner.create_weekly_meal_plan(
+            prefs.days_plan, prefs.meals_per_day, prefs.calorie_target,
+            prefs.dietary_restrictions, prefs.cuisines, fridge_items, prefs.experiment, prefs.cook_time,
+            prefs.health_issues, prefs.budget, prefs.household_size, meals=db_meals,
+            allergies=prefs.allergies or "",
+            avoid_ingredients=prefs.avoid_ingredients or "",
+        )
+    except meal_planner.NoSafeMealsError as e:
+        # The user's restrictions exclude every recipe. This is a real answer,
+        # not a server fault — and far better than the old behaviour of quietly
+        # dropping the restrictions and serving food they can't eat.
+        raise HTTPException(status_code=422, detail=str(e))
+    plan_warnings.extend(mp_warnings)
+
     if not ingredient_data:
         raise HTTPException(status_code=500, detail="Failed to generate meal plan")
 
@@ -749,78 +885,89 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     # left to finish in the background rather than held onto. Already-finished
     # chains are still collected regardless of order (result() on a done future
     # returns instantly), so the fast chains never get starved by a slow one.
+    #
+    # The fan-out runs on the SHARED bounded pool (pricing_pool), not a
+    # per-request executor: a chain abandoned at the deadline keeps running, so
+    # a per-request pool let those threads multiply without limit across
+    # requests. Single-flight per chain means an overrunning chain is skipped
+    # next time instead of stacking a second copy, and the Deadline lets chains
+    # with per-ingredient loops stop early once we've stopped waiting.
     budget = float(os.environ.get("PRICING_BUDGET_SECONDS", "75"))
-    pool = ThreadPoolExecutor(max_workers=max(4, 3 + len(loop_keys)))
-    try:
-        fut_kroger = pool.submit(_fetch_kroger)
-        fut_aldi = pool.submit(_fetch_aldi) if aldi_key else None
-        fut_meijer = pool.submit(_fetch_meijer) if meijer_key else None
-        loop_futs = {k: pool.submit(_fetch_loop_store, k) for k in loop_keys}
+    deadline_obj = pricing_pool.Deadline(budget)
 
-        deadline = time.time() + budget
+    def _submit(key, fn, *args):
+        """Submit a chain, logging (and skipping) one already in flight."""
+        fut = pricing_pool.submit_chain(key, deadline_obj, fn, *args)
+        if fut is None:
+            print(f"[Pricing] '{key}' is still running from an earlier request — "
+                  f"skipping it for this one (store excluded).", flush=True)
+        return fut
 
-        def _within_budget(fut, label):
-            if fut is None:
-                return None
-            try:
-                return fut.result(timeout=max(0.1, deadline - time.time()))
-            except FuturesTimeout:
-                print(f"[Pricing] {label} exceeded the {budget:.0f}s budget — skipping.", flush=True)
-                return None
-            except Exception as e:
-                print(f"[Pricing] {label} errored: {repr(e)[:100]}", flush=True)
-                return None
+    fut_kroger = _submit("kroger", _fetch_kroger)
+    fut_aldi = _submit("aldi", _fetch_aldi) if aldi_key else None
+    fut_meijer = _submit("meijer", _fetch_meijer) if meijer_key else None
+    loop_futs = {k: _submit(f"store:{k}", _fetch_loop_store, k) for k in loop_keys}
 
-        # ---- Fan in: apply results sequentially (main thread, no races) ----
-        kroger_prices = _within_budget(fut_kroger, "Kroger")
-        if kroger_prices:
-            if kroger_key:
-                print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
-                _apply_prices(kroger_key, kroger_prices)
-            else:
-                print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
+    def _within_budget(fut, label):
+        if fut is None:
+            return None
+        try:
+            return fut.result(timeout=max(0.0, deadline_obj.remaining()))
+        except FuturesTimeout:
+            # Leave it running: it will stop at its next cooperative checkpoint,
+            # and single-flight stops the next request from starting another.
+            print(f"[Pricing] {label} exceeded the {budget:.0f}s budget — skipping.", flush=True)
+            return None
+        except Exception as e:
+            print(f"[Pricing] {label} errored: {repr(e)[:100]}", flush=True)
+            return None
 
-        if aldi_key:
-            aldi_prices = _within_budget(fut_aldi, "ALDI")
-            if aldi_prices:
-                print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
-                _apply_prices(aldi_key, aldi_prices, log_each=True)
-            else:
-                print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
+    # ---- Fan in: apply results sequentially (main thread, no races) ----
+    kroger_prices = _within_budget(fut_kroger, "Kroger")
+    if kroger_prices:
+        if kroger_key:
+            print(f"[Kroger] Applying real prices to store: '{kroger_key}'", flush=True)
+            _apply_prices(kroger_key, kroger_prices)
         else:
-            print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
+            print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
 
-        if meijer_key:
-            meijer_prices = _within_budget(fut_meijer, "Meijer")
-            if meijer_prices:
-                print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
-                _apply_prices(meijer_key, meijer_prices)
-            else:
-                print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
+    if aldi_key:
+        aldi_prices = _within_budget(fut_aldi, "ALDI")
+        if aldi_prices:
+            print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
+            _apply_prices(aldi_key, aldi_prices, log_each=True)
         else:
-            print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
+            print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
+    else:
+        print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
 
-        for store_key in loop_keys:
-            res = _within_budget(loop_futs[store_key], store_key)
-            if not res:
-                continue
-            prices = res.get("prices") or {}
-            if not prices:
-                continue
-            label = res.get("label", "")
-            cc_meta = res.get("costco_meta") or {}
-            tag = " (estimate)" if cc_meta.get("is_estimate") else ""
-            print(f"[{label}] Applying real prices to '{store_key}'{tag}", flush=True)
-            _apply_prices(store_key, prices)
-            if cc_meta.get("is_estimate"):
-                costco_estimates[store_key] = {
-                    "distance_km": cc_meta.get("distance_km"),
-                    "store": cc_meta.get("store", ""),
-                }
-    finally:
-        # Don't block the response on chains still running at the deadline —
-        # abandon them (the browser gate caps them at one at a time anyway).
-        pool.shutdown(wait=False, cancel_futures=True)
+    if meijer_key:
+        meijer_prices = _within_budget(fut_meijer, "Meijer")
+        if meijer_prices:
+            print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
+            _apply_prices(meijer_key, meijer_prices)
+        else:
+            print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
+    else:
+        print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
+
+    for store_key in loop_keys:
+        res = _within_budget(loop_futs[store_key], store_key)
+        if not res:
+            continue
+        prices = res.get("prices") or {}
+        if not prices:
+            continue
+        label = res.get("label", "")
+        cc_meta = res.get("costco_meta") or {}
+        tag = " (estimate)" if cc_meta.get("is_estimate") else ""
+        print(f"[{label}] Applying real prices to '{store_key}'{tag}", flush=True)
+        _apply_prices(store_key, prices)
+        if cc_meta.get("is_estimate"):
+            costco_estimates[store_key] = {
+                "distance_km": cc_meta.get("distance_km"),
+                "store": cc_meta.get("store", ""),
+            }
 
     # Drop any store that real pricing couldn't cover — no synthetic fallback.
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
@@ -838,9 +985,16 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     durations_matrix = [[durations_matrix[r][c] for c in keep_indices] for r in keep_indices]
 
     # Step 7b: Overlay coupon prices on top of scraped prices.
-    # Coupon prices replace scraped prices when matched.
-    postal = instacart_pricing._get_postal(lat, lon)
+    # Coupon prices replace scraped prices when matched. The entire stage is
+    # best-effort and wrapped: by this point we have a priceable basket, and no
+    # coupon problem (Flipp down, Supabase down, reverse-geocode down) is worth
+    # turning that into a 500 for the user.
     coupon_sources: dict[str, dict[str, str]] = {}
+    try:
+        postal = instacart_pricing._get_postal(lat, lon)
+    except Exception as e:
+        print(f"[Coupon] Postal lookup failed ({repr(e)[:80]}) — skipping coupons.", flush=True)
+        postal = ""
     if postal:
         try:
             from coupon_scraper import fetch_and_store
@@ -852,9 +1006,14 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             if sources:
                 coupon_sources[sk] = sources
 
-    config.MAX_TIME_SECONDS = MAX_TIME_SECS
+    # Pass the time budget explicitly. It used to be published to
+    # config.MAX_TIME_SECONDS (a module global) immediately before this call —
+    # with FastAPI running sync endpoints on a threadpool, two concurrent
+    # requests raced and one user's shopping-time limit could be applied to the
+    # other's optimization.
     optimal_route, item_cost, total_time_seconds, item_assignments, cheapest_single_store_cost, cheapest_single_store_name = optimizer.find_optimal_store(
-        durations_matrix, price_database, location_names, shopping_list
+        durations_matrix, price_database, location_names, shopping_list,
+        max_time_seconds=MAX_TIME_SECS,
     )
     
     # Debug: print full item assignments so we can spot duplicates across stores
@@ -928,16 +1087,27 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             u_price = item_unit_prices.get(l_key, 0.0)
             ing['price'] = u_price * ing['qty']
 
+    total_cost = item_cost if item_cost != float('inf') else 0
+
     res = {
         "meal_plan": meal_plan,
         "shopping_list": formatted_shopping_list,
         "at_home_ingredients": at_home_ingredients,
-        "total_cost": item_cost if item_cost != float('inf') else 0,
+        "total_cost": total_cost,
         "cheapest_single_store_cost": cheapest_single_store_cost if cheapest_single_store_cost != float('inf') else 0,
         "cheapest_single_store_name": cheapest_single_store_name,
         "total_time_minutes": total_time_seconds / 60 if total_time_seconds else 0,
         "route": optimal_route if optimal_route else [],
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]},
+        # Every constraint we could not fully honour. The UI must show these —
+        # they are the difference between "your nut-free plan" and "a plan we
+        # couldn't verify is nut-free".
+        "warnings": plan_warnings,
+        # The budget field was collected by the UI and never used for anything.
+        # It can't gate meal SELECTION (prices aren't known until after the plan
+        # exists), but the plan can at least be reported against it.
+        "budget": prefs.budget,
+        "over_budget": bool(prefs.budget and total_cost > prefs.budget),
     }
 
     # Persist to Supabase if user is authenticated
@@ -953,7 +1123,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     print(f"DEBUG SERVER: Sending benchmark {cheapest_single_store_name} to frontend", flush=True)
     return res
 
-@router.post("/price_list")
+@router.post("/price_list", dependencies=[Depends(rate_limit("plan"))])
 def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_current_user)):
     print(f"\nRECEIVED PRICE LIST REQUEST (Server v{SERVER_VERSION})", flush=True)
     prefs = request
@@ -1263,8 +1433,12 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
     location_names = [location_names[i] for i in keep_indices]
     durations_matrix = [[durations_matrix[r][c] for c in keep_indices] for r in keep_indices]
 
-    # Coupon overlay
-    postal = instacart_pricing._get_postal(lat, lon)
+    # Coupon overlay — best-effort, same as generate_plan (see the note there).
+    try:
+        postal = instacart_pricing._get_postal(lat, lon)
+    except Exception as e:
+        print(f"[Coupon] Postal lookup failed ({repr(e)[:80]}) — skipping coupons.", flush=True)
+        postal = ""
     if postal:
         try:
             from coupon_scraper import fetch_and_store
@@ -1274,9 +1448,14 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         for sk in list(price_database.keys()):
             _overlay_coupon_prices(sk, price_database, postal, to_buy_quantities)
 
-    config.MAX_TIME_SECONDS = MAX_TIME_SECS
+    # Pass the time budget explicitly. It used to be published to
+    # config.MAX_TIME_SECONDS (a module global) immediately before this call —
+    # with FastAPI running sync endpoints on a threadpool, two concurrent
+    # requests raced and one user's shopping-time limit could be applied to the
+    # other's optimization.
     optimal_route, item_cost, total_time_seconds, item_assignments, cheapest_single_store_cost, cheapest_single_store_name = optimizer.find_optimal_store(
-        durations_matrix, price_database, location_names, shopping_list
+        durations_matrix, price_database, location_names, shopping_list,
+        max_time_seconds=MAX_TIME_SECS,
     )
 
     formatted_shopping_list = []
@@ -1329,10 +1508,6 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
     }
     return res
 
-
-@router.post("/optimize_shopping")
-def optimize_shopping_route(data: Dict):
-    return {"message": "Optimization endpoint not fully implemented yet"}
 
 app.include_router(router)
 

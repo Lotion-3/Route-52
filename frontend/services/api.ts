@@ -72,6 +72,24 @@ const DEV_API_URL = getApiUrl();
 // Surfaces which backend is in use so it's obvious in the Expo / browser console.
 console.log(`[api] target=${API_TARGET ?? 'auto'} → ${DEV_API_URL}`);
 
+// ── Auth token ───────────────────────────────────────────────────────────────
+// The backend already verifies a Supabase JWT (get_current_user) and persists
+// finished plans for the authenticated user — but nothing ever sent an
+// Authorization header, so user_id was always null and that whole path was
+// dead. Requests now carry the token when one has been set. NOTE: there is no
+// sign-in screen yet, so until one calls setAuthToken() this still resolves to
+// anonymous; the plumbing just no longer has to change when it lands.
+let authToken: string | null = null;
+
+export const setAuthToken = (token: string | null): void => {
+    authToken = token;
+};
+
+export const getAuthToken = (): string | null => authToken;
+
+const authHeaders = (): Record<string, string> =>
+    authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
 export interface ShoppingPlanRequest {
     location: string;
     budget: number;
@@ -81,21 +99,26 @@ export interface ShoppingPlanRequest {
     days?: number;
     meals_per_day?: number;
     dietary_restrictions?: string;
+    allergies?: string;
+    avoid_ingredients?: string;
     health_issues?: string;
     cuisines?: string;
     experiment?: boolean;
     cook_time?: string;
     fridge_items?: string;
-    fake_data?: boolean;
     has_costco_card?: boolean;
 }
 
 export interface MealPlanItem {
     day: string;
+    /** Stable ordering key. `day` is a display label and repeats across weeks. */
+    day_index?: number;
     meal_type: string;
     name: string;
     calories: number;
     cook_time: string;
+    cook_time_minutes?: number;
+    cuisine?: string;
     ingredients: { name: string; qty: number; unit: string; price?: number }[];
     instructions: string[];
 }
@@ -109,14 +132,28 @@ export interface ShoppingPlanResponse {
     total_time_minutes: number;
     user_location: { lat: number; lng: number };
     at_home_ingredients: { name: string; qty: number; unit: string }[];
+    /**
+     * Constraints the backend could NOT fully honour (unsupported diet chips,
+     * allergens it can't detect, relaxed cook-time limits, clamped inputs).
+     * These must be shown to the user — silently dropping them is what let a
+     * "Kosher" plan contain pork.
+     */
+    warnings?: string[];
+    budget?: number;
+    over_budget?: boolean;
     shopping_list: {
         store: string;
         address: string;
         coordinates: { lat: number; lng: number };
+        estimated?: boolean;
+        pricing_note?: string;
         items: {
             name: string;
             qty: number;
             price: number;
+            product_name?: string;
+            size_str?: string;
+            units_to_buy?: number;
             original_price?: number;
             coupon?: {
                 type: string;
@@ -130,9 +167,45 @@ export interface ShoppingPlanResponse {
 }
 
 // Pricing scrapes several stores (incl. headless-browser stores like Walmart),
-// so a plan can take a while. Give it a generous ceiling instead of relying on
-// React Native's default fetch timeout (~60s), which would abort a valid request.
-const PLAN_TIMEOUT_MS = 180000; // 3 minutes
+// so a plan can take a while. Budget, worst case: geocode + isochrone + Places,
+// then the server's 75s pricing budget, then up to 20s of coupon fetching, then
+// the optimiser — on top of a Render free-tier cold start of ~50s. 3 minutes cut
+// that too close and aborted valid requests; 4 leaves real headroom.
+const PLAN_TIMEOUT_MS = 240000; // 4 minutes
+
+/**
+ * Turn a failed Response into a useful Error.
+ *
+ * `await response.json()` used to be called unconditionally on the error path.
+ * Render's 502/504 pages and any proxy error are HTML, so the parse threw and
+ * the user saw a JSON syntax error instead of the backend's actual message
+ * (e.g. "No stores with real pricing found in your area").
+ */
+const errorFromResponse = async (response: Response): Promise<Error> => {
+    const fallback: Record<number, string> = {
+        422: 'No recipes match your restrictions. Try removing one and searching again.',
+        429: 'Too many plan requests. Please wait a few minutes and try again.',
+        502: 'The server is starting up. Please try again in a moment.',
+        503: 'No stores with live pricing were found near you.',
+        504: 'The server took too long to respond. Please try again.',
+    };
+    let body = '';
+    try {
+        body = await response.text();
+    } catch {
+        /* body unreadable — fall through to the status-based message */
+    }
+    if (body) {
+        try {
+            const data = JSON.parse(body);
+            const detail = data?.detail ?? data?.error;
+            if (typeof detail === 'string' && detail) return new Error(detail);
+        } catch {
+            // Not JSON (HTML error page, plain text, truncated body).
+        }
+    }
+    return new Error(fallback[response.status] ?? `Request failed (${response.status}).`);
+};
 
 // Fire-and-forget: the moment the user submits address + shopping time, tell the
 // backend to (1) resolve the nearby stores and (2) mint the Walmart/Target browser
@@ -165,16 +238,31 @@ export const warmStores = (location: string): void => {
 
 // Address type-ahead for the /location screen. Returns up to 5 suggestion strings
 // from Google Places (via our backend, which holds the key). Never throws.
-export const autocompleteAddress = async (q: string): Promise<string[]> => {
+//
+// Accepts an AbortSignal: without cancellation a slow earlier keystroke could
+// resolve AFTER a later one and overwrite the newer suggestions with stale ones.
+export const autocompleteAddress = async (q: string, signal?: AbortSignal): Promise<string[]> => {
     if (!q?.trim() || q.trim().length < 3) return [];
     try {
-        const res = await fetch(`${DEV_API_URL}/api/autocomplete?q=${encodeURIComponent(q.trim())}`);
+        const res = await fetch(
+            `${DEV_API_URL}/api/autocomplete?q=${encodeURIComponent(q.trim())}`,
+            { signal },
+        );
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data?.suggestions) ? data.suggestions : [];
     } catch {
+        // Includes AbortError when a newer keystroke superseded this request.
         return [];
     }
+};
+
+// The backend clamps these too; keeping the client in step means the user sees
+// a sane value rather than a 422 from Pydantic.
+const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
+    const n = Math.floor(Number(v));
+    if (!Number.isFinite(n)) return dflt;
+    return Math.min(hi, Math.max(lo, n));
 };
 
 export const generatePlan = async (params: ShoppingPlanRequest): Promise<ShoppingPlanResponse> => {
@@ -185,17 +273,23 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...authHeaders(),
             },
             body: JSON.stringify({
                 preferences: {
                     address: params.location,
-                    budget: params.budget,
+                    budget: Number.isFinite(Number(params.budget)) ? Number(params.budget) : 150,
                     shopping_time_hours: Number(params.time) || 3,
-                    calorie_target: Number(params.calories) || 2000,
-                    household_size: Number(params.household_size) || 1,
-                    days_plan: Number(params.days) || 7,
-                    meals_per_day: Number(params.meals_per_day) || 3,
+                    calorie_target: clampInt(params.calories, 800, 8000, 2000),
+                    household_size: clampInt(params.household_size, 1, 12, 1),
+                    days_plan: clampInt(params.days, 1, 30, 7),
+                    meals_per_day: clampInt(params.meals_per_day, 1, 6, 3),
                     dietary_restrictions: params.dietary_restrictions || "",
+                    // Allergens and the avoid-list were collected by the search
+                    // screen and then dropped — they never reached the server, so
+                    // a plan could contain something the user is allergic to.
+                    allergies: params.allergies || "",
+                    avoid_ingredients: params.avoid_ingredients || "",
                     health_issues: params.health_issues || "",
                     cuisines: params.cuisines || "",
                     experiment: params.experiment !== undefined ? params.experiment : true,
@@ -208,8 +302,7 @@ export const generatePlan = async (params: ShoppingPlanRequest): Promise<Shoppin
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to generate plan');
+            throw await errorFromResponse(response);
         }
 
         return await response.json();

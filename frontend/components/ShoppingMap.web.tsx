@@ -11,8 +11,16 @@ interface ShoppingMapProps {
 export default function ShoppingMap({ userLocation, shoppingList }: ShoppingMapProps) {
     const origin = `${userLocation.lat},${userLocation.lng}`;
     const destination = origin;
-    const waypoints = shoppingList.map(s => `${s.coordinates.lat},${s.coordinates.lng}`).join('|');
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
+    // Skip stores with missing/non-finite coordinates — `${undefined},${undefined}`
+    // used to be interpolated straight into the waypoints and broke the link.
+    const stops = (shoppingList ?? []).filter(
+        (s) => Number.isFinite(Number(s?.coordinates?.lat)) && Number.isFinite(Number(s?.coordinates?.lng)),
+    );
+    const waypoints = stops.map(s => `${s.coordinates.lat},${s.coordinates.lng}`).join('|');
+    const url =
+        `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}` +
+        (waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : '') +
+        `&travelmode=driving`;
 
     // For web, since react-native-maps doesn't work without keys, 
     // we'll use a clean OpenStreetMap embed or a styled placeholder that's actually useful.
@@ -24,11 +32,12 @@ export default function ShoppingMap({ userLocation, shoppingList }: ShoppingMapP
                 <Text style={styles.mapTitle}>Interactive Route Map</Text>
             </View>
             <Text style={styles.webMapText}>
-                Your optimized route involves {shoppingList.length} stores starting from {userLocation.lat}, {userLocation.lng}.
+                Your optimized route involves {stops.length} store{stops.length === 1 ? '' : 's'} starting from{' '}
+                {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}.
             </Text>
             <View style={styles.storeMiniList}>
-                {shoppingList.map((s, i) => (
-                    <Text key={i} style={styles.storeMiniItem}>📍 {s.store}</Text>
+                {stops.map((s, i) => (
+                    <Text key={`${s.store}-${i}`} style={styles.storeMiniItem}>📍 {s.store}</Text>
                 ))}
             </View>
             <TouchableOpacity

@@ -5,22 +5,27 @@ TJ's has no online ordering, but their site runs Magento 2 with a /api/graphql
 endpoint that supports the `products` query with retail prices. Prices are
 uniform nationally (no location parameter needed).
 
-Akamai EdgeSuite rate-limits repeated requests from the same IP. The module
-tries each search with a small delay; if blocked it returns empty and the
-server keeps synthetic prices for that ingredient. On a fresh IP the first
-~5-10 searches usually succeed.
+Akamai EdgeSuite rate-limits repeated requests from the same IP, so searches go
+through a shared minimum-interval limiter and a term cache; a small worker pool
+overlaps the round-trips so a full basket completes inside the server's pricing
+budget. If blocked, a search returns empty and that ingredient is simply left
+unpriced (the store is excluded rather than given made-up prices).
 
 Entry point:
     store_name, prices = price_all_tj(ingredients)
 """
 from __future__ import annotations
 
+import os
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 import requests
 
+import pricing_pool
 from kroger_pricing import find_best_purchase
 from kroger_search_map import get_all_terms
 
@@ -141,16 +146,78 @@ def _item_to_kroger_format(item: dict) -> Optional[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Per-ingredient pricing  (sequential to respect rate limits)
+# Rate limiting + search cache
+# ---------------------------------------------------------------------------
+#
+# This used to be strictly sequential: `time.sleep(0.6)` before every search,
+# one ingredient at a time. At ~0.6s sleep + ~1s round-trip that is ~0.6
+# searches/sec, so a 90-ingredient basket took 3-5 MINUTES against the server's
+# 75s pricing budget — Trader Joe's was guaranteed to be dropped from every
+# plan, and the abandoned thread then kept issuing those same searches in the
+# background for nobody.
+#
+# Now: a shared minimum-interval limiter caps the REQUEST RATE (the thing
+# Akamai actually meters) while a small worker pool overlaps the round-trips,
+# and a per-process cache means repeated fallback terms ("milk", "eggs", ...)
+# shared across ingredients are fetched once. Net effect is fewer total
+# requests to traderjoes.com than before, finishing inside the budget.
+
+_TJ_WORKERS = int(os.environ.get("TJ_MAX_WORKERS", "4"))
+_TJ_MIN_INTERVAL = float(os.environ.get("TJ_MIN_REQUEST_INTERVAL", "0.35"))
+_TJ_CACHE_TTL = float(os.environ.get("TJ_SEARCH_TTL", "900"))  # 15 min
+
+_rate_lock = threading.Lock()
+_last_request_at = 0.0
+
+# term -> (expiry_ts, products in kroger format)
+_search_cache: dict[str, tuple[float, list[dict]]] = {}
+_cache_lock = threading.Lock()
+
+
+def _throttle() -> None:
+    """Block until at least _TJ_MIN_INTERVAL has passed since the last request,
+    process-wide. Holds the lock across the sleep so concurrent workers space
+    out rather than all waking at once."""
+    global _last_request_at
+    with _rate_lock:
+        wait = _last_request_at + _TJ_MIN_INTERVAL - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _last_request_at = time.monotonic()
+
+
+def _search_cached(term: str) -> list[dict]:
+    """Search TJ for `term`, in kroger-product format, memoised for _TJ_CACHE_TTL."""
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _search_cache.get(term)
+        if hit and hit[0] > now:
+            return hit[1]
+
+    _throttle()
+    raw = _search_tj(term)
+    products = [p for p in (_item_to_kroger_format(i) for i in raw) if p]
+
+    with _cache_lock:
+        _search_cache[term] = (now + _TJ_CACHE_TTL, products)
+        # Bound the cache: search terms come from a fixed vocabulary, but never
+        # let a long-lived process grow this without limit.
+        if len(_search_cache) > 2000:
+            for k, (exp, _) in list(_search_cache.items()):
+                if exp <= now:
+                    _search_cache.pop(k, None)
+    return products
+
+
+# ---------------------------------------------------------------------------
+# Per-ingredient pricing
 # ---------------------------------------------------------------------------
 
 def _price_one(ingredient: str, qty: float, unit: str) -> Optional[dict]:
     for term in get_all_terms(ingredient):
-        time.sleep(0.6)
-        raw = _search_tj(term)
-        if not raw:
-            continue
-        products = [p for p in (_item_to_kroger_format(i) for i in raw) if p]
+        if pricing_pool.expired():
+            return None
+        products = _search_cached(term)
         if not products:
             continue
         query_words = set(term.lower().split())
@@ -169,24 +236,47 @@ def price_all_tj(ingredients: dict) -> tuple[str, dict]:
     """
     Price all ingredients at Trader Joe's (national catalog, no location needed).
 
-    Returns (store_display_name, prices). May return partial results if Akamai
-    rate-limits the IP; unpriced ingredients fall back to synthetic prices.
+    Round-trips are overlapped across a small worker pool while a shared
+    minimum-interval limiter caps the request rate, so a full basket finishes
+    inside the server's pricing budget instead of running for minutes and being
+    discarded. Returns (store_display_name, prices); partial results are normal
+    if Akamai rate-limits the IP or the budget elapses mid-run.
     """
-    print("[TJ] Pricing ingredients via traderjoes.com ...", flush=True)
-    prices: dict = {}
-    for name, data in ingredients.items():
-        try:
-            result = _price_one(
-                name,
-                float(data.get("qty", 1)),
-                str(data.get("unit", "whole")),
-            )
-            if result:
-                prices[name] = result
-        except Exception as e:
-            print(f"[TJ] Error pricing '{name}': {e}", flush=True)
+    if not ingredients:
+        return "Trader Joe's", {}
 
-    print(f"[TJ] Priced {len(prices)}/{len(ingredients)} ingredients.", flush=True)
+    print(f"[TJ] Pricing {len(ingredients)} ingredients via traderjoes.com "
+          f"({_TJ_WORKERS} workers, {_TJ_MIN_INTERVAL:.2f}s min interval) ...", flush=True)
+    prices: dict = {}
+    workers = max(1, min(_TJ_WORKERS, len(ingredients)))
+
+    # bind_current_deadline carries this chain's budget onto the nested workers
+    # (the deadline is thread-local, so they would otherwise run unbounded).
+    price_one = pricing_pool.bind_current_deadline(_price_one)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="tj") as pool:
+        futures = {
+            pool.submit(
+                price_one,
+                name,
+                float(data.get("qty", 1) or 1),
+                str(data.get("unit", "whole")),
+            ): name
+            for name, data in ingredients.items()
+        }
+        for fut in as_completed(futures):
+            name = futures[fut]
+            try:
+                result = fut.result()
+                if result:
+                    prices[name] = result
+            except Exception as e:
+                print(f"[TJ] Error pricing '{name}': {e}", flush=True)
+
+    if pricing_pool.expired():
+        print(f"[TJ] Pricing budget elapsed — returning {len(prices)}/"
+              f"{len(ingredients)} priced.", flush=True)
+    else:
+        print(f"[TJ] Priced {len(prices)}/{len(ingredients)} ingredients.", flush=True)
     return "Trader Joe's", prices
 
 

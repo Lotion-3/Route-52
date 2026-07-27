@@ -185,7 +185,7 @@ def _warm_http_session() -> dict:
     """Launch CloakBrowser, warm Imperva via the homepage + a real search
     navigation, then harvest the full cookie jar (reese84, incap_ses_*,
     visid_incap_*, nlbi_*, ...) and user-agent. Raises _Blocked on a weak warm."""
-    from browser_gate import launch  # gated: 1 browser at a time + low-mem flags (was cloakbrowser.launch)
+    from browser_gate import launch_geoip_optional  # gated: 1 browser at a time + low-mem flags
     if getattr(_thread_local, "proxy_session", None) is None:
         _rotate_proxy_session()
     proxy = _current_proxy()
@@ -193,11 +193,7 @@ def _warm_http_session() -> dict:
     if proxy:
         kwargs["proxy"] = proxy
         kwargs["geoip"] = True
-    try:
-        browser = launch(**kwargs)
-    except Exception:
-        kwargs.pop("geoip", None)
-        browser = launch(**kwargs)
+    browser = launch_geoip_optional(**kwargs)
     try:
         ctx = browser.new_context()
         _block_heavy_resources(ctx)

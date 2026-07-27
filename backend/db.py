@@ -91,8 +91,15 @@ class Database:
 
     @staticmethod
     def _current_week() -> int:
-        today = datetime.date.today()
-        return today.year * 100 + today.isocalendar()[1]
+        """Stable YYYYWW bucket built from the ISO calendar.
+
+        Must use the ISO *year*, not the calendar year: Dec 29-31 can fall in
+        ISO week 1 of the following year, so `today.year * 100 + week` produced
+        e.g. 202601 for 2026-12-30 — colliding with early-January 2026 prices
+        and overwriting them a year later.
+        """
+        iso = datetime.date.today().isocalendar()
+        return iso[0] * 100 + iso[1]
 
     def get_current_prices(self, store_id: Optional[str] = None) -> list[dict]:
         week = self._current_week()

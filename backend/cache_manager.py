@@ -19,11 +19,24 @@ class CacheManager:
     generate_plan reads it).
     """
 
-    def __init__(self, cache_dir: str = ".cache", mem_max: int = 512):
-        self.cache_dir = cache_dir
+    # Disk tier bounds. The disk tier had NO eviction at all: every distinct
+    # geocode / isochrone / store-search / matrix key wrote a file that lived
+    # forever, so a long-running deploy accumulated one per coordinate it ever
+    # saw. Entries older than the max age are swept, and if the directory is
+    # still over the file cap the oldest are dropped.
+    DISK_MAX_FILES = int(os.environ.get("CACHE_MAX_FILES", "5000"))
+    DISK_MAX_AGE_SECONDS = int(os.environ.get("CACHE_MAX_AGE_SECONDS", str(30 * 86400)))
+    _SWEEP_EVERY = 200  # writes between sweeps
+
+    def __init__(self, cache_dir: Optional[str] = None, mem_max: int = 512):
+        # Anchor to this file's directory unless told otherwise. A bare ".cache"
+        # resolved against the process CWD, so launching the server from the
+        # repo root vs. backend/ silently used two different caches.
+        self.cache_dir = cache_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
         self._mem: "OrderedDict[str, tuple[float, Any]]" = OrderedDict()
         self._mem_max = mem_max
         self._lock = threading.Lock()
+        self._writes_since_sweep = 0
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir, exist_ok=True)
 
@@ -79,6 +92,48 @@ class CacheManager:
             os.replace(tmp, os.path.join(self.cache_dir, f"{hash_key}.json"))
         except Exception as e:
             print(f"Cache write error: {e}")
+            return
+
+        with self._lock:
+            self._writes_since_sweep += 1
+            due = self._writes_since_sweep >= self._SWEEP_EVERY
+            if due:
+                self._writes_since_sweep = 0
+        if due:
+            self._sweep_disk()
+
+    def _sweep_disk(self) -> None:
+        """Drop expired entries, then the oldest ones if still over the cap.
+        Best-effort: a failure here must never break a cache write."""
+        try:
+            entries = []
+            cutoff = time.time() - self.DISK_MAX_AGE_SECONDS
+            with os.scandir(self.cache_dir) as it:
+                for de in it:
+                    if not de.name.endswith(".json"):
+                        continue
+                    try:
+                        mtime = de.stat().st_mtime
+                    except OSError:
+                        continue
+                    if mtime < cutoff:
+                        self._unlink(de.path)
+                    else:
+                        entries.append((mtime, de.path))
+            excess = len(entries) - self.DISK_MAX_FILES
+            if excess > 0:
+                entries.sort()  # oldest first
+                for _, path in entries[:excess]:
+                    self._unlink(path)
+        except Exception as e:
+            print(f"Cache sweep error: {e}")
+
+    @staticmethod
+    def _unlink(path: str) -> None:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
     def _remember(self, hash_key: str, ts: float, data: Any) -> None:
         with self._lock:
