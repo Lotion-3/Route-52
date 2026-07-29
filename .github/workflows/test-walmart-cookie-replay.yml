@@ -1,0 +1,49 @@
+name: Test Walmart cookie replay (manual, one-off)
+
+# Diagnostic only -- not on any schedule. Replays an already-minted Walmart
+# PerimeterX cookie (pasted in as an input) from THIS runner's IP, with no
+# re-mint, to test whether a cookie minted on one network still works when
+# replayed from a genuinely different one (GitHub's cloud IP vs. a home
+# network). See backend/test_walmart_cookie_replay.py.
+#
+# Deliberately lightweight: only curl_cffi is installed, no Playwright/
+# CloakBrowser -- this job never launches a browser.
+
+on:
+  workflow_dispatch:
+    inputs:
+      cookie_json:
+        description: 'The "cookies" object from a saved Walmart session (paste as JSON)'
+        required: true
+      term:
+        description: "Search term to test (ignored if item_count > 1)"
+        required: false
+        default: "milk"
+      item_count:
+        description: "If > 1, fires this many CONCURRENT requests (one per grocery term) instead of a single one"
+        required: false
+        default: "1"
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install curl_cffi
+        run: pip install curl_cffi
+
+      - name: Replay Walmart cookie from this runner's IP
+        env:
+          COOKIE_JSON: ${{ inputs.cookie_json }}
+          TERM: ${{ inputs.term }}
+          ITEM_COUNT: ${{ inputs.item_count }}
+        run: python test_walmart_cookie_replay.py
