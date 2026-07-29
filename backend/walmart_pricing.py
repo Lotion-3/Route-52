@@ -51,6 +51,22 @@ _SEARCH_URL = "https://www.walmart.com/search?q={q}&affinityOverride=default&ps=
 _WARM_URL = "https://www.walmart.com/"
 _STORE_ID = "national"  # Walmart online pricing isn't store-resolved here
 
+# Every warm/validate search used to hit the literal same term ("eggs"), every
+# time, from every session — a real shopper searches varied things, so always
+# searching one fixed word is itself a cross-session pattern a WAF can
+# correlate even when each individual session's navigation looks clean.
+# Picking a random common grocery term each time doesn't change the mechanics
+# of the warm at all — it's still a real search-results page — it just removes
+# that one repeating fingerprint.
+_WARM_SEARCH_TERMS = (
+    "eggs", "milk", "bread", "bananas", "chicken breast", "butter",
+    "cheese", "rice", "coffee", "apples", "yogurt", "ground beef",
+)
+
+
+def _random_search_term() -> str:
+    return random.choice(_WARM_SEARCH_TERMS)
+
 def _parse_proxies(raw: Optional[str]) -> list[str]:
     """Split a proxy env value into a pool (comma/whitespace separated) — same
     convention as target_pricing.py, so CLOAK_PROXY works identically everywhere."""
@@ -62,6 +78,21 @@ _PROXIES = _parse_proxies(os.environ.get("CLOAK_PROXY") or os.environ.get("WALMA
 _PROXY = _PROXIES[0] if _PROXIES else None  # kept for back-compat truthiness checks
 MAX_IP_REFRESHES = int(os.environ.get("WALMART_MAX_IP_REFRESHES", "5"))
 _SEARCH_TTL = int(os.environ.get("WALMART_SEARCH_TTL", str(6 * 3600)))
+# A transport-only failure (timeout/DNS/connection reset — see _Blocked) isn't
+# a WAF signal, so it gets its own small retry budget on the SAME IP instead of
+# burning one of the MAX_IP_REFRESHES rotation slots.
+_TRANSPORT_RETRIES = int(os.environ.get("WALMART_TRANSPORT_RETRIES", "2"))
+
+
+def _log_block(category: str, detail: str = "") -> None:
+    """Best-effort: publish a block/failure event to Supabase for later
+    analysis (see session_store.log_block_event). Never raises, never blocks
+    retry logic on Supabase being slow/unavailable beyond the one call."""
+    try:
+        import session_store
+        session_store.log_block_event("walmart", category, detail)
+    except Exception:
+        pass
 
 # --- Fast HTTP path (primary) ----------------------------------------------
 # PerimeterX validates the caller's TLS/JA3 fingerprint AND a JS-minted cookie
@@ -89,7 +120,41 @@ _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".walmart_asset_cache.pkl"
 
 
 class _Blocked(Exception):
-    """Raised when PerimeterX blocks the request (no __NEXT_DATA__)."""
+    """Raised when a request comes back wrong. `category` distinguishes WHY,
+    verified empirically (test_direct_search.py + a curl_cffi replay
+    investigation against live Walmart, both good and blocked sessions):
+
+      "explicit"  — an unambiguous PerimeterX marker was found in the body
+                    (e.g. "px-captcha"). Confirmed via curl_cffi replay: this
+                    string is present in every blocked response and absent
+                    from every good one — status code is NOT useful for this
+                    (blocked responses are still HTTP 200).
+      "soft"      — no explicit marker, but the content looks wrong anyway
+                    (missing/short __NEXT_DATA__). Weaker evidence than
+                    "explicit" — could in principle be something else — but
+                    still a real signal.
+      "transport" — no HTTP response was ever received at all (timeout, DNS,
+                    connection reset, TLS failure). NOT a WAF signal — this
+                    can happen on a perfectly good IP/session, so callers
+                    should not spend an IP-rotation slot reacting to it.
+
+    Only "explicit"/"soft" should trigger a fresh exit IP; "transport" should
+    just retry the same session/IP a couple of times first."""
+    def __init__(self, message: str = "", category: str = "soft"):
+        super().__init__(message)
+        self.category = category
+
+
+# Confirmed by direct comparison of a good vs. a blocked response body — see
+# _Blocked's docstring. Generic words like "captcha"/"human"/"blocked" show up
+# in the REAL page too (it legitimately references PerimeterX by name), so
+# only this specific, product-named marker is trustworthy on its own.
+_EXPLICIT_BLOCK_MARKERS = ("px-captcha",)
+
+
+def _has_explicit_block_marker(text: str) -> bool:
+    lower = text.lower()
+    return any(m in lower for m in _EXPLICIT_BLOCK_MARKERS)
 
 
 def is_walmart_store(store_name: str) -> bool:
@@ -107,7 +172,7 @@ def is_walmart_store(store_name: str) -> bool:
 # PerimeterX's own script (px/PXu6b0qd2S/init.js) — only the site's own
 # static-asset CDN is cached, same conservative scoping as Woolworths.
 # ---------------------------------------------------------------------------
-_BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+_BLOCKED_RESOURCE_TYPES = {"image", "media", "font", "stylesheet"}
 _BLOCKED_DOMAIN_SUBSTRINGS = (
     "doubleclick", "googletagmanager", "google-analytics", "googlesyndication",
     "googleadservices", "facebook.com", "fbcdn", "fbevents", "adobedtm",
@@ -115,7 +180,9 @@ _BLOCKED_DOMAIN_SUBSTRINGS = (
     "bing.com/p", "clarity.ms", "hotjar", "criteo", "outbrain", "taboola",
     "spotxchange", "pinterest", "bat.bing",
 )
-_CACHEABLE_TYPES = {"script", "stylesheet"}
+# CSS is never needed to execute the WAF's JS challenge, only to render a page
+# nobody looks at — blocked outright above rather than fetched-then-cached.
+_CACHEABLE_TYPES = {"script"}
 _CACHEABLE_HOST = "i5.walmartimages.com"
 
 
@@ -143,13 +210,17 @@ _PRE_SEED_URL = _WARM_URL
 
 def _pre_seed_asset_cache() -> None:
     """Download static JS/CSS assets from _CACHEABLE_HOST outside the browser
-    using curl_cffi and populate _static_asset_cache on disk. This lets the
-    browser warm phase serve cached assets via route.fulfill() without ever
-    hitting the CDN.
+    using curl_cffi and populate _static_asset_cache. This lets the browser warm
+    phase serve cached assets via route.fulfill() without ever hitting the CDN.
 
     Handles cache freshness by comparing expected URLs (from the current HTML)
     against the cached keys — stale entries from previous deploys are pruned
-    and new entries are fetched. Idempotent and safe to call at module import.
+    and new entries are fetched.
+
+    NOT called on Render (see _load_remote_asset_cache below) — this makes a
+    handful of live network requests, which is exactly the kind of work the
+    512MB host shouldn't be doing at boot. mint_sessions.py calls this on the
+    GitHub Actions runner instead and publishes the result to Supabase.
     """
     try:
         from curl_cffi import requests as ccffi
@@ -184,7 +255,25 @@ def _pre_seed_asset_cache() -> None:
         print(f"[Walmart] Pre-seed failed ({e}) — fallback to browser download", flush=True)
 
 
-_pre_seed_asset_cache()
+def _load_remote_asset_cache() -> None:
+    """Pull the already-pre-fetched asset cache from Supabase (published by
+    mint_sessions.py on GitHub Actions) and merge it into _static_asset_cache.
+    A single cheap DB read — no CDN calls, no curl_cffi burst, safe to run on
+    every Render boot. Falls back to whatever's on disk / gets cached
+    organically by _cache_static_assets during a real browser warm if Supabase
+    has nothing yet."""
+    try:
+        import session_store
+        remote = session_store.load_assets("walmart")
+        if remote:
+            _static_asset_cache.update(remote)
+            _save_asset_cache()
+            print(f"[Walmart] Loaded {len(remote)} pre-fetched assets from Supabase.", flush=True)
+    except Exception as e:
+        print(f"[Walmart] Remote asset cache load failed ({repr(e)[:80]}).", flush=True)
+
+
+_load_remote_asset_cache()
 
 
 def _block_heavy_resources(ctx) -> None:
@@ -264,6 +353,67 @@ def _current_proxy() -> Optional[str]:
     return base
 
 
+def _rotate_to_unused_proxy(tried_idxs: set[int]) -> bool:
+    """Switch to a proxy index NOT already in `tried_idxs` (mutated in place
+    with the new pick) — an IP that just failed is never retried in the same
+    run. Returns False once min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs
+    have already been tried (or MAX_IP_REFRESHES attempts with no pool
+    configured at all); the caller should give up rather than call this again,
+    since there's nothing new left to try."""
+    _thread_local.proxy_session = os.urandom(6).hex()
+    cap = min(MAX_IP_REFRESHES, len(_PROXIES)) if _PROXIES else MAX_IP_REFRESHES
+    if len(tried_idxs) >= cap:
+        return False
+    if not _PROXIES:
+        tried_idxs.add(len(tried_idxs))  # no real pool to index — just bound the attempt count
+        return True
+    available = [i for i in range(len(_PROXIES)) if i not in tried_idxs]
+    if not available:
+        return False
+    idx = random.choice(available)
+    tried_idxs.add(idx)
+    _thread_local.proxy_idx = idx
+    return True
+
+
+def _wait_for_cookie(ctx, cookie_name: str, cap_seconds: float,
+                      poll_interval: float = 0.15, settle_ticks: int = 2) -> bool:
+    """Poll ctx.cookies() instead of a fixed sleep, so a warm that clears in
+    300ms doesn't still hold the browser gate for the full cap_seconds.
+
+    Requires TWO things, not one: `cookie_name` must be present, AND the total
+    cookie count must have stopped growing for `settle_ticks` consecutive polls.
+    A single named cookie showing up isn't enough on its own — we proved this
+    empirically (test_direct_search.py): _px3 was present in BOTH the working
+    warm and the one that came back with an empty page. PerimeterX sets a whole
+    family of cookies together as its challenge resolves (_px3, _pxde, _pxhd,
+    _pxvid, pxcts, plus trackers) — waiting for that set to stop growing is a
+    materially stronger signal that the challenge has actually finished, not
+    just started, without hardcoding the exact cookie names (which the vendor
+    can change) beyond the one anchor we need present either way.
+
+    Returns True once settled, False if the cap elapses first — the caller
+    proceeds anyway exactly as it did with the old fixed sleep. This never
+    provides the actual safety guarantee by itself: it only reads the browser's
+    already-downloaded cookie jar (no requests, no bandwidth cost), and a warm
+    that's still weak despite settling is caught downstream regardless (Walmart
+    checks __NEXT_DATA__ length; Target does a live RedSky call) — that
+    downstream check, not this wait, is what guarantees a bad warm never
+    silently succeeds."""
+    deadline = time.monotonic() + cap_seconds
+    last_count = -1
+    stable_ticks = 0
+    while time.monotonic() < deadline:
+        names = {c["name"] for c in ctx.cookies()}
+        count = len(names)
+        stable_ticks = stable_ticks + 1 if count == last_count else 0
+        last_count = count
+        if cookie_name in names and stable_ticks >= settle_ticks:
+            return True
+        time.sleep(poll_interval)
+    return False
+
+
 def _bootstrap_session():
     """(worker thread) Launch this thread's CloakBrowser on its proxy session and
     warm PerimeterX cookies via the homepage. Raises on launch failure → Instacart."""
@@ -289,7 +439,7 @@ def _bootstrap_session():
         page = ctx.new_page()
         page.on("response", _cache_static_assets)
         page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
-        time.sleep(2)
+        _wait_for_cookie(ctx, "_px3", 2)
         page.close()
     except BaseException:
         try:
@@ -371,11 +521,15 @@ def _fetch_items_http(term: str, session: dict) -> list[dict]:
                           headers=headers, cookies=session["cookies"],
                           impersonate=_IMPERSONATE, timeout=30)
     except Exception as e:
-        raise _Blocked(f"http error: {repr(e)[:80]}")
+        # Never reached the site at all — not a WAF signal (see _Blocked).
+        raise _Blocked(f"http error: {repr(e)[:80]}", category="transport")
+    if _has_explicit_block_marker(resp.text):
+        raise _Blocked("px-captcha marker", category="explicit")
     m = _NEXT_DATA_RE.search(resp.text)
     if not m:
-        # No data blob → PerimeterX challenge / throttle.
-        raise _Blocked("no __NEXT_DATA__")
+        # No data blob and no explicit marker — probably still a challenge,
+        # but weaker evidence than finding the marker directly.
+        raise _Blocked("no __NEXT_DATA__", category="soft")
     try:
         return _find_items(json.loads(m.group(1)))
     except Exception:
@@ -391,21 +545,26 @@ def _fetch_items_browser(term: str) -> list[dict]:
     try:
         page.goto(_SEARCH_URL.format(q=requests_quote(term)),
                   wait_until="domcontentloaded", timeout=45000)
+        html = page.content()  # local DOM read, not a network request — see _wait_for_cookie
         nd = page.evaluate(
             "() => { const e = document.getElementById('__NEXT_DATA__');"
             " return e ? e.textContent : null; }"
         )
     except Exception as e:
-        raise _Blocked(f"page load failed: {repr(e)[:80]}")
+        # Never got a rendered page at all — not a WAF signal (see _Blocked).
+        raise _Blocked(f"page load failed: {repr(e)[:80]}", category="transport")
     finally:
         try:
             page.close()
         except Exception:
             pass
 
+    if _has_explicit_block_marker(html):
+        raise _Blocked("px-captcha marker", category="explicit")
     if not nd:
-        # No data blob → PerimeterX challenge / block.
-        raise _Blocked("no __NEXT_DATA__")
+        # No data blob and no explicit marker — probably still a challenge,
+        # but weaker evidence than finding the marker directly.
+        raise _Blocked("no __NEXT_DATA__", category="soft")
     try:
         return _find_items(json.loads(nd))
     except Exception:
@@ -562,10 +721,12 @@ def _warm_http_session() -> dict:
         page = ctx.new_page()
         page.on("response", _cache_static_assets)
         page.goto(_WARM_URL, wait_until="domcontentloaded", timeout=45000)
-        time.sleep(2)
+        _wait_for_cookie(ctx, "_px3", 2)
         # The search nav (not just the homepage) is what makes PerimeterX fully
-        # clear — the difference between a 0/N and an N/N replay rate.
-        page.goto(_SEARCH_URL.format(q="eggs"), wait_until="domcontentloaded", timeout=45000)
+        # clear — the difference between a 0/N and an N/N replay rate. The term
+        # itself is randomized (see _WARM_SEARCH_TERMS) so it's not always "eggs".
+        page.goto(_SEARCH_URL.format(q=_random_search_term()), wait_until="domcontentloaded", timeout=45000)
+        html = page.content()  # local DOM read, not a network request — see _wait_for_cookie
         nd = page.evaluate(
             "() => { const e = document.getElementById('__NEXT_DATA__');"
             " return e ? e.textContent.length : 0; }"
@@ -577,8 +738,10 @@ def _warm_http_session() -> dict:
             browser.close()
         except Exception:
             pass
+    if _has_explicit_block_marker(html):
+        raise _Blocked("px-captcha marker on warm", category="explicit")
     if not nd or nd < 1000:
-        raise _Blocked("weak warm — no __NEXT_DATA__")
+        raise _Blocked("weak warm — no __NEXT_DATA__", category="soft")
     return {"cookies": cookies, "ua": ua}
 
 
@@ -608,7 +771,7 @@ def _validate_http_session(session: dict) -> bool:
     """Cheap liveness check (no browser): one curl_cffi search must return
     __NEXT_DATA__. True ⇒ the cookie is still good and can be reused."""
     try:
-        _fetch_items_http("eggs", session)  # raises _Blocked on a PerimeterX challenge
+        _fetch_items_http(_random_search_term(), session)  # raises _Blocked on a challenge
         return True
     except Exception:
         return False
@@ -693,11 +856,18 @@ def _invalidate_http_session() -> None:
 
 def _price_via_http(ingredients: dict) -> dict:
     """Primary path: one browser warm, then price every ingredient over parallel
-    curl_cffi requests. On a wave of PerimeterX throttles, re-mint the cookie and
-    retry just the blocked items, up to MAX_IP_REFRESHES."""
+    curl_cffi requests. A round where anything came back with a WAF-category
+    block (explicit marker or soft signal — see _Blocked) switches to a fresh
+    exit IP that hasn't been tried yet this run, capped at
+    min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs. A round where every
+    failure was transport-only (timeout/DNS/connection — not a WAF signal)
+    retries the SAME IP/session instead, up to _TRANSPORT_RETRIES, since
+    rotating away from a perfectly good IP over a network blip wastes the
+    budget on nothing."""
     prices: dict = {}
     pending = dict(ingredients)
-    refreshes = 0
+    tried_idxs: set[int] = set()
+    transport_retries = 0
     while pending:
         session = _ensure_http_session()
 
@@ -707,45 +877,70 @@ def _price_via_http(ingredients: dict) -> dict:
             try:
                 r = _price_one(name, float(data.get("qty", 1) or 1),
                                str(data.get("unit", "whole")))
-                return name, r, False
-            except _Blocked:
-                return name, None, True
+                return name, r, None
+            except _Blocked as e:
+                return name, None, e.category
             except Exception as e:
                 print(f"[Walmart] Error pricing '{name}': {e}", flush=True)
-                return name, None, False
+                return name, None, None
             finally:
                 _thread_local.http = None
 
         blocked: dict = {}
+        categories: set[str] = set()
         with ThreadPoolExecutor(max_workers=min(_HTTP_CONCURRENCY, len(pending)),
                                 thread_name_prefix="wm-http") as pool:
-            for name, r, was_blocked in pool.map(_work, list(pending.items())):
-                if was_blocked:
+            for name, r, category in pool.map(_work, list(pending.items())):
+                if category is not None:
                     blocked[name] = pending[name]
+                    categories.add(category)
                 elif r:
                     prices[name] = r
         pending = blocked
         if not pending:
             break
-        if refreshes >= MAX_IP_REFRESHES:
-            print(f"[Walmart] Still throttled after {refreshes} re-mints — "
-                  f"{len(pending)} item(s) unpriced.", flush=True)
-            break
-        refreshes += 1
-        print(f"[Walmart] PerimeterX throttle — re-minting session "
-              f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
-        _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
-        _rotate_proxy_session()
-        time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))
+
+        if categories - {"transport"}:
+            # At least one item showed a real WAF signal this round.
+            waf_category = "explicit" if "explicit" in categories else "soft"
+            cur_idx = getattr(_thread_local, "proxy_idx", None)
+            if cur_idx is not None:
+                tried_idxs.add(cur_idx)
+            if not _rotate_to_unused_proxy(tried_idxs):
+                print(f"[Walmart] Still throttled after {len(tried_idxs)} distinct IP(s) — "
+                      f"{len(pending)} item(s) unpriced.", flush=True)
+                _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
+                break
+            print(f"[Walmart] PerimeterX throttle ({waf_category}) — switching to a "
+                  f"fresh IP ({len(tried_idxs)} tried so far).", flush=True)
+            _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
+            _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
+            transport_retries = 0
+            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
+        else:
+            # Every failure this round was transport-only — not a WAF signal.
+            transport_retries += 1
+            if transport_retries > _TRANSPORT_RETRIES:
+                print(f"[Walmart] Persistent transport errors after {transport_retries} "
+                      f"tries (same IP) — {len(pending)} item(s) unpriced.", flush=True)
+                _log_block("transport", f"gave up after {transport_retries} tries, {len(pending)} unpriced")
+                break
+            print(f"[Walmart] Transport error (not PerimeterX) — retrying same session "
+                  f"({transport_retries}/{_TRANSPORT_RETRIES}).", flush=True)
+            time.sleep(min(1.0 * transport_retries, 3.0) + random.uniform(0, 0.5))
     return prices
 
 
 def _do_pricing(ingredients: dict) -> dict:
-    """(worker thread) Price all ingredients, rotating exit IP on PerimeterX
-    blocks (up to MAX_IP_REFRESHES) before giving up → Instacart fallback."""
+    """(worker thread) Price all ingredients. A WAF-category block (explicit
+    marker or soft signal) switches to a fresh exit IP that hasn't been tried
+    yet this run, capped at min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs,
+    before giving up → Instacart fallback. A transport-only failure (not a WAF
+    signal) retries the same IP/session instead, up to _TRANSPORT_RETRIES."""
     prices: dict = {}
     pending = dict(ingredients)
-    refreshes = 0
+    tried_idxs: set[int] = set()
+    transport_retries = 0
     while pending:
         try:
             _ensure_ctx()
@@ -762,17 +957,32 @@ def _do_pricing(ingredients: dict) -> dict:
                     print(f"[Walmart] Error pricing '{name}': {e}", flush=True)
                 del pending[name]
             break
-        except _Blocked:
-            if refreshes >= MAX_IP_REFRESHES:
-                print(f"[Walmart] Still blocked after {refreshes} IP refreshes — "
-                      f"falling back to Instacart.", flush=True)
-                return {}
-            refreshes += 1
-            print(f"[Walmart] PerimeterX block — rotating exit IP "
-                  f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
+        except _Blocked as e:
+            if e.category == "transport":
+                transport_retries += 1
+                if transport_retries > _TRANSPORT_RETRIES:
+                    print(f"[Walmart] Persistent transport errors after {transport_retries} "
+                          f"tries — falling back to Instacart.", flush=True)
+                    _log_block("transport", f"gave up after {transport_retries} tries, pool path")
+                    return {}
+                print(f"[Walmart] Transport error (not PerimeterX, pool path) — retrying "
+                      f"same IP ({transport_retries}/{_TRANSPORT_RETRIES}).", flush=True)
+                time.sleep(min(1.0 * transport_retries, 3.0) + random.uniform(0, 0.5))
+                continue
+            cur_idx = getattr(_thread_local, "proxy_idx", None)
+            if cur_idx is not None:
+                tried_idxs.add(cur_idx)
             _teardown_session()
-            _rotate_proxy_session()
-            time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))
+            if not _rotate_to_unused_proxy(tried_idxs):
+                print(f"[Walmart] Still blocked after {len(tried_idxs)} distinct IP(s) — "
+                      f"falling back to Instacart.", flush=True)
+                _log_block(e.category, f"exhausted {len(tried_idxs)} IPs, pool path")
+                return {}
+            print(f"[Walmart] PerimeterX block ({e.category}) — switching to a fresh "
+                  f"exit IP ({len(tried_idxs)} tried so far).", flush=True)
+            _log_block(e.category, f"rotating, pool path, {len(tried_idxs)} tried")
+            transport_retries = 0
+            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
     return prices
 
 

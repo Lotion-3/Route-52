@@ -1,14 +1,24 @@
 name: Mint WAF sessions
 
-# Mints each browser chain's WAF cookie on a 7GB runner (where a real browser
-# fits) and publishes it to Supabase, so the 512MB web server can replay via
-# curl_cffi without launching a browser. See backend/mint_sessions.py.
+# Mints every browser-dependent chain's session (Walmart, Target, ALDI,
+# Instacart) on a 7GB runner (where a real browser fits) and publishes it to
+# Supabase, so the 512MB web server never launches a browser or touches a
+# retailer's CDN itself — see backend/mint_sessions.py. This is intentionally
+# where ALL the memory/bandwidth-heavy work lives; Render should only ever be
+# doing curl_cffi replays against what's published here.
+#
+# mint_sessions.py skips a chain whose published session is still fresh
+# (younger than half its TTL), so most runs are cheap: ALDI (30-day TTL) mints
+# once and is then skipped on ~1440 consecutive runs; Instacart (2h TTL) skips
+# roughly every other run at this cadence. Walmart/Target (60min TTL) mint
+# most runs, plus a quick asset-cache refresh each time.
 #
 # BUDGET NOTE: GitHub Actions gives PRIVATE repos ~2000 free minutes/month.
-# At ~2-3 min/run, every-30-min (this default) ~= 48 runs/day ~= 3600 min/mo,
-# which OVER-runs the free budget. Realistic free-tier options:
-#   - raise the interval to hourly (~1800 min/mo, fits) — but Walmart's cookie
-#     (~20 min TTL) will often be stale; Target/Coles/Woolworths last longer;
+# At ~2-4 min/run, every-30-min (this default) ~= 48 runs/day ~= up to 5700
+# min/mo worst case (all 4 chains minting), though the freshness-skip above
+# keeps the realistic average well under that. Realistic free-tier options:
+#   - raise the interval to hourly (~2800 min/mo worst case) if you're still
+#     over budget;
 #   - make the repo PUBLIC (unlimited Actions) — only after scrubbing secrets
 #     from git history (config.env is in history);
 #   - keep 30-min and accept the paid Actions overage (cheap) once launching.
@@ -26,7 +36,7 @@ concurrency:
 jobs:
   mint:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend

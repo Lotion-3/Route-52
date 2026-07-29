@@ -208,9 +208,9 @@ const errorFromResponse = async (response: Response): Promise<Error> => {
 };
 
 // Fire-and-forget: the moment the user submits address + shopping time, tell the
-// backend to (1) resolve the nearby stores and (2) mint the Walmart/Target browser
-// cookies, so the eventual generatePlan skips the store search + ~8s-per-store warm.
-// Never throws — a failed prewarm just means no speedup, the plan request does the
+// backend to (1) resolve the nearby stores and (2) warm ONLY the chains actually
+// found in range — never speculatively, never before an address is known. Never
+// throws — a failed prewarm just means no speedup, the plan request does the
 // work itself. timeHours is passed so the store-isochrone cache key matches generate.
 export const prewarm = (location: string, timeHours?: string | number): void => {
     if (!location?.trim()) return;
@@ -223,17 +223,6 @@ export const prewarm = (location: string, timeHours?: string | number): void => 
             shopping_time_hours: Number.isFinite(t as number) ? t : 3,
         }),
     }).catch((e) => console.log('[api] prewarm failed (non-fatal):', e));
-};
-
-// Eager warm: fired the instant the user taps an address suggestion. Mints BOTH
-// the Walmart + Target cookies unconditionally (range isn't known yet) — the
-// follow-up prewarm(location, time) on Continue prunes whatever's out of range.
-export const warmStores = (location: string): void => {
-    fetch(`${DEV_API_URL}/api/prewarm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: location || '', warm_only: true }),
-    }).catch((e) => console.log('[api] warmStores failed (non-fatal):', e));
 };
 
 // Address type-ahead for the /location screen. Returns up to 5 suggestion strings

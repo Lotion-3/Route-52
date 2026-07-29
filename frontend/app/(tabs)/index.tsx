@@ -4,7 +4,6 @@ import { useRouter, useNavigation } from 'expo-router';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
 import { planStore, SavedPlan } from '@/services/planStore';
-import { warmStores } from '@/services/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -23,10 +22,12 @@ export default function HomeScreen() {
   }, [navigation]);
 
   const handleStartNew = () => {
-    // Earliest possible head start: the instant they start a plan, try the cached
-    // cookie (cheap, no browser) or warm both Walmart + Target. No address needed —
-    // cookie minting is location-independent.
-    warmStores('');
+    // No warming here — we don't know which stores are relevant until an
+    // address is entered. Warming used to fire both Walmart + Target
+    // unconditionally at this point (no address, no idea if either is even
+    // nearby), which just meant Render launched browsers for stores that
+    // might not matter. See location.tsx: warming now only happens for
+    // chains actually found near the address the user enters.
     router.push('/location');
   };
 

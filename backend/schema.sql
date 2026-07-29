@@ -179,3 +179,41 @@ CREATE POLICY "Anyone can read coupons" ON coupons FOR SELECT USING (true);
 
 -- Allow the service_role (backend server) full access to all tables
 -- (This is the default for service_role; RLS applies to anon/key roles)
+
+-- 9. Chain sessions (WAF cookies minted by GitHub Actions, see mint_sessions.py
+-- and session_store.py). The 512MB Render server reads these instead of
+-- launching its own browser. `extra` holds chain-specific fields that don't
+-- fit cookies/user_agent/store_id (ALDI's x-ic-qp + zoneId, Instacart's qp +
+-- zoneId). No RLS — service_role only, never read by the frontend.
+CREATE TABLE IF NOT EXISTS chain_sessions (
+    chain       TEXT PRIMARY KEY,
+    cookies     JSONB NOT NULL,
+    user_agent  TEXT DEFAULT '',
+    store_id    TEXT,
+    extra       JSONB DEFAULT '{}'::jsonb,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 10. Chain static-asset cache (Walmart/Target JS+CSS bundles pre-fetched by
+-- GitHub Actions, see mint_sessions.py). Lets Render skip both the retailer's
+-- CDN AND the browser fetch for these during warm. Bodies are base64 inside
+-- the `assets` jsonb blob (see session_store.save_assets/load_assets).
+CREATE TABLE IF NOT EXISTS chain_assets (
+    chain       TEXT PRIMARY KEY,
+    assets      JSONB NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 11. Chain block/failure events (see session_store.log_block_event). One row
+-- per retry-loop round where pricing hit a block or transport error — chain,
+-- WHY (explicit marker / soft signal / transport-only), and when. Lets the
+-- actual block rate over time be queried instead of inferred from logs.
+CREATE TABLE IF NOT EXISTS chain_block_events (
+    id          BIGSERIAL PRIMARY KEY,
+    chain       TEXT NOT NULL,
+    category    TEXT NOT NULL,  -- 'explicit' | 'soft' | 'transport'
+    detail      TEXT DEFAULT '',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_chain_block_events_chain_time
+    ON chain_block_events(chain, created_at);

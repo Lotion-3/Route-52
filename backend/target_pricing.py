@@ -30,7 +30,8 @@ Architecture (in-process singleton):
 Flow:
   1. Warm the context by visiting target.com (mints Imperva cookies).
   2. Resolve nearest store_id (nearby_stores_v1), TARGET_STORE_ID env, or default.
-  3. For each ingredient, walk get_all_terms() through plp_search_v2.
+  3. For each ingredient, walk get_all_terms() through the cdui_orchestrations
+     `slp` (search/listing page) endpoint — see _slp_url/_extract_slp_products.
   4. Convert RedSky products to the Kroger shape; reuse find_best_purchase().
 
 Reliability:
@@ -82,8 +83,17 @@ TARGET_BANNERS: set[str] = {"target"}
 _KEY = os.environ.get("TARGET_API_KEY", "9f36aeafbe60771e321a7cc95a78140772ab3e96")
 
 _REDSKY_BASE = "https://redsky.target.com/redsky_aggregations/v1/web"
-_SEARCH_URL = f"{_REDSKY_BASE}/plp_search_v2"
 _STORES_URL = f"{_REDSKY_BASE}/nearby_stores_v1"
+
+# Target retired the old RedSky `plp_search_v2` aggregation for search results —
+# a real browser navigating target.com/s?searchTerm=... no longer calls it at
+# all, so any call to it now reads as bot traffic and gets 403+captcha
+# regardless of cookie validity. Confirmed by capturing the live site's own
+# network traffic on 2026-07-27: search results come from this CDUI
+# orchestrations service instead. `zip`/`state`/`latitude`/`longitude` were all
+# confirmed NOT required (store_id alone scopes location/pricing); dropped to
+# keep this call as simple as the old one.
+_SEARCH_URL = "https://cdui-orchestrations.target.com/cdui_orchestrations/v1/pages/slp"
 
 # Default store if location lookup fails (Indianapolis-area Target).
 _DEFAULT_STORE_ID = os.environ.get("TARGET_STORE_ID", "1771")
@@ -122,6 +132,21 @@ _PROXY = _PROXIES[0] if _PROXIES else None  # kept for back-compat truthiness ch
 
 # How many fresh exit IPs to try before falling back to Instacart.
 MAX_IP_REFRESHES = int(os.environ.get("TARGET_MAX_IP_REFRESHES", "5"))
+# A transport-only failure (timeout/DNS/connection reset — see _ImpervaBlocked)
+# isn't a WAF signal, so it gets its own small retry budget on the SAME IP
+# instead of burning one of the MAX_IP_REFRESHES rotation slots.
+_TRANSPORT_RETRIES = int(os.environ.get("TARGET_TRANSPORT_RETRIES", "2"))
+
+
+def _log_block(category: str, detail: str = "") -> None:
+    """Best-effort: publish a block/failure event to Supabase for later
+    analysis (see session_store.log_block_event). Never raises, never blocks
+    retry logic on Supabase being slow/unavailable beyond the one call."""
+    try:
+        import session_store
+        session_store.log_block_event("target", category, detail)
+    except Exception:
+        pass
 
 # Cache RedSky search results per (store_id, term) to slash scrape volume — the
 # single biggest reliability lever (fewer requests = less flagging). Prices don't
@@ -140,7 +165,26 @@ _SEARCH_TTL = int(os.environ.get("TARGET_SEARCH_TTL", str(6 * 3600)))
 _HTTP_CONCURRENCY = int(os.environ.get("TARGET_HTTP_CONCURRENCY", "6"))
 _WARM_TRIES = int(os.environ.get("TARGET_WARM_TRIES", "3"))
 _IMPERSONATE = os.environ.get("TARGET_IMPERSONATE", "chrome")
-_WARM_SEARCH_URL = "https://www.target.com/s?searchTerm=eggs"
+
+# Every warm/validate search used to hit the literal same term ("eggs"), every
+# time, from every session — a real shopper searches varied things, so always
+# searching one fixed word is itself a cross-session pattern a WAF can
+# correlate even when each individual session's navigation looks clean.
+# Picking a random common grocery term each time doesn't change the mechanics
+# of the warm at all — it's still a real search-results page — it just removes
+# that one repeating fingerprint.
+_WARM_SEARCH_TERMS = (
+    "eggs", "milk", "bread", "bananas", "chicken breast", "butter",
+    "cheese", "rice", "coffee", "apples", "yogurt", "ground beef",
+)
+
+
+def _random_search_term() -> str:
+    return random.choice(_WARM_SEARCH_TERMS)
+
+
+def _warm_search_url() -> str:
+    return f"https://www.target.com/s?searchTerm={requests_quote(_random_search_term())}"
 
 _http_session: Optional[dict] = None       # {"cookies": {...}, "ua": str}
 _http_lock = threading.Lock()              # serialize warm/re-mint of the session
@@ -155,7 +199,27 @@ _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".target_asset_cache.pkl"
 
 
 class _ImpervaBlocked(Exception):
-    """Raised when RedSky answers with a captcha challenge."""
+    """Raised when a request comes back wrong. Named for the vendor this file's
+    comments originally assumed — but a live cookie dump from a real warm
+    (_px2, _px3, _pxhd, _pxvid, pxcts) shows Target is actually PerimeterX-
+    protected, the same as Walmart, not Imperva. Kept this name to avoid
+    touching every call site over a label; only the mechanism matters here.
+
+    `category` distinguishes WHY, same three buckets as walmart_pricing._Blocked:
+
+      "explicit"  — an unambiguous block marker: HTTP 403, or a literal
+                    "captchaRelativeURL" in the response body. Confirmed via a
+                    live curl_cffi replay investigation.
+      "soft"      — no explicit marker, but the response is still wrong (a
+                    non-200/non-403 status, or no products came back).
+      "transport" — no HTTP response was ever received (timeout, DNS,
+                    connection reset, TLS failure). NOT a WAF signal.
+
+    Only "explicit"/"soft" should trigger a fresh exit IP; "transport" should
+    just retry the same session/IP a couple of times first."""
+    def __init__(self, message: str = "", category: str = "soft"):
+        super().__init__(message)
+        self.category = category
 
 # ---------------------------------------------------------------------------
 # Store detection
@@ -179,7 +243,7 @@ def is_target_store(store_name: str) -> bool:
 # anything on px-cloud.net (PerimeterX's own domain) or target.com itself
 # (where the Imperva challenge actually lives).
 # ---------------------------------------------------------------------------
-_BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+_BLOCKED_RESOURCE_TYPES = {"image", "media", "font", "stylesheet"}
 _BLOCKED_DOMAIN_SUBSTRINGS = (
     "doubleclick", "googletagmanager", "google-analytics", "googlesyndication",
     "googleadservices", "facebook.com", "fbcdn", "fbevents", "adobedtm",
@@ -187,7 +251,9 @@ _BLOCKED_DOMAIN_SUBSTRINGS = (
     "bing.com/p", "clarity.ms", "hotjar", "criteo", "outbrain", "taboola",
     "spotxchange", "pinterest", "bat.bing",
 )
-_CACHEABLE_TYPES = {"script", "stylesheet"}
+# CSS is never needed to execute the WAF's JS challenge, only to render a page
+# nobody looks at — blocked outright above rather than fetched-then-cached.
+_CACHEABLE_TYPES = {"script"}
 _CACHEABLE_HOST = "assets.targetimg1.com"
 
 
@@ -214,8 +280,14 @@ _PRE_SEED_CACHE_RE = re.compile(r'(/_next/static/[^"\']+\.(?:js|css))')
 
 def _pre_seed_asset_cache() -> None:
     """Download static Next.js JS/CSS assets from assets.targetimg1.com outside
-    the browser using curl_cffi and populate _static_asset_cache on disk.
-    Prunes stale entries from previous deploys and fetches new ones."""
+    the browser using curl_cffi and populate _static_asset_cache. Prunes stale
+    entries from previous deploys and fetches new ones.
+
+    NOT called on Render (see _load_remote_asset_cache below) — this makes a
+    handful of live network requests, which is exactly the kind of work the
+    512MB host shouldn't be doing at boot. mint_sessions.py calls this on the
+    GitHub Actions runner instead and publishes the result to Supabase.
+    """
     try:
         from curl_cffi import requests as ccffi
         resp = ccffi.get("https://www.target.com/", impersonate=_IMPERSONATE, timeout=15)
@@ -249,7 +321,25 @@ def _pre_seed_asset_cache() -> None:
         print(f"[Target] Pre-seed failed ({e}) — fallback to browser download", flush=True)
 
 
-_pre_seed_asset_cache()
+def _load_remote_asset_cache() -> None:
+    """Pull the already-pre-fetched asset cache from Supabase (published by
+    mint_sessions.py on GitHub Actions) and merge it into _static_asset_cache.
+    A single cheap DB read — no CDN calls, no curl_cffi burst, safe to run on
+    every Render boot. Falls back to whatever's on disk / gets cached
+    organically by _cache_static_assets during a real browser warm if Supabase
+    has nothing yet."""
+    try:
+        import session_store
+        remote = session_store.load_assets("target")
+        if remote:
+            _static_asset_cache.update(remote)
+            _save_asset_cache()
+            print(f"[Target] Loaded {len(remote)} pre-fetched assets from Supabase.", flush=True)
+    except Exception as e:
+        print(f"[Target] Remote asset cache load failed ({repr(e)[:80]}).", flush=True)
+
+
+_load_remote_asset_cache()
 
 
 def _block_heavy_resources(ctx) -> None:
@@ -331,6 +421,66 @@ def _current_proxy() -> Optional[str]:
     return base
 
 
+def _rotate_to_unused_proxy(tried_idxs: set[int]) -> bool:
+    """Switch to a proxy index NOT already in `tried_idxs` (mutated in place
+    with the new pick) — an IP that just failed is never retried in the same
+    run. Returns False once min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs
+    have already been tried (or MAX_IP_REFRESHES attempts with no pool
+    configured at all); the caller should give up rather than call this again,
+    since there's nothing new left to try."""
+    global _proxy_session_id, _proxy_idx
+    _proxy_session_id = uuid.uuid4().hex[:12]
+    cap = min(MAX_IP_REFRESHES, len(_PROXIES)) if _PROXIES else MAX_IP_REFRESHES
+    if len(tried_idxs) >= cap:
+        return False
+    if not _PROXIES:
+        tried_idxs.add(len(tried_idxs))  # no real pool to index — just bound the attempt count
+        return True
+    available = [i for i in range(len(_PROXIES)) if i not in tried_idxs]
+    if not available:
+        return False
+    idx = random.choice(available)
+    tried_idxs.add(idx)
+    _proxy_idx = idx
+    return True
+
+
+def _wait_for_cookie(ctx, cookie_name: str, cap_seconds: float,
+                      poll_interval: float = 0.15, settle_ticks: int = 2) -> bool:
+    """Poll ctx.cookies() instead of a fixed sleep, so a warm that clears in
+    300ms doesn't still hold the browser gate for the full cap_seconds.
+
+    Requires TWO things, not one: `cookie_name` must be present, AND the total
+    cookie count must have stopped growing for `settle_ticks` consecutive polls.
+    A single named cookie showing up isn't enough on its own — proved
+    empirically against Walmart (test_direct_search.py): _px3 was present in
+    BOTH the working warm and the one that came back with an empty page. These
+    WAFs set a whole family of cookies together as their challenge resolves —
+    waiting for that set to stop growing is a materially stronger signal that
+    the challenge has actually finished, not just started, without hardcoding
+    exact cookie names beyond the one anchor we need present either way.
+
+    Returns True once settled, False if the cap elapses first — the caller
+    proceeds anyway exactly as it did with the old fixed sleep. This never
+    provides the actual safety guarantee by itself: it only reads the browser's
+    already-downloaded cookie jar (no requests, no bandwidth cost), and a warm
+    that's still weak despite settling is caught downstream regardless
+    (_validate_http_session's live RedSky call) — that check, not this wait, is
+    what guarantees a bad warm never silently succeeds."""
+    deadline = time.monotonic() + cap_seconds
+    last_count = -1
+    stable_ticks = 0
+    while time.monotonic() < deadline:
+        names = {c["name"] for c in ctx.cookies()}
+        count = len(names)
+        stable_ticks = stable_ticks + 1 if count == last_count else 0
+        last_count = count
+        if cookie_name in names and stable_ticks >= settle_ticks:
+            return True
+        time.sleep(poll_interval)
+    return False
+
+
 def _bootstrap_session():
     """(worker thread) Launch CloakBrowser on the current proxy session, open a
     context, and warm Imperva cookies. Raises on failure so the caller can fall
@@ -359,8 +509,10 @@ def _bootstrap_session():
         page.on("response", _cache_static_assets)
         page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
         # Let Imperva's JS challenge run and set its clearance cookie before we hit
-        # the API — calling RedSky too eagerly returns a captcha.
-        time.sleep(3)
+        # the API — calling RedSky too eagerly returns a captcha. Poll instead of a
+        # fixed sleep so a fast challenge doesn't hold the browser gate any longer
+        # than it has to.
+        _wait_for_cookie(ctx, "_px3", 3)
         page.close()
     except BaseException:
         try:
@@ -435,11 +587,15 @@ def _redsky_get_http(url: str, session: dict) -> str:
         resp = _ccffi.get(url, headers=headers, cookies=session["cookies"],
                           impersonate=_IMPERSONATE, timeout=30)
     except Exception as e:
-        raise _ImpervaBlocked(f"http error: {repr(e)[:60]}")
+        # Never reached the site at all — not a WAF signal (see _ImpervaBlocked).
+        raise _ImpervaBlocked(f"http error: {repr(e)[:60]}", category="transport")
     if resp.status_code == 403 or '"captchaRelativeURL"' in resp.text:
-        raise _ImpervaBlocked()
+        raise _ImpervaBlocked("403/captcha marker", category="explicit")
     if resp.status_code != 200:
-        return ""
+        # Used to return "" here silently — a genuine RedSky error (5xx etc.)
+        # never got flagged or retried, it just permanently looked like "no
+        # products" for that item. Now it's at least visible and retryable.
+        raise _ImpervaBlocked(f"http {resp.status_code}", category="soft")
     return resp.text
 
 
@@ -447,12 +603,15 @@ def _redsky_get_browser(url: str) -> str:
     """(worker thread) GET a RedSky URL through the CloakBrowser request context —
     the fallback when the curl_cffi path is unavailable."""
     ctx = _ensure_ctx()
-    resp = ctx.request.get(url, timeout=30000)
-    text = resp.text()
-    if resp.status == 403 and "captcha" in text.lower():
-        raise _ImpervaBlocked()
+    try:
+        resp = ctx.request.get(url, timeout=30000)
+        text = resp.text()
+    except Exception as e:
+        raise _ImpervaBlocked(f"request failed: {repr(e)[:60]}", category="transport")
+    if resp.status == 403 or "captchaRelativeURL" in text:
+        raise _ImpervaBlocked("403/captcha marker", category="explicit")
     if resp.status != 200:
-        return ""
+        raise _ImpervaBlocked(f"http {resp.status}", category="soft")
     return text
 
 
@@ -567,7 +726,7 @@ def _price_value(price: dict) -> Optional[float]:
 
 
 def _to_kroger_format(product: dict) -> Optional[dict]:
-    """Convert a RedSky plp_search_v2 product into the Kroger product shape."""
+    """Convert an slp search-result product into the Kroger product shape."""
     item = product.get("item") or {}
     raw_title = (item.get("product_description") or {}).get("title") or ""
     if not raw_title:
@@ -652,8 +811,44 @@ def _search_cache_put(key: tuple[str, str], products: list[dict]) -> None:
             _search_cache.popitem(last=False)
 
 
+def _slp_url(query: str, store_id: str, num_results: int) -> str:
+    """Build a cdui_orchestrations `slp` (search/listing page) URL — the
+    replacement for the retired `plp_search_v2` aggregation. Mirrors the
+    param set a real browser sends, minus zip/state/lat/lon/timezone
+    (confirmed NOT required — store_id alone scopes location/pricing)."""
+    q = requests_quote(query)
+    page = f"/s/{q}"
+    return (f"{_SEARCH_URL}?key={_KEY}&platform=WEB&sapphire_channel=WEB"
+            f"&sapphire_page={page}&channel=WEB&page={page}"
+            f"&visitor_id={uuid.uuid4().hex.upper()}"
+            f"&store_id={store_id}&store_ids={store_id}"
+            f"&scheduled_delivery_store_id={store_id}"
+            f"&count={num_results}&offset=0&new_search=true&keyword={q}"
+            f"&include_data_source_modules=true&default_purchasability_filter=true"
+            f"&spellcheck=true&is_seo_bot=false&device_type=desktop"
+            f"&targeted_advertising_opt_out=false&privacy_do_not_sell=false"
+            f"&query_string=searchTerm%3D{q}")
+
+
+def _extract_slp_products(text: str) -> list[dict]:
+    """Pull the product list out of an slp response: it's a page-orchestration
+    payload (`data_source_modules[]`), not a flat `data.search.products` like
+    the old plp_search_v2 shape — find the module that actually carries
+    search results."""
+    import json
+    try:
+        data = json.loads(text)
+    except Exception:
+        return []
+    for mod in data.get("data_source_modules") or []:
+        products = ((mod.get("module_data") or {}).get("search_response") or {}).get("products")
+        if products:
+            return products
+    return []
+
+
 def _search(query: str, store_id: str, num_results: int = 24) -> list[dict]:
-    # 24 (vs RedSky's default page of ~28) gives find_best_purchase enough
+    # 24 (vs the page's default of ~28) gives find_best_purchase enough
     # candidates to reliably surface the cheapest matching size/variant; with
     # only ~10 the cheapest option is sometimes outside the result window.
     cache_key = (store_id, query.lower())
@@ -661,18 +856,12 @@ def _search(query: str, store_id: str, num_results: int = 24) -> list[dict]:
     if cached is not None:
         return cached
 
-    url = (f"{_SEARCH_URL}?key={_KEY}&keyword={requests_quote(query)}&channel=WEB"
-           f"&count={num_results}&offset=0&page=/s/{requests_quote(query)}"
-           f"&platform=desktop&pricing_store_id={store_id}&store_ids={store_id}"
-           f"&scheduled_delivery_store_id={store_id}&visitor_id={uuid.uuid4().hex.upper()}")
+    url = _slp_url(query, store_id, num_results)
     text = _redsky_get(url)  # may raise _ImpervaBlocked → handled in _do_pricing
     if not text:
         return []
-    try:
-        import json
-        products = (json.loads(text).get("data", {})
-                    .get("search", {}).get("products", []))
-    except Exception:
+    products = _extract_slp_products(text)
+    if not products:
         return []
 
     query_words = set(query.lower().split())
@@ -739,11 +928,12 @@ def _warm_http_session() -> dict:
         page = ctx.new_page()
         page.on("response", _cache_static_assets)
         page.goto("https://www.target.com/", wait_until="domcontentloaded", timeout=45000)
-        time.sleep(2)
+        _wait_for_cookie(ctx, "_px3", 2)
         # A real search nav (not just the homepage) is what fully clears Imperva
-        # and mints a clearance cookie RedSky will accept.
-        page.goto(_WARM_SEARCH_URL, wait_until="domcontentloaded", timeout=45000)
-        time.sleep(3)
+        # and mints a clearance cookie RedSky will accept. The term itself is
+        # randomized (see _WARM_SEARCH_TERMS) so it's not always "eggs".
+        page.goto(_warm_search_url(), wait_until="domcontentloaded", timeout=45000)
+        _wait_for_cookie(ctx, "_px3", 3)
         ua = page.evaluate("() => navigator.userAgent")
         cookies = {c["name"]: c["value"] for c in ctx.cookies()}
     finally:
@@ -761,15 +951,11 @@ def _warm_http_session() -> dict:
 def _validate_http_session(session: dict) -> bool:
     """Cheap liveness check (no browser): one curl_cffi RedSky search must return
     products. True ⇒ the cookie is still good and can be reused."""
-    url = (f"{_SEARCH_URL}?key={_KEY}&keyword=eggs&channel=WEB&count=8&offset=0"
-           f"&page=/s/eggs&platform=desktop&pricing_store_id={_DEFAULT_STORE_ID}"
-           f"&store_ids={_DEFAULT_STORE_ID}&scheduled_delivery_store_id={_DEFAULT_STORE_ID}"
-           f"&visitor_id={uuid.uuid4().hex.upper()}")
+    term = _random_search_term()
+    url = _slp_url(term, _DEFAULT_STORE_ID, 8)
     try:
         text = _redsky_get_http(url, session)  # raises _ImpervaBlocked on captcha
-        prods = (json.loads(text).get("data", {}).get("search", {})
-                 .get("products", [])) if text else []
-        return bool(prods)
+        return bool(_extract_slp_products(text)) if text else False
     except Exception:
         return False
 
@@ -858,13 +1044,18 @@ def _invalidate_http_session() -> None:
 
 def _price_via_http(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str], dict]:
     """Primary path: one browser warm, then resolve the store + price every
-    ingredient over parallel curl_cffi RedSky calls. On a wave of Imperva
-    throttles, re-mint the cookie and retry the blocked items (up to
-    MAX_IP_REFRESHES). Returns (store_id, prices)."""
+    ingredient over parallel curl_cffi RedSky calls. A round where anything
+    came back with a WAF-category block (explicit marker/403 or soft signal —
+    see _ImpervaBlocked) switches to a fresh exit IP that hasn't been tried yet
+    this run, capped at min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs. A
+    round where every failure was transport-only (timeout/DNS/connection — not
+    a WAF signal) retries the SAME IP/session instead, up to
+    _TRANSPORT_RETRIES. Returns (store_id, prices)."""
     prices: dict = {}
     pending = dict(ingredients)
     store_id: Optional[str] = None
-    refreshes = 0
+    tried_idxs: set[int] = set()
+    transport_retries = 0
     while pending:
         session = _ensure_http_session()
         if store_id is None:
@@ -881,55 +1072,76 @@ def _price_via_http(ingredients: dict, lat: float, lon: float) -> tuple[Optional
             try:
                 r = _price_one(name, float(data.get("qty", 1) or 1),
                                str(data.get("unit", "whole")), store_id)
-                return name, r, False
-            except _ImpervaBlocked:
-                return name, None, True
+                return name, r, None
+            except _ImpervaBlocked as e:
+                return name, None, e.category
             except Exception as e:
                 print(f"[Target] Error pricing '{name}': {e}", flush=True)
-                return name, None, False
+                return name, None, None
             finally:
                 _thread_local.http = None
 
         blocked: dict = {}
+        categories: set[str] = set()
         with ThreadPoolExecutor(max_workers=min(_HTTP_CONCURRENCY, len(pending)),
                                 thread_name_prefix="tg-http") as pool:
-            for name, r, was_blocked in pool.map(_work, list(pending.items())):
-                if was_blocked:
+            for name, r, category in pool.map(_work, list(pending.items())):
+                if category is not None:
                     blocked[name] = pending[name]
+                    categories.add(category)
                 elif r:
                     prices[name] = r
         pending = blocked
         if not pending:
             break
-        if refreshes >= MAX_IP_REFRESHES:
-            print(f"[Target] Still throttled after {refreshes} re-mints — "
-                  f"{len(pending)} item(s) unpriced.", flush=True)
-            break
-        refreshes += 1
-        print(f"[Target] Imperva throttle — re-minting session "
-              f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
-        _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
-        _rotate_proxy_session()
-        time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))
+
+        if categories - {"transport"}:
+            waf_category = "explicit" if "explicit" in categories else "soft"
+            tried_idxs.add(_proxy_idx)
+            if not _rotate_to_unused_proxy(tried_idxs):
+                print(f"[Target] Still throttled after {len(tried_idxs)} distinct IP(s) — "
+                      f"{len(pending)} item(s) unpriced.", flush=True)
+                _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
+                break
+            print(f"[Target] Imperva throttle ({waf_category}) — switching to a fresh IP "
+                  f"({len(tried_idxs)} tried so far).", flush=True)
+            _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
+            _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
+            transport_retries = 0
+            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
+        else:
+            transport_retries += 1
+            if transport_retries > _TRANSPORT_RETRIES:
+                print(f"[Target] Persistent transport errors after {transport_retries} "
+                      f"tries (same IP) — {len(pending)} item(s) unpriced.", flush=True)
+                _log_block("transport", f"gave up after {transport_retries} tries, {len(pending)} unpriced")
+                break
+            print(f"[Target] Transport error (not Imperva) — retrying same session "
+                  f"({transport_retries}/{_TRANSPORT_RETRIES}).", flush=True)
+            time.sleep(min(1.0 * transport_retries, 3.0) + random.uniform(0, 0.5))
     return store_id, prices
 
 
 def _do_pricing(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str], dict]:
     """(worker thread) Resolve store + price all ingredients, healing through
-    captchas by rotating to a fresh exit IP.
+    blocks by switching to a fresh exit IP.
 
-    On a block we tear down, rotate the proxy session (new IP), back off, and
-    resume pricing only the ingredients still pending — so intermittent blocks
-    progressively complete the basket. After MAX_IP_REFRESHES fresh IPs are all
-    blocked we give up and return ({}) so the caller falls back to Instacart for
-    the whole store.
+    A WAF-category block (explicit marker/403, or a soft signal) tears down,
+    switches to a proxy that hasn't been tried yet this run, backs off, and
+    resumes pricing only the ingredients still pending — so intermittent
+    blocks progressively complete the basket. After
+    min(MAX_IP_REFRESHES, len(_PROXIES)) distinct IPs are all blocked we give
+    up and return ({}) so the caller falls back to Instacart for the whole
+    store. A transport-only failure (not a WAF signal) retries the same
+    IP/session instead, up to _TRANSPORT_RETRIES.
 
     Pricing is sequential because the sync browser context is single-threaded;
     cached terms make repeat baskets nearly free."""
     prices: dict = {}
     pending = dict(ingredients)
     store_id: Optional[str] = None
-    refreshes = 0
+    tried_idxs: set[int] = set()
+    transport_retries = 0
 
     while pending:
         try:
@@ -963,17 +1175,30 @@ def _do_pricing(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str
                 del pending[name]  # priced or genuinely not found — don't retry
             break  # all ingredients attempted
 
-        except _ImpervaBlocked:
-            if refreshes >= MAX_IP_REFRESHES:
-                print(f"[Target] Still blocked after {refreshes} IP refreshes — "
-                      f"falling back to Instacart for this store.", flush=True)
-                return store_id, {}
-            refreshes += 1
-            print(f"[Target] Captcha — rotating exit IP "
-                  f"(refresh {refreshes}/{MAX_IP_REFRESHES}).", flush=True)
+        except _ImpervaBlocked as e:
+            if e.category == "transport":
+                transport_retries += 1
+                if transport_retries > _TRANSPORT_RETRIES:
+                    print(f"[Target] Persistent transport errors after {transport_retries} "
+                          f"tries — falling back to Instacart for this store.", flush=True)
+                    _log_block("transport", f"gave up after {transport_retries} tries, pool path")
+                    return store_id, {}
+                print(f"[Target] Transport error (not Imperva, pool path) — retrying "
+                      f"same IP ({transport_retries}/{_TRANSPORT_RETRIES}).", flush=True)
+                time.sleep(min(1.0 * transport_retries, 3.0) + random.uniform(0, 0.5))
+                continue
+            tried_idxs.add(_proxy_idx)
             _teardown_session()
-            _rotate_proxy_session()
-            time.sleep(min(1.0 * refreshes, 5.0) + random.uniform(0, 0.75))  # backoff + jitter
+            if not _rotate_to_unused_proxy(tried_idxs):
+                print(f"[Target] Still blocked after {len(tried_idxs)} distinct IP(s) — "
+                      f"falling back to Instacart for this store.", flush=True)
+                _log_block(e.category, f"exhausted {len(tried_idxs)} IPs, pool path")
+                return store_id, {}
+            print(f"[Target] Captcha ({e.category}) — switching to a fresh exit IP "
+                  f"({len(tried_idxs)} tried so far).", flush=True)
+            _log_block(e.category, f"rotating, pool path, {len(tried_idxs)} tried")
+            transport_retries = 0
+            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))  # backoff + jitter
 
     return store_id, prices
 

@@ -250,6 +250,21 @@ def _bootstrap(slug: str = "publix") -> tuple[dict, str, str]:
     return cookies, qp, zone_id
 
 
+def _load_remote_session() -> dict:
+    """Off-box session from Supabase (published by mint_sessions.py on GitHub
+    Actions). {} if unavailable/stale — caller falls back to disk/bootstrap."""
+    try:
+        import session_store
+        remote = session_store.load("instacart", max_age_seconds=SESSION_TTL)
+        if not remote or not remote.get("cookies"):
+            return {}
+        extra = remote.get("extra") or {}
+        return {"cookies": remote["cookies"], "qp": extra.get("qp", ""),
+                "zone_id": extra.get("zone_id", "")}
+    except Exception:
+        return {}
+
+
 def _get_session(bootstrap_slug: str = "publix") -> tuple[requests.Session, str]:
     global _mem_cache, _session
     # Fast path: a built session can be shared across threads without locking.
@@ -260,7 +275,14 @@ def _get_session(bootstrap_slug: str = "publix") -> tuple[requests.Session, str]
         if not _mem_cache:
             _mem_cache = _load_disk_session()
         if not _mem_cache:
-            cookies, qp, zone_id = _bootstrap(bootstrap_slug)
+            # Off-box session (GitHub Actions -> Supabase) first, so the 512MB
+            # server skips launching a browser entirely.
+            remote = _load_remote_session()
+            if remote:
+                cookies, qp, zone_id = remote["cookies"], remote["qp"], remote["zone_id"]
+                print("[IC] Reused off-box session (Supabase, no browser).", flush=True)
+            else:
+                cookies, qp, zone_id = _bootstrap(bootstrap_slug)
             _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id,
                           "expires_at": time.time() + SESSION_TTL}
             _save_disk_session(cookies, qp, zone_id)
@@ -287,7 +309,33 @@ def _invalidate_session() -> None:
 # GraphQL helper
 # ---------------------------------------------------------------------------
 
+def _log_block(category: str, detail: str = "") -> None:
+    """Best-effort: publish a block/failure event to Supabase for later
+    analysis (see session_store.log_block_event / walmart_pricing._Blocked for
+    the category scheme). Never raises. Instacart has no proxy pool or
+    per-request IP rotation (see _get_session — one long-lived session,
+    re-bootstrapped wholesale via _invalidate_session on a real block, not
+    per-request-rotated the way Walmart/Target are), so this only ever
+    categorizes and logs — it doesn't drive a retry loop the way the other
+    chains' does."""
+    try:
+        import session_store
+        session_store.log_block_event("instacart", category, detail)
+    except Exception:
+        pass
+
+
 def _gql(op: str, variables: dict, session: requests.Session, slug: str = "") -> dict:
+    """Returns {} on ANY failure (unchanged contract — callers were never
+    written to catch an exception here, so this stays a silent-empty return
+    rather than raising). What's new is WHY it failed is now categorized and
+    logged instead of being indistinguishable noise:
+      "explicit"  — 401/403 (also invalidates the session so the next call
+                    re-bootstraps rather than repeating the same dead one).
+      "soft"      — a non-401/403 HTTP error, unparseable JSON, or a GraphQL
+                    "errors" payload — something's wrong, cause less certain.
+      "transport" — the request never got a response at all (timeout/DNS/
+                    connection failure) — not a WAF signal."""
     referer = (f"https://www.instacart.com/{slug}/search_v3/"
                if slug else "https://www.instacart.com/")
     params = {
@@ -301,17 +349,25 @@ def _gql(op: str, variables: dict, session: requests.Session, slug: str = "") ->
     headers = {**BASE_HEADERS, "x-page-view-id": str(uuid.uuid4()), "referer": referer}
     try:
         r = session.get(BASE_GQL, params=params, headers=headers, timeout=12)
-        if r.status_code in (401, 403):
-            _invalidate_session()
-            return {}
-        if r.status_code != 200:
-            return {}
-        data = r.json()
-        if "errors" in data:
-            return {}
-        return data.get("data") or {}
-    except Exception:
+    except Exception as e:
+        _log_block("transport", f"{op}: {repr(e)[:80]}")
         return {}
+    if r.status_code in (401, 403):
+        _invalidate_session()
+        _log_block("explicit", f"{op}: http {r.status_code}")
+        return {}
+    if r.status_code != 200:
+        _log_block("soft", f"{op}: http {r.status_code}")
+        return {}
+    try:
+        data = r.json()
+    except Exception as e:
+        _log_block("soft", f"{op}: bad json ({repr(e)[:60]})")
+        return {}
+    if "errors" in data:
+        _log_block("soft", f"{op}: graphql errors {str(data['errors'])[:100]}")
+        return {}
+    return data.get("data") or {}
 
 
 # ---------------------------------------------------------------------------

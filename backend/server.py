@@ -334,10 +334,6 @@ def read_root_api():
 class PrewarmRequest(BaseModel):
     address: str
     shopping_time_hours: float = 3.0
-    # warm_only: fired the instant the user taps an address suggestion — mint BOTH
-    # cookies unconditionally (no isochrone known yet). The full call (on Continue)
-    # resolves the isochrone and stops working any chain that's out of range.
-    warm_only: bool = False
 
 
 def _geocode_address(address: str):
@@ -417,38 +413,23 @@ _WARM_CHAINS = (
 
 @router.post("/prewarm", dependencies=[Depends(rate_limit("prewarm"))])
 def prewarm(request: PrewarmRequest):
-    """Fire-and-forget warm-up. Two phases:
+    """Fire-and-forget warm-up, fired on Continue once address + shopping time
+    are known. Geocodes, resolves the drive isochrone + Google Places stores
+    (priming the SAME caches generate_plan reads), then warms ONLY the chains
+    actually found in range — no chain is ever warmed speculatively.
 
-    * warm_only=True (fired the instant the user taps an address suggestion):
-      unconditionally mint BOTH the Walmart + Target cookies. We don't know the
-      isochrone yet, so warm everything that could be needed — the cookies persist
-      to disk, so nothing is wasted even if a chain turns out to be out of range.
+    (This used to also fire an eager, unconditional warm of every chain the
+    instant an address suggestion was tapped, before the isochrone was even
+    known — that meant Render was launching browsers for stores nowhere near
+    the user. Removed: warming now only ever happens for stores this address
+    actually found.)
 
-    * warm_only=False (fired on Continue, once shopping time is known): geocode,
-      resolve the drive isochrone + Google Places stores (priming the SAME caches
-      generate_plan reads), then for each warm-requiring chain: if it's IN range,
-      ensure it's warmed (a cheap reuse of the eager cookie); if it's OUT of range,
-      stop — do no further work for it, but leave its already-minted cookie on disk.
-
-    Returns immediately; all work happens on a daemon thread. If the user dawdles
-    past a cookie's TTL the pricing run just re-mints (existing fallback) — so this
-    is a best-effort speedup, never a correctness risk."""
+    Returns immediately; all work happens on a shared bounded-pool thread. If
+    the user dawdles past a cookie's TTL the pricing run just re-mints
+    (existing fallback) — so this is a best-effort speedup, never a
+    correctness risk."""
     address = (request.address or "").strip()
     sh_hours = request.shopping_time_hours
-    warm_only = request.warm_only
-
-    def _warm_both_unconditional():
-        # Eager: mint both cookies the moment an address is picked, range unknown.
-        # Sequential on purpose: the browser gate lets exactly one warm run at a
-        # time, so warming in parallel just made the loser burn a 45s gate
-        # timeout and fail for no reason.
-        results = {name: _warm_chain(name, ensure_fn)
-                   for name, _in_range, ensure_fn in _WARM_CHAINS}
-        print("[Prewarm] Eager warm done (Walmart + Target).", flush=True)
-        # Target's direct path falls back to Instacart, so if its warm failed, get
-        # the Instacart fallback hot now instead of cold at plan time.
-        if not results.get("Target", True):
-            _warm_instacart("Target warm failed")
 
     def _resolve_then_warm_in_range():
         loc = None
@@ -477,17 +458,17 @@ def prewarm(request: PrewarmRequest):
         for name, in_range, ensure_fn in _WARM_CHAINS:
             (warmers if any(in_range(n) for n in store_names) else skipped).append((name, ensure_fn))
 
-        # Out of isochrone: kill the rest of the process for these chains — no
-        # pricing, no further warm. Their eager-minted cookie stays cached on disk.
+        # Out of isochrone: do no work at all for these chains.
         if skipped:
-            print(f"[Prewarm] Out of isochrone — keeping cached cookie, no further work: "
+            print(f"[Prewarm] Out of isochrone — no work done: "
                   f"{', '.join(n for n, _ in skipped)}.", flush=True)
         if not warmers:
             return
 
-        # In range: ensure warmed (cheap reuse if the eager warm already minted it).
-        # Sequential — see _warm_both_unconditional: the browser gate serializes
-        # these anyway, so parallelism only manufactures gate timeouts.
+        # In range: warm it (cheap reuse if a Supabase/disk cookie is already
+        # good — see each chain's _ensure_http_session). Sequential on purpose:
+        # the browser gate serializes these anyway, so parallelism only
+        # manufactures gate timeouts.
         results = {name: _warm_chain(name, ensure_fn) for name, ensure_fn in warmers}
         print(f"[Prewarm] Done (warmed in-range: {', '.join(n for n, _ in warmers)}).", flush=True)
         # If Target is in range but its warm failed, warm the Instacart fallback it
@@ -497,14 +478,12 @@ def prewarm(request: PrewarmRequest):
 
     # Run on the shared bounded pool under a single-flight key rather than a
     # fresh unbounded daemon thread per call. /prewarm is unauthenticated and
-    # fires on every address keystroke-batch, so a raw thread-per-call let a
-    # user (or a bot) stack arbitrarily many browser warms, all fighting over
-    # the same one-at-a-time browser gate. One warm of each kind at a time is
-    # all that was ever useful — the cookies are shared and cached on disk.
-    key = "prewarm:eager" if warm_only else "prewarm:scoped"
-    work = _warm_both_unconditional if warm_only else _resolve_then_warm_in_range
-    if pricing_pool.submit_chain(key, None, work) is None:
-        print(f"[Prewarm] '{key}' already running — not starting another.", flush=True)
+    # fires on every Continue tap, so a raw thread-per-call let a user (or a
+    # bot) stack arbitrarily many browser warms, all fighting over the same
+    # one-at-a-time browser gate. One warm at a time is all that was ever
+    # useful — the cookies are shared and cached on disk.
+    if pricing_pool.submit_chain("prewarm", None, _resolve_then_warm_in_range) is None:
+        print("[Prewarm] already running — not starting another.", flush=True)
         return {"status": "already_warming"}
     return {"status": "warming"}
 

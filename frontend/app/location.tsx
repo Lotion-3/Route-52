@@ -7,17 +7,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
-import { prewarm, warmStores, autocompleteAddress } from '@/services/api';
+import { prewarm, autocompleteAddress } from '@/services/api';
 import { notify } from '@/services/notify';
 
 /**
  * Step 1 of the meal-plan flow: collect location + shopping time FIRST.
  *
- * The moment the user continues, we fire prewarm(location) so the backend starts
- * minting the Walmart/Target browser cookies (the ~8s-per-store warm) in the
- * background, then push to /search — which shows a ~5s gate overlay on mount
- * (LoadingGate) so the warm is hidden behind a fast-filling progress bar. By the
- * time they hit "Generate Plan", the warm is already done.
+ * The moment the user continues, we fire prewarm(location, time) so the backend
+ * resolves the nearby stores and warms ONLY the chains actually found in range
+ * (the ~8s-per-store warm) in the background, then push to /search — which shows
+ * a ~5s gate overlay on mount (LoadingGate) so the warm is hidden behind a
+ * fast-filling progress bar. By the time they hit "Generate Plan", the warm is
+ * already done. Nothing is warmed before this point — an address suggestion tap
+ * used to eagerly warm both Walmart + Target with the isochrone still unknown,
+ * which meant warming stores that might not even be near the user.
  */
 export default function LocationScreen() {
     const router = useRouter();
@@ -58,9 +61,9 @@ export default function LocationScreen() {
         suppressFetch.current = true;
         setLocation(s);
         setSuggestions([]);
-        // Address picked → eagerly warm BOTH Walmart + Target now. Continue's
-        // prewarm(location, time) later prunes whichever is out of the isochrone.
-        warmStores(s);
+        // No warming here — the isochrone (and therefore which stores are even
+        // in range) isn't known until Continue, where prewarm(location, time)
+        // resolves it and warms only what was actually found.
     };
 
     const handleContinue = () => {

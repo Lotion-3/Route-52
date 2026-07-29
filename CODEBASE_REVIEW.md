@@ -1,213 +1,291 @@
-# basketBuddy — Codebase Review & Modularization Plan
+# basketBuddy — Codebase Review & State
 
-_Date: 2026-07-05_
+_Last updated: 2026-07-27_
 
-A review of the backend for inefficiencies, duplication, and modularization
-opportunities, plus a reusable store-integration test pipeline. Findings are
-ranked by value ÷ effort. Each proposed phase is verifiable via the new pipeline.
-
----
-
-## Shipped in this pass
-
-### 1. Reusable store-integration test pipeline — [`backend/tests_integration/`](backend/tests_integration/)
-
-One command scores **every** pricing backend (official API, Instacart, or direct
-storefront) on the same axes:
-
-| Axis | Meaning |
-|---|---|
-| resolution | did a real market return anything? |
-| coverage | fraction of the basket that priced (`priced/total`) |
-| sanity | every line within `$0.01–$200` (catches unit/parse bugs) |
-| latency | wall-clock seconds |
-| reliability | coverage + latency spread across `--repeat` runs (key signal for flaky/protected sources) |
-
-- Adding a store = one `StoreCase` in [`registry.py`](backend/tests_integration/registry.py); the adapter just returns the `{ingredient: {"total_cost": ...}}` dict, everything else is automatic.
-- Verdicts: `GOOD` / `THIN` / `BROKEN` / `BADPRICE` / `OK-EMPTY` / `LEAK`.
-- Non-zero exit on failure → CI-friendly.
-- **Verified live:** all 5 Kroger banners `GOOD`; reliability mode shows variance (`5/5 5/5, 4.9±1.8s`); no-store edge case returns `OK-EMPTY`.
-
-Run:
-
-```bash
-# from backend/ (needs config.env creds)
-PYTHONPATH=. python -m tests_integration.run                    # smoke basket, API + Instacart
-PYTHONPATH=. python -m tests_integration.run --tag kroger       # just the Kroger banners
-PYTHONPATH=. python -m tests_integration.run --tag api --repeat 3 --basket full   # reliability
-PYTHONPATH=. python -m tests_integration.run --store Target --tag browser          # slow cases
-PYTHONPATH=. python -m tests_integration.run --all              # everything incl. browser
-```
-
-Files: `harness.py` (data-source-agnostic core), `registry.py` (declarative
-suite + adapters), `baskets.py` (`smoke`/`full` fixtures), `run.py` (CLI),
-`README.md`.
-
-> **Scope note:** this harness *measures* integration health; it does not defeat
-> anti-bot protections. A protected, flaky source shows up as low coverage / high
-> variance — the signal for deciding whether to route it through a sanctioned
-> path (official API / Instacart) instead.
-
-### 2. Cache speedup — [`backend/cache_manager.py`](backend/cache_manager.py)
-
-- Added an **in-memory LRU tier**: hot keys (geocode, isochrone, store search) are
-  hit many times per request but were re-reading + re-parsing JSON from disk every
-  call. Now served from memory.
-- **Atomic disk writes** (temp file + `os.replace`) + a **lock**, so the concurrent
-  per-store pricing fan-out can't interleave a half-written cache file.
-- Public interface unchanged (`cache.get` / `cache.set`); disk tier still warms
-  across process restarts (prewarm primes it, generate_plan reads it).
-- Unit-tested: basic get, TTL fresh/expired, miss, disk-persist across instances,
-  LRU eviction — all pass.
+Dense reference doc, not a narrative — written to minimize tokens spent
+re-deriving things in a future session. Trust this over a code comment that
+contradicts it (some comments are stale — noted below where that's known).
 
 ---
 
-## Findings (ranked by value ÷ effort)
+## Empirically-verified facts (do not re-derive)
 
-| # | Finding | Impact | Effort / Risk |
+- **Target is PerimeterX-protected, not Imperva.** Every comment in
+  `target_pricing.py` says "Imperva" — that predates verification and is
+  wrong. A real warm's cookie jar is `_px2/_px3/_pxhd/_pxvid/pxcts`, the same
+  PerimeterX family as Walmart. The exception class `_ImpervaBlocked` is
+  misnamed but was kept (too many call sites to rename for a label change).
+  **Cookie to poll for on Target is `_px3`**, not `reese84` (`reese84` belongs
+  to Coles — a different, now-deleted retailer module — and never appears in
+  a real Target session).
+- **Both chains' WAF returns HTTP 200 on a block**, not 403/429, for the HTML
+  search page. Status code alone is useless there. The reliable signal:
+  literal `px-captcha` in the response body (Walmart) — present in every
+  blocked response tested, absent from every good one (confirmed via
+  curl_cffi replay of a good session vs. a deliberately-weak one). Generic
+  words ("captcha"/"blocked"/"human") appear in BOTH good and bad pages
+  (the real page legitimately references PerimeterX) — not usable alone.
+- Target's RedSky (JSON API) block shape differs from Walmart's HTML page:
+  `403` + literal `"captchaRelativeURL"` in the JSON body.
+- `__NEXT_DATA__` is server-rendered into the initial HTML — it does NOT fill
+  in asynchronously. Whatever's in the DOM at `domcontentloaded` is final; a
+  "wait longer after the page loads" fix would do nothing (already considered
+  and rejected).
+- **Request velocity from one IP is an independent block factor**, separate
+  from session/cookie quality. Reproduced live: identical warm code run
+  back-to-back with other test traffic from the same IP → blocked repeatedly;
+  same code, clean isolated run → succeeded cleanly. Not currently captured as
+  a variable anywhere (see Open TODOs).
+- **Two navigations (home → search) are required, not just best practice.**
+  A homepage-only warm gets a 0/N replay rate. A **direct-to-search-only**
+  warm ALSO fails (tested) — mints a `_px3` cookie but returns an empty
+  `__NEXT_DATA__` (0 chars vs. 908,266 in the working case). Referrer chain
+  and navigation count both matter.
+- **The proxy (`CLOAK_PROXY`) only ever backs the browser-warm step**
+  (`kwargs["proxy"]` into `browser_gate.launch`). The curl_cffi REPLAY calls —
+  the bulk of request volume — run unproxied, from whatever IP the process is
+  on. Real, unresolved geo/session-consistency gap (see Open TODOs).
+
+## Chain mechanism map (US chains)
+
+| Chain | Mechanism | WAF vendor | Proxy/IP rotation | Categorized block detection |
+|---|---|---|---|---|
+| Walmart | browser warm → curl_cffi replay | PerimeterX | yes — 5-IP no-repeat cap | yes: explicit/soft/transport |
+| Target | browser warm → curl_cffi replay | PerimeterX (not Imperva) | yes — 5-IP no-repeat cap | yes |
+| ALDI | one session, valid ~30d, GraphQL via Instacart's own backend | effectively none (401/403 just invalidates) | no pool, no rotation | yes, logged only — no retry loop |
+| Instacart | same shape as ALDI (ALDI rides on this backend) | same | no | yes, logged only |
+| Meijer | Constructor.io API, API-key auth | none (docstring: "no WAF protection, just an API key") | proxy support in code, nothing to react to | no |
+| Kroger | official partner API | none | no | no |
+| Trader Joe's | Magento GraphQL, Akamai **rate-limit** (not a bot-challenge) | rate-limit, not anti-bot | no | no — different mechanism, out of scope |
+
+AU: Coles/Woolworths removed entirely (commit `08125080`). IGA remains,
+AU-only, not covered above.
+
+## WAF block categorization
+
+Lives in `walmart_pricing.py`, `target_pricing.py`, `aldi/aldi_pricing.py`,
+`instacart_pricing.py`. `_Blocked`/`_ImpervaBlocked` carry `.category`:
+
+- `"explicit"` — confirmed marker: `px-captcha` in body, 403+`captchaRelativeURL`,
+  or a plain 401/403 (ALDI/Instacart). Trust this.
+- `"soft"` — response is wrong but no explicit marker. Ambiguous — validated
+  against only ONE failure shape (missing content), not proven generally.
+- `"transport"` — no HTTP response ever received. Structurally distinct, not
+  a WAF signal.
+
+**Retry policy — Walmart/Target only.** ALDI/Instacart have no retry loop:
+explicit/soft → rotate to a not-yet-tried IP, capped at
+`min(MAX_IP_REFRESHES, len(_PROXIES))` (default 5) via
+`_rotate_to_unused_proxy(tried_idxs)`. transport-only → retry the SAME
+IP/session, capped separately at `_TRANSPORT_RETRIES` (default 2).
+
+All four publish to Supabase `chain_block_events` (chain, category, detail,
+created_at) via `session_store.log_block_event`, one row per retry round.
+**No data has accumulated there yet** — new instrumentation, unobserved
+against real production traffic.
+
+## GitHub Actions offload (`mint_sessions.py` + `session_store.py`)
+
+Mints Walmart/Target/ALDI/Instacart sessions on a 7GB GH Actions runner (not
+Render, 512MB), publishes to Supabase `chain_sessions`; Render reads that
+first, falls back to a local browser warm only on a cache miss. Also
+pre-fetches Walmart/Target's static JS/CSS (`chain_assets`) so Render never
+re-downloads those either. Skips re-minting a chain younger than half its TTL.
+
+**Unverified from this environment:**
+- Whether `chain_sessions`/`chain_assets`/`chain_block_events` (in
+  `schema.sql`) actually exist in the real Supabase project. If not, every
+  load()/save() fails silently by design and the whole offload is a no-op.
+- Whether GH Actions secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+  `CLOAK_PROXY`) are actually set in repo settings.
+- No production run has been observed with any of this deployed — all
+  testing was local/unproxied against live sites from a dev sandbox.
+
+## Prewarm (frontend + `/prewarm`)
+
+Fixed: no more eager/unconditional warm. `warmStores()` used to fire on
+address-suggestion-tap (`location.tsx`) AND the home screen's "Start New"
+(`(tabs)/index.tsx`), warming Walmart+Target regardless of proximity — both
+call sites and the function are removed. Only remaining trigger:
+`prewarm(location, time)` on Continue, which resolves the isochrone + real
+nearby stores first and only warms chains actually in range.
+
+---
+
+## Meal planning (`meal_planner.py` + friends)
+
+- **Data source is dual**: `server.py` fetches Supabase `meals` table
+  (`db.get_meals()`) per request; on any failure, falls back to
+  `meal_planner._load_meals()` reading `backend/meals.json` (cached
+  process-wide). **`meals.json` currently has only 102 hand-written meals.**
+- Entry point `create_weekly_meal_plan()` (`meal_planner.py`): resolves user
+  constraints → hard filters (diet/allergen tags, ingredient exclusions) +
+  soft preferences (cuisine, health tags, cook-time, calorie proximity) →
+  `_filter_meals` (raises `NoSafeMealsError` if empty — **no silent
+  fallback**, by design) → `_select_meals` (randomized-window sampling if
+  `experiment=True`) → scales qty by household size, marks `is_at_home`
+  against fridge tokens, aggregates shopping list.
+- **Health tags (`prefer_health_tags`) are ranking-only, never a hard
+  filter** — documented intentionally in `MEALS_TAGGING.md`, not a bug, but a
+  real product gap: a listed health condition gets a soft nudge, not
+  enforcement.
+- **A large offline tagging pipeline exists but was never merged into
+  production.** `import_kaggle_recipes.py` → `tag_recipes.py` →
+  `normalize_quantities.py` → `curate_meals.py` → `validate_meals.py`
+  processed a Kaggle Food.com dump (83,781 raw recipes) into **66,428 curated,
+  tagged, QA'd recipes** (`meals_curated.jsonl`, ~132MB, dated Jul 25) — but
+  there is no merge script and no evidence this ever reached `meals.json` or
+  the Supabase `meals` table. Production still runs on the original 102
+  meals. This is recent, well-documented, apparently-still-wanted work with
+  its last mile missing, not dead code — worth finishing or explicitly
+  shelving.
+- **Allergen keyword drift risk**: `meal_planner._ALLERGEN_INGREDIENT_KEYWORDS`
+  and `tag_recipes.ALLERGEN_KEYWORDS` are two independently-maintained lists
+  with slightly different contents. `validate_meals.py` imports `tag_recipes`
+  directly for its own QA, so at least that pairing stays in sync; the
+  `meal_planner.py` copy doesn't.
+
+## Optimizer (`optimizer.py`, 335 lines) + geo/store search (`geo_utils.py`, 291 lines)
+
+- **Algorithm**: brute-force phased search, not a heuristic solver. Phase 1
+  prices every store, tracks the cheapest time-feasible single stop. Phase 2
+  prunes multi-store candidates to ones that beat the k=1 winner on ≥1 item.
+  Phase 3 enumerates `combinations()` for k=2..`MAX_STORES_PER_ROUTE` (config
+  default 3), `permutations()` per subset for fastest visit order, with a
+  frozenset memo skipping supersets of already-time-infeasible subsets. A
+  multi-store route only wins if it beats the k=1 winner by ≥ $0.01.
+  `MAX_STORES_TO_USE` (hardcoded 10, `config.py`) caps how many stores get
+  priced at all, enforced in `server.py` before the optimizer runs.
+- **Coverage-fix (`calculate_split_shopping_price`) confirmed correct**: an
+  unpriced item is now skipped (not `inf`-poisoning the route), with a route
+  rejected only if `priced_items/len(shopping_list) < OPTIMIZER_MIN_COVERAGE`
+  (default 0.5). Empty-list edge case guarded.
+- **Still open**: `location_names.index(store_id)` — O(n) — is called inside
+  BOTH k-loops (once per k=1 store, and once per store per k>1 subset), never
+  fixed despite being flagged in the 2026-07-05 pass. Real cost given Phase 3
+  is already combinatorial; cheap fix (build an index dict once).
+- **geo_utils.py**: store discovery is one Google Places `places_nearby` call
+  per chain keyword (`rank_by=distance`, first valid in-isochrone non-dupe
+  result), not one broad search — scales linearly with chain count on a
+  cache miss. Isochrone via OpenRouteService, 7-day cache; `server.py` (not
+  geo_utils.py) has a 15km bounding-box fallback if ORS returns nothing.
+  Nominatim/OSM is NOT used in geo_utils.py at all — it's a fallback
+  geocoder only in `server.py:_geocode_address` (after Google fails) and
+  independently the primary geocoder in `main.py` (CLI path).
+- **New finding, not in the 2026-07-05 pass**: `/generate_plan` and
+  `/price_list` in `server.py` (1425 lines total) independently reimplement
+  nearly the same isochrone → Places → filter-chains → matrix → optimizer
+  wiring — the code itself has a comment noting the duplication. This is most
+  of why `server.py` is large; extracting a shared "plan pipeline" helper
+  would cut it substantially. Neither `optimizer.py` nor `geo_utils.py`
+  individually needs splitting.
+
+## Coupons
+
+- `coupon_scraper.py` scrapes the **Flipp flyer API** for a postal code,
+  filters to known grocery chains, upserts into Supabase `coupons`
+  (`schema.sql`, RLS: public read / service_role write). **Actively wired
+  into the live pricing path** — called inline on every `/generate_plan`
+  request (not a scheduled job), budget-bounded (`_FETCH_BUDGET` 20s,
+  per-call timeout 8s) so a hung Flipp call can't stall a plan. Read back via
+  `_overlay_coupon_prices` in `server.py`. Not dead weight.
+- `scraper_worker.py` (a separate, standalone/crontab-style script) also
+  calls the coupon fetch, gated by `COUPON_ZIPCODES` — **that env var isn't
+  set anywhere in the repo**, so this path is effectively inert. Not wired
+  into `.github/workflows/mint-sessions.yml` (the only scheduled GH Action;
+  it only runs `mint_sessions.py`, nothing coupon-related).
+- **`flippscrape/`** (untracked, repo root) is an orphaned prototype with its
+  own nested `.git` (cloned from a different GitHub repo, `Kiizon/flippscrape`)
+  — writes to local CSVs via pandas, not Supabase, and is not referenced
+  anywhere in `backend/`. `coupon_scraper.py` was clearly adapted from it.
+  Candidate for deletion — a nested `.git` inside the repo is also a real risk
+  (accidental submodule confusion, `git add -A` behaving unexpectedly near it).
+
+## Frontend
+
+- **Screen flow**: home (`(tabs)/index.tsx`, start new / saved plans list) →
+  `location.tsx` (address + time, fires prewarm) → `search.tsx` (plan-detail
+  form, 5s `LoadingGate` masks backend prewarm) → `results.tsx` → optionally
+  `recipe_details.tsx` or `barcode.tsx`. Saved plans replay via `results.tsx`
+  with a `savedId` param.
+- **`planStore.ts` is pure in-memory** (max 5 saved plans, stable `id`
+  lookup) — no AsyncStorage, no Supabase read, explicitly documented as
+  session-only in the file. **Notable disconnect**: the backend DOES persist
+  completed plans server-side (`server.py:_save_results` → Supabase
+  `meal_plans`/`shopping_routes`), but the frontend's "saved plans" list never
+  reads that — it's a separate, local-only, reload-losing cache. Whether
+  that's intentional (privacy? simplicity?) or a gap worth closing is an open
+  question, not something the code answers.
+- **`ShoppingMap.tsx` (native) vs. `.web.tsx`**: meaningful divergence, not a
+  stub. Native renders a real `react-native-maps` `MapView` with
+  markers/polyline/auto-fit. Web renders a styled placeholder card (store
+  list text + an outbound "View Full Route on Google Maps" link) — no map
+  library on web at all.
+- **`(tabs)/explore.tsx`** is unmodified Expo template boilerplate — dead
+  code, safe to delete.
+
+## Known stubs / non-functional features (things that look implemented but aren't)
+
+- **Fridge-photo scanning** (`fridge_manager.analyze_fridge_image`) — always
+  returns `""`. Wired into `server.py` (fires when `fridge_image_path` is
+  set) but the code itself substitutes a user-facing warning instead of
+  pretending to have scanned anything. An abandoned vision prototype exists
+  at `archive/fridge_scanner_prototype/` (Gemini/vision client code) but
+  isn't imported anywhere — this was tried, then dropped for manual text
+  entry.
+- **`barcode.tsx`** — a demo screen with a hardcoded fake coupon code
+  (`R52-DEMO-2024-X99`), reached from `results.tsx`'s `onUseCoupon` as if it
+  were a real redemption flow. Not functional.
+
+## Open TODOs (known gaps, not fixed)
+
+**WAF/pricing:**
+1. Replay-path proxy mismatch — cookie minted via proxy IP, replayed
+   unproxied (see facts above). Not fixed.
+2. Walmart's fallback content-check (`_fetch_items_browser`) accepts any
+   non-empty `__NEXT_DATA__`; the primary path requires length ≥ 1000.
+   Inconsistent, never aligned.
+3. `"soft"` category unproven beyond the one failure mode tested.
+4. Request-velocity isn't captured as data — inferable only after the fact
+   from `chain_block_events` timestamp clustering.
+5. Trader Joe's has no categorized detection (different mechanism).
+6. No proxy pool purchased/configured yet. Recommendation: small pool (3-5)
+   of static/dedicated residential IPs for steady state + one
+   rotating-residential fallback line, since IP-cookie consistency during a
+   session is itself a trust signal these WAFs check.
+
+**Rest of the app:**
+7. Meal-tagging pipeline (66k recipes) never merged into production data.
+8. Allergen keyword lists drift between `meal_planner.py` and `tag_recipes.py`.
+9. `location_names.index()` O(n) in optimizer k-loops, still unfixed.
+10. `server.py`'s `/generate_plan` and `/price_list` duplicate the
+    geo/optimizer wiring — candidate for extraction.
+11. Frontend saved-plans (`planStore.ts`) vs. backend-persisted plans
+    (Supabase `meal_plans`) are disconnected — reload loses the UI list even
+    though the backend has the data.
+12. `flippscrape/` (orphaned, nested `.git`) and `(tabs)/explore.tsx`
+    (unmodified boilerplate) are safe-to-delete clutter.
+
+---
+
+## Shipped 2026-07-05 pass (background, unchanged since)
+
+- **Store-integration test pipeline** — [`backend/tests_integration/`](backend/tests_integration/).
+  Scores every pricing backend on resolution/coverage/sanity/latency/reliability.
+  `PYTHONPATH=. python -m tests_integration.run --tag kroger` etc. from `backend/`.
+  Adding a store = one `StoreCase` in `registry.py`.
+- **Cache speedup** — [`backend/cache_manager.py`](backend/cache_manager.py):
+  in-memory LRU tier over the disk cache, atomic writes + lock. Interface
+  unchanged (`cache.get`/`cache.set`). **Disk-tier unbounded-growth issue
+  (originally finding #7) is now resolved** — `DISK_MAX_FILES`/
+  `DISK_MAX_AGE_SECONDS` with a periodic sweep were added since.
+
+## Modularization findings still open
+
+| # | Finding | Current state | Action |
 |---|---|---|---|
-| 1 | ~55 one-off scripts clutter the tree | navigability | low / low |
-| 2 | Duplicated anti-bot session stack (Target + Walmart) | ~500 dup lines; fix-once | med |
-| 3 | Store dispatch not formalized (server.py) | adding a store touches ~5 places | med |
-| 4 | Misnamed engine: `kroger_pricing.py` is generic | clarity | low |
-| 5 | Prewarm redundancy races pricing | speed + reliability | low–med |
-| 6 | Inconsistent pricer return shapes | dispatch complexity | low |
-| 7 | `.cache/` grows unbounded on disk | disk | low |
-| 8 | Optimizer micro-opts | marginal | low |
-
-### 1. Clutter — ~55 one-off scripts in the tree
-
-- `backend/archive/` — 19 files (old prototypes, debug scripts).
-- `backend/probe_costco*.py` — 15 files (Costco reverse-engineering probes).
-- `backend/test_*.py` (root) — 11 ad-hoc scripts (now superseded by `tests_integration/`).
-- `backend/aldi/aldi_*` recon/debug — ~10 files.
-
-**Action:** move to a `backend/scratch/` (git-ignored) or delete (all in git
-history). Keep only `tests_integration/` as the sanctioned test path.
-
-### 2. Duplicated anti-bot session stack
-
-[`target_pricing.py`](backend/target_pricing.py) (858 lines) and
-[`walmart_pricing.py`](backend/walmart_pricing.py) (697 lines) reimplement the
-*same* machinery:
-
-- CloakBrowser warm (homepage + search-nav) to mint a clearance/PX cookie
-- proxy-pool rotation (`_rotate_proxy_session` / `_current_proxy` / `{session}`)
-- disk session cache (`_HTTP_SESSION_CACHE`, `_HTTP_COOKIE_TTL`, load/save/validate)
-- curl_cffi replay with JA3 impersonation
-- IP-refresh retry loop (`MAX_IP_REFRESHES`, `_WARM_TRIES`)
-- a `_Blocked` / `_ImpervaBlocked` exception
-
-ALDI, Instacart, King Soopers, and Trader Joe's carry fragments too.
-
-**Action:** extract `cloak_session.py` — a `CloakSession` class parameterized by
-`warm_url`, `search_url_builder`, a `is_blocked(resp)` predicate, and a
-`parse(text)` callback. Each store module shrinks to ~config + parser.
-Bonus: the **proxy-pool + honest no-proxy warning** fix already made for Target
-would auto-apply to Walmart.
-
-### 3. Store dispatch not formalized
-
-[`server.py`](backend/server.py) spreads the store logic across:
-
-- hardcoded if-ladder in `_fetch_loop_store` (Trader Joe's → Target → Walmart →
-  Costco → Instacart slug)
-- separate `_fetch_kroger` / `_fetch_aldi` / `_fetch_meijer` fetchers
-- `_WARM_CHAINS` for prewarm
-- scattered `is_X_store` matchers + `get_instacart_slug` + module imports
-
-**Action:** a `StoreAdapter` registry — each store = `{matcher, pricer, warmer,
-tags, fallback}`. Collapses the dispatch, the fetchers, and `_WARM_CHAINS` into
-one table; adding a store becomes a one-entry change. The
-[`tests_integration/registry.py`](backend/tests_integration/registry.py) shape is
-the template.
-
-### 4. Misnamed core engine
-
-[`kroger_pricing.py`](backend/kroger_pricing.py) (1328 lines) is **not**
-Kroger-specific — it's the generic product-matching + unit-conversion engine
-(`parse_size`, `to_base`, `find_best_purchase`, `build_priced_product`) that
-Walmart, Target, and Meijer all import.
-
-**Action:** rename → `product_matching.py` (or `pricing_core.py`) with a
-re-export shim (`from product_matching import *`) so existing imports don't break.
-
-### 5. Prewarm redundancy races pricing
-
-Three triggers fire prewarm — "Start New Meal Plan" ([index.tsx](frontend/app/(tabs)/index.tsx)),
-address tap, and Continue ([location.tsx](frontend/app/location.tsx)) — and each
-spawns a full Target browser warm. Because Target's warm often fails (no proxy),
-nothing caches, so all three run the full ~40s warm serially and **overrun into
-the pricing stage** instead of finishing before it.
-
-**Action:** add an in-flight / recent-success guard so the 2nd and 3rd triggers
-reuse the running/just-finished warm instead of launching their own. Optionally
-lower `TARGET_WARM_TRIES` so a doomed no-proxy warm fails fast (~10s) instead of
-lingering.
-
-### 6. Inconsistent pricer return shapes
-
-- most pricers: `(display_name, store_id, prices)`
-- Trader Joe's: `(display_name, prices)`
-- Costco: `(display_name, store_id, prices, meta)`
-
-**Action:** normalize to a small `PricingResult` dataclass; simplifies the server
-dispatch and the test adapters.
-
-### 7. `.cache/` grows unbounded on disk
-
-The disk cache never evicts (visible in git status — modified `.cache/*.json`).
-The new in-memory tier is capped, but disk is not.
-
-**Action:** a periodic prune (size cap or age sweep) on the disk tier.
-
-### 8. Optimizer micro-opts (low priority)
-
-[`optimizer.py`](backend/optimizer.py): repeated `location_names.index(store_id)`
-(O(n)) inside the k-loops; the final assignment recomputes
-`calculate_split_shopping_price`. Marginal given few stores — worth it only if the
-optimizer is ever fed many stores.
-
----
-
-## Speed levers (in priority order)
-
-Pricing is already well-parallelized (concurrent fan-out, sequential fan-in). The
-remaining levers:
-
-1. Cache in-memory tier — **done**.
-2. Prewarm dedup so warms finish *before* pricing (finding #5).
-3. Cache the Kroger live-store-id per (banner, area) to skip liveness probes on
-   repeat visits.
-4. Share one Instacart session across all IC stores in a route (currently
-   bootstrapped per-slug).
-
----
-
-## Recommended sequence
-
-Each phase is now verifiable via the test pipeline.
-
-- **Phase 1 — safe quick wins:** relocate/delete the ~55 scratch scripts (#1);
-  rename `kroger_pricing.py` → `product_matching.py` with a shim (#4); add a
-  disk-cache size cap (#7).
-- **Phase 2 — high architectural value:** extract `cloak_session.py` shared by
-  Target + Walmart (#2) — collapses ~500 duplicated lines and auto-hardens both
-  flaky stores; plus the prewarm dedup (#5).
-- **Phase 3 — biggest structural change:** `StoreAdapter` registry to collapse
-  the server dispatch (#3) and normalize return shapes (#6) — "add a store"
-  becomes a one-file change.
-
-**Recommendation:** start with **Phase 2** — highest leverage, and it directly
-hardens the two flakiest stores.
-
----
-
-## Open context (from prior work)
-
-- **No proxy configured** (`CLOAK_PROXY` / `TARGET_PROXY` unset) — Target/Walmart
-  anti-bot warms stay a coin-flip until a rotating residential proxy (or pool) is
-  set. This is the real fix for those two stores, not more scraping code.
-- **Kroger multi-banner** is complete and verified: all banners resolve to the
-  right `chain`, dead-ID markets (Fred Meyer, King Soopers) pick a live store, and
-  transient 503s are retried instead of silently dropping items.
+| 1 | Repo clutter | Root-level `probe_costco*.py`/`test_*.py` cleaned up (moved into `costco/`). `archive/` grew 19→27 files. Add: `flippscrape/`, `explore.tsx` (see above) | delete/relocate; `.gitignore` a `scratch/` dir |
+| 3 | Store dispatch not formalized — `server.py` if-ladders, separate fetchers, scattered `is_X_store` matchers | unchanged | a `StoreAdapter` registry, shape of `tests_integration/registry.py` |
+| 4 | `kroger_pricing.py` (1328 lines) is actually the generic product-matching engine, not Kroger-specific | unchanged, not renamed | rename → `product_matching.py` + re-export shim |
+| 6 | Inconsistent pricer return shapes | narrower than originally stated: only Trader Joe's (2-tuple) and Costco (4-tuple) differ from the 3-tuple everyone else uses | normalize to a `PricingResult` dataclass |
+| 8 | `optimizer.py` O(n) `.index()` in k-loops | confirmed still present, precise locations known (see Optimizer section) | build an index dict once |
