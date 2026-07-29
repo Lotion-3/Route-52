@@ -16,13 +16,17 @@ on:
         description: 'The "cookies" object from a saved session file (paste as JSON)'
         required: true
       term:
-        description: "Search term to test"
+        description: "Search term to test (ignored if item_count > 1)"
         required: false
         default: "milk"
       store_id:
         description: "Target store id"
         required: false
         default: "1771"
+      item_count:
+        description: "If > 1, fires this many CONCURRENT requests (one per grocery term) instead of a single one"
+        required: false
+        default: "1"
 
 jobs:
   replay:
@@ -46,4 +50,5 @@ jobs:
           COOKIE_JSON: ${{ inputs.cookie_json }}
           TERM: ${{ inputs.term }}
           STORE_ID: ${{ inputs.store_id }}
+          ITEM_COUNT: ${{ inputs.item_count }}
         run: python test_cookie_replay.py
