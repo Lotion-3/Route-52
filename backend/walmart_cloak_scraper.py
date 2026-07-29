@@ -155,6 +155,26 @@ def _extract_aisle_from_product_page(page) -> str | None:
     return None
 
 
+def _save_cookies(page, filepath=".walmart_cookies.json"):
+    """Extract all cookies from the browser context and save them to disk + print."""
+    cookies = page.context.cookies()
+    print("\n  [cookies] =============================================")
+    print(f"  [cookies] Total: {len(cookies)} cookies")
+    for c in cookies:
+        print(f"  [cookies]   {c['name']:30s} = {c['value'][:60]}")
+    print(f"  [cookies] =============================================")
+
+    cookie_jar = {c["name"]: c["value"] for c in cookies}
+    try:
+        import pathlib
+        pathlib.Path(filepath).write_text(json.dumps(cookie_jar, indent=2))
+        print(f"  [cookies] Saved to {filepath}")
+    except Exception as e:
+        print(f"  [cookies] Failed to save: {e}")
+
+    return cookie_jar
+
+
 def main():
     print(f"CloakBrowser Walmart scraper")
     print(f"  ZIP: {ZIP_CODE} | Search: '{SEARCH_TERM}'")
@@ -179,10 +199,16 @@ def main():
         print("\n[1/3] Setting location to ZIP {}...".format(ZIP_CODE))
         set_location(page, ZIP_CODE)
 
+        # Save cookies after location set
+        _save_cookies(page, ".walmart_cookies.json")
+
         # Step 2: Search
         print(f"\n[2/3] Searching for '{SEARCH_TERM}'...")
         page.goto(SEARCH_URL, wait_until="domcontentloaded", timeout=60000)
         time.sleep(5)  # Let the page fully render (PerimeterX checks, etc.)
+
+        # Save cookies after search (PerimeterX _px3 should be set now)
+        _save_cookies(page, ".walmart_cookies.json")
 
         html = page.content()
         items = _extract_items_from_html(html)
