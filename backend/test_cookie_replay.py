@@ -136,12 +136,18 @@ def _hit(term: str, store_id: str, cookies: dict, ua: str) -> tuple[str, bool, s
 
 
 def _run_batch(cookies: dict, ua: str, store_id: str, item_count: int) -> int:
+    # Cycle the list rather than require item_count <= len(_GROCERY_TERMS) --
+    # repeated terms are fine here, this is testing WAF/volume tolerance for
+    # one cookie, not product-matching variety.
     terms = [_GROCERY_TERMS[i % len(_GROCERY_TERMS)] for i in range(item_count)]
     print(f"Replaying saved cookie ({len(cookies)} entries) from THIS runner's IP "
           f"-- {item_count} CONCURRENT requests, store={store_id}\n", flush=True)
 
     t0 = time.time()
     results = []
+    # 20 workers matches the earlier local burst test (20/20 succeeded there);
+    # not tuned for a ceiling, just enough concurrency to look like real
+    # basket-pricing load rather than a trickle of sequential requests.
     with ThreadPoolExecutor(max_workers=20) as pool:
         futs = {pool.submit(_hit, t, store_id, cookies, ua): t for t in terms}
         for fut in as_completed(futs):

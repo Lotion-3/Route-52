@@ -1,6 +1,6 @@
 # basketBuddy — Codebase Review & State
 
-_Last updated: 2026-07-27_
+_Last updated: 2026-07-28_
 
 Dense reference doc, not a narrative — written to minimize tokens spent
 re-deriving things in a future session. Trust this over a code comment that
@@ -44,7 +44,55 @@ contradicts it (some comments are stale — noted below where that's known).
 - **The proxy (`CLOAK_PROXY`) only ever backs the browser-warm step**
   (`kwargs["proxy"]` into `browser_gate.launch`). The curl_cffi REPLAY calls —
   the bulk of request volume — run unproxied, from whatever IP the process is
-  on. Real, unresolved geo/session-consistency gap (see Open TODOs).
+  on. **This was tested directly and found to be fine, not a gap** — see Open
+  TODOs #1.
+- **Target retired `redsky.target.com/redsky_aggregations/v1/web/plp_search_v2`
+  (2026-07-28 discovery).** A real browser navigating `target.com/s?searchTerm=...`
+  never calls it anymore — search results now come from
+  `https://cdui-orchestrations.target.com/cdui_orchestrations/v1/pages/slp`.
+  Calling the retired endpoint 403s with `captchaRelativeURL` regardless of
+  cookie validity, proxy, or IP — confirmed by replaying a fresh, healthy
+  cookie against it from the SAME browser session that minted it (in-page
+  `fetch()`, Playwright's own `ctx.request`, AND external curl_cffi all 403).
+  `target_pricing.py` migrated to the new endpoint (`_slp_url`/
+  `_extract_slp_products`); `_to_kroger_format`/`_price_value` needed zero
+  changes — the new response's `item.product_description.title`/
+  `item.primary_brand.name`/`price.current_retail` fields are identical
+  paths. New endpoint's required params are lighter than the old one:
+  `zip`/`state`/`latitude`/`longitude`/`timezone` are all NOT required —
+  `store_id`/`store_ids`/`scheduled_delivery_store_id` alone scope location.
+  This was very likely why GitHub Actions' mint job kept failing (Target
+  mint always failed; the old un-rewritten `mint_sessions.py` only tried
+  Walmart+Target with no other chain to fall back on, and returned failure
+  unless at least one succeeded).
+- **Cross-IP cookie replay works, tested directly, not just assumed.**
+  Minted a Target cookie locally (laptop, no proxy), saved it raw, and
+  replayed it from a GitHub Actions runner (`.github/workflows/
+  test-cookie-replay.yml` + `backend/test_cookie_replay.py`, workflow_dispatch
+  only) — genuinely different IP, not just a different device on the same
+  home network (confirmed: devices on the same home WiFi share one public
+  IP via NAT, so "test on another laptop at home" is NOT a different-IP
+  test). Result: 200 OK, real products, both a single request and a 100-item
+  concurrent batch. So a cookie minted on one network is NOT bound to that
+  network for replay purposes, at least in this one-off test.
+- **A single static IP CAN get volume-flagged — chain-dependent, and it
+  happened within one day.** Same home laptop IP: Target tolerated 8 repeated
+  full-25-item-basket runs plus a 20-way and a 104-way concurrent burst with
+  zero degradation. Walmart flipped from 7/7 clean warms to 100%-blocked
+  (fast path AND the 5-attempt CloakBrowser-pool fallback, all IPs) within
+  the same day, from ordinary testing volume — not even real multi-user
+  scale. Two different WAF vendors, very different per-IP tolerance. Whether
+  Walmart's block is a temporary cooldown or durable is unresolved (would
+  need a retest days later, deliberately not done same-day to avoid
+  compounding it).
+- **A minted Target cookie survived at least 150 minutes with zero re-warm**
+  (replayed unchanged at t+0/5/15/30/45/60/75/90/120/150min, one lightweight
+  search each time, all succeeded) — well past the `TARGET_COOKIE_TTL`
+  default of 3600s (60min) that `_load_http_session()`/`mint_sessions.py`'s
+  skip-if-fresh logic currently assumes. That assumed TTL is conservative;
+  never pushed to actual failure (test was stopped at 150min to mint a
+  fresh, savable cookie instead — see below). Not yet re-verified after the
+  2026-07-28 endpoint migration landed.
 
 ## Chain mechanism map (US chains)
 
@@ -92,14 +140,34 @@ first, falls back to a local browser warm only on a cache miss. Also
 pre-fetches Walmart/Target's static JS/CSS (`chain_assets`) so Render never
 re-downloads those either. Skips re-minting a chain younger than half its TTL.
 
-**Unverified from this environment:**
-- Whether `chain_sessions`/`chain_assets`/`chain_block_events` (in
-  `schema.sql`) actually exist in the real Supabase project. If not, every
-  load()/save() fails silently by design and the whole offload is a no-op.
-- Whether GH Actions secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-  `CLOAK_PROXY`) are actually set in repo settings.
-- No production run has been observed with any of this deployed — all
-  testing was local/unproxied against live sites from a dev sandbox.
+**Verified 2026-07-28 (previously unverified):**
+- `chain_sessions` DOES exist live, but was missing the `extra` column this
+  rewrite's `save()`/`load()` write/read — needs
+  `ALTER TABLE chain_sessions ADD COLUMN IF NOT EXISTS extra JSONB DEFAULT '{}'::jsonb;`.
+  `chain_assets` and `chain_block_events` did NOT exist at all (confirmed via
+  a direct Supabase query, not inference) — every `save_assets()`/
+  `log_block_event()` call had been failing silently since this code was
+  written, which is exactly why nothing surfaced the Target endpoint
+  breakage sooner. Both need the `CREATE TABLE` statements in `schema.sql`
+  run against the live project.
+- **New: `.github/workflows/test-cookie-replay.yml` + `backend/
+  test_cookie_replay.py`** (2026-07-28). Manual-only (`workflow_dispatch`),
+  not on the cron, not related to the actual mint pipeline. Diagnostic tool:
+  paste a saved cookie's `cookies` object + optional `item_count` (fires
+  that many concurrent requests instead of one) to test whether a cookie
+  minted elsewhere still works replayed from a GH runner's IP. Standalone
+  script (curl_cffi only, no browser, no `import target_pricing`) so the job
+  stays fast. This is what produced the cross-IP-replay-works finding above.
+- `CLOAK_PROXY` IS set as a working GH Actions secret (used successfully
+  pre-2026-07-28 for Walmart mints going by `chain_sessions.walmart.updated_at`
+  being fresh).
+- This whole rewrite (session_store.py's asset/block-event additions,
+  mint_sessions.py's ALDI/Instacart rotation + skip-if-fresh + fallback-
+  tolerant exit code, the schema migrations) was sitting **uncommitted** in
+  the working tree as of 2026-07-28 — not yet deployed, despite being what
+  every local test in this doc was actually run against. Committed + pushed
+  to `main` 2026-07-28 alongside the Target endpoint fix (see facts above).
+  Still needs: the two Supabase migrations above (not yet confirmed run).
 
 ## Prewarm (frontend + `/prewarm`)
 
@@ -240,19 +308,28 @@ nearby stores first and only warms chains actually in range.
 ## Open TODOs (known gaps, not fixed)
 
 **WAF/pricing:**
-1. Replay-path proxy mismatch — cookie minted via proxy IP, replayed
-   unproxied (see facts above). Not fixed.
+1. ~~Replay-path proxy mismatch~~ — **tested directly 2026-07-28, not an
+   issue**: a Target cookie minted with no proxy replayed successfully from
+   a completely different IP (a GitHub Actions runner), single request and a
+   100-item concurrent batch. See facts above.
 2. Walmart's fallback content-check (`_fetch_items_browser`) accepts any
    non-empty `__NEXT_DATA__`; the primary path requires length ≥ 1000.
    Inconsistent, never aligned.
 3. `"soft"` category unproven beyond the one failure mode tested.
-4. Request-velocity isn't captured as data — inferable only after the fact
-   from `chain_block_events` timestamp clustering.
+4. Request-velocity **is now partially captured as a real observation**
+   (not yet as logged data — `chain_block_events` still needs the schema
+   migration run): Walmart went from 7/7 clean warms to 100%-blocked within
+   one day of ordinary test volume from one IP; Target showed zero
+   degradation under materially higher volume (104-way concurrent burst, 8x
+   repeated full-basket runs). Chain-dependent, not a single "IP reputation"
+   knob. `chain_block_events` (once the table exists) would make this
+   queryable instead of inferred from test notes.
 5. Trader Joe's has no categorized detection (different mechanism).
-6. No proxy pool purchased/configured yet. Recommendation: small pool (3-5)
-   of static/dedicated residential IPs for steady state + one
-   rotating-residential fallback line, since IP-cookie consistency during a
-   session is itself a trust signal these WAFs check.
+6. No proxy pool purchased/configured yet for Walmart specifically — Target
+   looks safe to self-host proxy-free (item 1), Walmart does not yet (item
+   4). Recommendation unchanged for Walmart: a proxy or rotating-residential
+   line until its block (2026-07-28) is confirmed either temporary (retest
+   days later) or durable.
 
 **Rest of the app:**
 7. Meal-tagging pipeline (66k recipes) never merged into production data.
