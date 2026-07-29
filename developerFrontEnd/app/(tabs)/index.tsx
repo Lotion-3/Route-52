@@ -1,0 +1,208 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useRouter, useNavigation } from 'expo-router';
+import Logo from '@/components/Logo';
+import GradientButton from '@/components/GradientButton';
+import { planStore, SavedPlan } from '@/services/planStore';
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
+
+  // Initial load and update whenever the screen comes into focus
+  useEffect(() => {
+    // Initial load
+    setSavedPlans(planStore.getSavedPlans());
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      setSavedPlans(planStore.getSavedPlans());
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleStartNew = () => {
+    // No warming here — we don't know which stores are relevant until an
+    // address is entered. Warming used to fire both Walmart + Target
+    // unconditionally at this point (no address, no idea if either is even
+    // nearby), which just meant Render launched browsers for stores that
+    // might not matter. See location.tsx: warming now only happens for
+    // chains actually found near the address the user enters.
+    router.push('/location');
+  };
+
+  // Address the plan by its stable id, not its position. With an index, deleting
+  // any plan shifted every later one and the link opened the wrong plan.
+  const handleViewSaved = (id: string) => {
+    router.push({ pathname: '/results', params: { savedId: id } });
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerSection}>
+        <Logo size={144} />
+        <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
+      </View>
+
+      <View style={styles.actionSection}>
+        <GradientButton
+          title="Start New Meal Plan"
+          onPress={handleStartNew}
+        />
+      </View>
+
+      <View style={styles.savedSection}>
+        <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
+        {savedPlans.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
+          </View>
+        ) : (
+          savedPlans.map((entry, index) => (
+            <View key={entry.id} style={styles.savedCardContainer}>
+              <TouchableOpacity
+                style={styles.savedCard}
+                onPress={() => handleViewSaved(entry.id)}
+              >
+                <View style={styles.savedCardContent}>
+                  <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
+                  <Text style={styles.savedCardMeta}>
+                    {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
+                  </Text>
+                </View>
+                <Text style={styles.viewLink}>View →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => {
+                  planStore.deleteById(entry.id);
+                  setSavedPlans(planStore.getSavedPlans());
+                }}
+              >
+                <Text style={styles.deleteText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+        {planStore.isFull && (
+          <Text style={styles.limitText}>
+            Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
+          </Text>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#F9F9F9',
+    padding: 24,
+    paddingTop: 80,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    fontFamily: 'Garamond-Bold',
+    marginTop: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  actionSection: {
+    marginBottom: 40,
+  },
+  savedSection: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 16,
+    fontFamily: 'Garamond-Bold',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  savedCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  savedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  deleteButton: {
+    marginLeft: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  savedCardContent: {
+    flex: 1,
+  },
+  savedCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  savedCardMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  viewLink: {
+    color: '#1A1A1A',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  limitText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  }
+});
