@@ -1,6 +1,6 @@
 # basketBuddy — Codebase Review & State
 
-_Last updated: 2026-07-28_
+_Last updated: 2026-07-29_
 
 Dense reference doc, not a narrative — written to minimize tokens spent
 re-deriving things in a future session. Trust this over a code comment that
@@ -93,6 +93,16 @@ contradicts it (some comments are stale — noted below where that's known).
   never pushed to actual failure (test was stopped at 150min to mint a
   fresh, savable cookie instead — see below). Not yet re-verified after the
   2026-07-28 endpoint migration landed.
+- **5 Target cookies minted 2026-07-28 all still worked 2026-07-29**
+  (tested via `test_saved_target_cookies.py`). All returned 8 products,
+  response times 0.3–1.7s. So Target cookies can survive at least ~24h,
+  not just the 150min window tested earlier. Not tested to failure.
+- **Walmart PerimeterX cookie minting works locally via standalone script**
+  (`mint_walmart_cookies.py`). Tested 2026-07-29: CloakBrowser warm produced
+  39 cookies including `_px3`, with `__NEXT_DATA__` ≥ 1000 chars. This is the
+  same warm logic as `walmart_pricing._warm_http_session()` but extracted into
+  a reusable, configurable CLI tool. No proxy required for a clean mint from
+  a home IP.
 
 ## Chain mechanism map (US chains)
 
@@ -150,14 +160,42 @@ re-downloads those either. Skips re-minting a chain younger than half its TTL.
   written, which is exactly why nothing surfaced the Target endpoint
   breakage sooner. Both need the `CREATE TABLE` statements in `schema.sql`
   run against the live project.
-- **New: `.github/workflows/test-cookie-replay.yml` + `backend/
-  test_cookie_replay.py`** (2026-07-28). Manual-only (`workflow_dispatch`),
-  not on the cron, not related to the actual mint pipeline. Diagnostic tool:
-  paste a saved cookie's `cookies` object + optional `item_count` (fires
-  that many concurrent requests instead of one) to test whether a cookie
-  minted elsewhere still works replayed from a GH runner's IP. Standalone
-  script (curl_cffi only, no browser, no `import target_pricing`) so the job
-  stays fast. This is what produced the cross-IP-replay-works finding above.
+- **New: `test-cookie-replay.yml` + `backend/test_cookie_replay.py`** (2026-07-28).
+  Manual-only (`workflow_dispatch`), not on the cron, not related to the actual
+  mint pipeline. Diagnostic tool: paste a saved cookie's `cookies` object +
+  optional `item_count` (fires that many concurrent requests instead of one)
+  to test whether a cookie minted elsewhere still works replayed from a GH
+  runner's IP. Standalone script (curl_cffi only, no browser, no `import
+  target_pricing`) so the job stays fast. This is what produced the
+  cross-IP-replay-works finding above.
+  **Updated 2026-07-29:** now auto-detects `backend/.target_http_session.json`
+  if `COOKIE_JSON` env var is not set, so you can just run it with no inputs
+  after a local mint. Also reads `ua` from the session file if `UA` env var
+  is not set. "200 OK but no products" message replaced with dynamic status
+  code reporting.
+- **New: `test-walmart-cookie-replay.yml` + `backend/test_walmart_cookie_replay.py`**
+  (2026-07-29). Same shape as the Target version but for Walmart. Standalone
+  curl_cffi replay test that checks for `px-captcha` (explicit block), missing
+  `__NEXT_DATA__` (soft block), and validates `itemStacks[].items[]` from the
+  embedded JSON. Also auto-detects `backend/.walmart_http_session.json` if
+  `COOKIE_JSON` is unset. This is the file that makes cross-IP Walmart replay
+  testing possible on CI without ever launching a browser.
+- **New: `backend/mint_walmart_cookies.py`** (2026-07-29). Standalone Walmart
+  PerimeterX cookie minter. Launches CloakBrowser, warms via home → search
+  (two navigations, verified required), waits for `_px3` to settle, validates
+  `__NEXT_DATA__` ≥ 1000 chars, and saves to
+  `backend/.minted_walmart_cookies.json` (JSON array, appended per run).
+  Supports `--count N` for batch minting, `--proxy URL` for proxy rotation,
+  `--headed` for debug visibility. No dependency on `walmart_pricing.py` or
+  any other backend module — only `cloakbrowser` and stdlib.
+- **New: `backend/test_saved_target_cookies.py`** (2026-07-29). Batch diagnostic
+  that reads all 5 entries from `backend/saved_target_cookies.json` and fires
+  a Target SLP search for each, printing per-cookie results + summary. Used
+  to produce the 24h cookie-durability finding above.
+- **Updated: `backend/walmart_cloak_scraper.py`** (2026-07-29). Added
+  `_save_cookies(page, filepath)` — prints every cookie name+value to terminal
+  and persists them as a JSON dict. Called at two points: after the location
+  pin and after the search page loads (when PerimeterX `_px3` gets set).
 - `CLOAK_PROXY` IS set as a working GH Actions secret (used successfully
   pre-2026-07-28 for Walmart mints going by `chain_sessions.walmart.updated_at`
   being fresh).
@@ -304,6 +342,38 @@ nearby stores first and only warms chains actually in range.
 - **`barcode.tsx`** — a demo screen with a hardcoded fake coupon code
   (`R52-DEMO-2024-X99`), reached from `results.tsx`'s `onUseCoupon` as if it
   were a real redemption flow. Not functional.
+
+## Diagnostic scripts (cookie minting & replay testing)
+
+A family of standalone scripts in `backend/` for manual cookie diagnostics.
+All deliberately avoid importing the production pricing modules so they stay
+lightweight and CI-friendly.
+
+| Script | Chain | Purpose | Deps |
+|---|---|---|---|
+| `test_cookie_replay.py` | Target | Replay a saved Target PerimeterX cookie from GH runner's IP (or local) — single or N concurrent. Auto-reads `.target_http_session.json`. | curl_cffi only |
+| `test_walmart_cookie_replay.py` | Walmart | Same as above for Walmart. Checks `px-captcha` + `__NEXT_DATA__`. Auto-reads `.walmart_http_session.json`. | curl_cffi only |
+| `test_saved_target_cookies.py` | Target | Batch-test all cookies in `saved_target_cookies.json` (5 as of 2026-07-28). Prints per-cookie status + summary. | curl_cffi only |
+| `mint_walmart_cookies.py` | Walmart | Mint fresh PerimeterX cookies via CloakBrowser home→search warm. Supports `--count N`, `--proxy`, `--headed`. Saves to `.minted_walmart_cookies.json`. | cloakbrowser + stdlib |
+
+CI workflows (`.github/workflows/`):
+- `test-cookie-replay.yml` — manual `workflow_dispatch`, runs `test_cookie_replay.py` on ubuntu-latest, 5min timeout.
+- `test-walmart-cookie-replay.yml` — same for Walmart, runs `test_walmart_cookie_replay.py`.
+
+Usage examples:
+```bash
+# Mint 3 Walmart cookies in sequence
+python backend/mint_walmart_cookies.py --count 3
+
+# Test the most recently minted Walmart cookie from CI
+# → paste the "cookies" object into the GH Actions workflow_dispatch input
+
+# Test all 5 saved Target cookies locally
+python backend/test_saved_target_cookies.py
+
+# Auto-detect a fresh local Target cookie (no env vars needed)
+python backend/test_cookie_replay.py
+```
 
 ## Open TODOs (known gaps, not fixed)
 
