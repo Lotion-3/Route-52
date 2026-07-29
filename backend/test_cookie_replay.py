@@ -1,20 +1,23 @@
 """
-One-off diagnostic: replay an ALREADY-MINTED Target cookie (passed in via the
-COOKIE_JSON env var) from wherever this script runs, with no re-mint. Used to
-test whether a cookie minted on one machine/network still works when replayed
-from a different one (e.g. minted on a home laptop, replayed from a GitHub
-Actions runner's IP).
+One-off diagnostic: replay an ALREADY-MINTED Target PerimeterX cookie from
+`.target_http_session.json` (or a COOKIE_JSON env var) with no re-mint.
+Tests whether a cookie minted on one machine/network still works when replayed
+from a different IP (e.g. minted on a home laptop, replayed from GitHub Actions).
 
-Deliberately standalone (no `import target_pricing`) so it only needs
-curl_cffi, not the full backend dependency set -- this keeps the workflow
-fast and avoids installing Playwright/CloakBrowser for a job that never
-launches a browser.
+Deliberately standalone (no `import target_pricing`) so it only needs curl_cffi,
+not the full backend dependency set -- keeps CI fast and avoids installing
+Playwright/CloakBrowser for a job that never launches a browser.
+
+Cookie source (checked in order):
+  1. COOKIE_JSON env var  -- explicit override
+  2. backend/.target_http_session.json  -- auto-detect (target_pricing.py's
+     persisted session). The `ua` field is also read from this file if UA env
+     var is not set.
 
 Env:
-    COOKIE_JSON   required. The "cookies" object from a saved session file
-                  (backend/target_pricing.py's _warm_http_session() output),
-                  e.g. {"_px3": "...", "pxcts": "...", ...}.
-    UA            optional user-agent string (defaults to a recent Chrome UA).
+    COOKIE_JSON   optional. The "cookies" dict from a saved Target session.
+                  If unset, reads from backend/.target_http_session.json.
+    UA            optional user-agent string (defaults to file's ua or Chrome).
     TERM          optional search term (default "milk"). Ignored if ITEM_COUNT > 1.
     STORE_ID      optional Target store id (default 1771).
     ITEM_COUNT    optional (default 1). If > 1, fires that many CONCURRENT
@@ -30,6 +33,7 @@ import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 from curl_cffi import requests as ccffi
 
@@ -55,6 +59,7 @@ _GROCERY_TERMS = [
 ]
 
 _KEY = "9f36aeafbe60771e321a7cc95a78140772ab3e96"
+_SESSION_FILE = Path(__file__).parent / ".target_http_session.json"
 _SLP_URL = "https://cdui-orchestrations.target.com/cdui_orchestrations/v1/pages/slp"
 _DEFAULT_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
@@ -88,19 +93,45 @@ def _extract_products(text: str) -> list:
     return []
 
 
+def _load_cookies_from_file() -> tuple[dict, str] | None:
+    """Read cookies + ua from the persisted session file, or None."""
+    if not _SESSION_FILE.exists():
+        return None
+    try:
+        data = json.loads(_SESSION_FILE.read_text())
+        cookies = data.get("cookies")
+        ua = data.get("ua", "")
+        if isinstance(cookies, dict) and cookies:
+            return cookies, ua
+    except Exception:
+        pass
+    return None
+
+
 def main() -> int:
     raw = os.environ.get("COOKIE_JSON", "")
-    if not raw:
-        print("COOKIE_JSON env var is required (paste the saved cookie's "
-              "'cookies' object).", flush=True)
-        return 1
-    try:
-        cookies = json.loads(raw)
-    except Exception as e:
-        print(f"COOKIE_JSON is not valid JSON: {repr(e)[:150]}", flush=True)
-        return 1
+    if raw:
+        try:
+            cookies = json.loads(raw)
+        except Exception as e:
+            print(f"COOKIE_JSON is not valid JSON: {repr(e)[:150]}", flush=True)
+            return 1
+        if not isinstance(cookies, dict):
+            print("COOKIE_JSON must be a JSON object (key-value pairs).", flush=True)
+            return 1
+        print(f"Loaded cookie from COOKIE_JSON env var ({len(cookies)} entries).", flush=True)
+        file_ua = None
+    else:
+        loaded = _load_cookies_from_file()
+        if loaded is None:
+            print("No cookie source found. Set COOKIE_JSON env var or run "
+                  "target_pricing.py first to create "
+                  f"{_SESSION_FILE}.", flush=True)
+            return 1
+        cookies, file_ua = loaded
+        print(f"Loaded cookie from {_SESSION_FILE.name} ({len(cookies)} entries).", flush=True)
 
-    ua = os.environ.get("UA") or _DEFAULT_UA
+    ua = os.environ.get("UA") or file_ua or _DEFAULT_UA
     term = os.environ.get("TERM") or "milk"
     store_id = os.environ.get("STORE_ID") or "1771"
     item_count = int(os.environ.get("ITEM_COUNT") or "1")
@@ -132,7 +163,7 @@ def _hit(term: str, store_id: str, cookies: dict, ua: str) -> tuple[str, bool, s
     products = _extract_products(resp.text)
     if products:
         return term, True, f"{len(products)} products", time.time() - t0
-    return term, False, "200 OK but no products", time.time() - t0
+    return term, False, f"no products (status={resp.status_code})", time.time() - t0
 
 
 def _run_batch(cookies: dict, ua: str, store_id: str, item_count: int) -> int:
