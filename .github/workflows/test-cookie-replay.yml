@@ -1,0 +1,49 @@
+name: Test cookie replay (manual, one-off)
+
+# Diagnostic only -- not on any schedule. Replays an already-minted Target
+# cookie (pasted in as an input) from THIS runner's IP, with no re-mint, to
+# test whether a cookie minted on one network still works when replayed from
+# a genuinely different one (GitHub's cloud IP vs. a home network). See
+# backend/test_cookie_replay.py.
+#
+# Deliberately lightweight: only curl_cffi is installed, no Playwright/
+# CloakBrowser -- this job never launches a browser.
+
+on:
+  workflow_dispatch:
+    inputs:
+      cookie_json:
+        description: 'The "cookies" object from a saved session file (paste as JSON)'
+        required: true
+      term:
+        description: "Search term to test"
+        required: false
+        default: "milk"
+      store_id:
+        description: "Target store id"
+        required: false
+        default: "1771"
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install curl_cffi
+        run: pip install curl_cffi
+
+      - name: Replay cookie from this runner's IP
+        env:
+          COOKIE_JSON: ${{ inputs.cookie_json }}
+          TERM: ${{ inputs.term }}
+          STORE_ID: ${{ inputs.store_id }}
+        run: python test_cookie_replay.py
