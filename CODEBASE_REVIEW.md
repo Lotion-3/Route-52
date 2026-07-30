@@ -1,6 +1,6 @@
 # basketBuddy — Codebase Review & State
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-07-30_
 
 Dense reference doc, not a narrative — written to minimize tokens spent
 re-deriving things in a future session. Trust this over a code comment that
@@ -97,19 +97,120 @@ contradicts it (some comments are stale — noted below where that's known).
   (tested via `test_saved_target_cookies.py`). All returned 8 products,
   response times 0.3–1.7s. So Target cookies can survive at least ~24h,
   not just the 150min window tested earlier. Not tested to failure.
+- **`saved_target_cookies.json` is now wired into production** (2026-07-30,
+  `target_pricing.py`). `_ensure_http_session()` tries this pool FIRST —
+  confirmed live at 27+ hours old during this session, dramatically past
+  `TARGET_COOKIE_TTL`'s 3600s assumption — and only falls through to the
+  Supabase/disk-cache/CloakBrowser-mint chain once every pool entry is
+  individually confirmed dead (`_next_pool_session`, `_pool_idx`,
+  `_session_source`). A block on a pool-sourced session just advances to the
+  next pool cookie (no IP rotation, no re-mint cost); a working pool session
+  is no longer dropped between requests (was previously dropped
+  unconditionally every call via `price_all_target`'s `finally` block).
+  `TARGET_COOKIE_POOL_FILE` env var overrides the pool path (`""` disables
+  it).
+- **New: `backend/build_target_store_directory.py`** (2026-07-30). RedSky's
+  `nearby_stores_v1` (dynamic nearest-store lookup) was confirmed dead —
+  403 + `captchaRelativeURL` via curl_cffi for ANY cookie, including zero
+  cookies, for ANY postal code, even the cookie's own home location. Every
+  Target pricing call was silently falling back to a hardcoded default store
+  (Indianapolis) regardless of the requesting user's actual location. This
+  script geocodes every store in Target's public sitemap
+  (`target.com/sl/sitemap_0001.xml.gz`, ~2019 stores, no WAF exposure) by
+  its URL slug via Nominatim, producing `target_store_directory.json`
+  (`{store_id, slug, lat, lon}`). `target_pricing._resolve_store_id` now
+  tries a local haversine nearest-neighbor lookup against this directory
+  first (instant, zero network calls, zero WAF risk); the legacy
+  `nearby_stores_v1` call is kept only as a fallback in case Target ever
+  un-blocks it. Heuristic accuracy (slug-based, not exact street address)
+  but a large improvement over "everyone gets Indianapolis."
 - **Walmart PerimeterX cookie minting works locally via standalone script**
   (`mint_walmart_cookies.py`). Tested 2026-07-29: CloakBrowser warm produced
   39 cookies including `_px3`, with `__NEXT_DATA__` ≥ 1000 chars. This is the
   same warm logic as `walmart_pricing._warm_http_session()` but extracted into
   a reusable, configurable CLI tool. No proxy required for a clean mint from
-  a home IP.
+  a home IP (though home-IP mint reliability fluctuates — see below).
+- **Walmart's per-cookie concurrency limit is a hard, instant wall at exactly
+  20 simultaneous requests — confirmed empirically, not a total-item-count or
+  cumulative-volume limit** (2026-07-30, `test_walmart_concurrency_matrix.py`,
+  8 trials across 8 fresh cookies). 20 concurrent always succeeded, including
+  40 total items split across two 20-wide waves 12s apart, and 30 total items
+  trickled through at concurrency 5. 21, 22, 23, 25, and 30 concurrent ALL
+  failed completely and instantly — every request in the burst blocked,
+  including the very first one submitted (not a gradual "queued tail"
+  degradation). This resolved a real ambiguity: the user's own manual testing
+  via `test-walmart-cookie-replay.yml` (`item_count` input) saw success at 20
+  but failure at 31 — but that script hardcodes
+  `ThreadPoolExecutor(max_workers=20)`, so `item_count=31` was secretly still
+  only a 20-wide burst with 11 items queued behind it, conflating "item
+  count" with "concurrency." The matrix script separates the two explicitly.
+  **Side effect discovered**: deliberately repeating over-the-wall bursts
+  (21-30 concurrent, several times in a few minutes) escalated into a
+  longer-lived IP-level block — confirmed by testing a brand-new, never-used
+  cookie, which failed from the same machine but worked immediately when
+  replayed through a different (proxied) exit IP. Production must never
+  intentionally cross the 20-wall, not just because that one burst fails, but
+  because repeating it risks a broader penalty.
+- **Walmart pricing has no accessible store-selection mechanism** (2026-07-30).
+  Investigated the same way the Target `nearby_stores_v1` endpoint map was
+  found (fetching a live page's embedded bootstrap data with a valid cookie):
+  Walmart's `robots.txt` lists `sitemap_store_main.xml` → 4 shards (other/
+  discount/supercenter/neighborhood, 4629 stores total,
+  `walmart.com/store/<id>-<city>-<state>`), and individual store pages embed
+  precise `geoPoint: {latitude, longitude}` in their `__NEXT_DATA__` — a
+  store directory built the same way as Target's is feasible if ever needed.
+  But overriding the `assortmentStoreId` cookie (present in some minted
+  sessions, e.g. `"1601"`) to different real store IDs (3106 = San Antonio,
+  1196 = New Roads LA) against the search endpoint produced **byte-for-byte
+  identical product listings and order** every time, with no store-echo field
+  anywhere in the response — confirming search is genuinely national as
+  `_STORE_ID = "national"` already assumed, not just "unconfigured." Pricing
+  accuracy is governed by whatever assortment Walmart's backend defaults a
+  session to (not obviously geoip-driven either — a JP-exit-proxied mint
+  still returned normal US-priced products).
+- **`.minted_walmart_cookies.json` is now wired into production** (2026-07-30,
+  `walmart_pricing.py`), mirroring Target's pool exactly:
+  `_ensure_http_session()` tries the pool first (`_next_pool_session`,
+  `_pool_idx`, `_session_source`), only falling through to the Supabase/
+  disk-cache/CloakBrowser-mint chain once every pool entry is individually
+  confirmed dead. A block on a pool-sourced session just advances the cursor
+  (no IP rotation — confirmed the proxy pool only ever affects a future
+  *browser warm*'s exit IP, and swapping pool cookies never triggers one); a
+  working pool session is no longer dropped between requests.
+  `WALMART_COOKIE_POOL_FILE` env var overrides the pool path (`""` disables
+  it). `WALMART_HTTP_CONCURRENCY` default raised from 8 to 18 (a small safety
+  margin below the confirmed-clean 20-wall, not the wall itself) per the
+  concurrency finding above.
+
+## Cookie properties — Target vs Walmart (2026-07-30)
+
+Everything below is from direct empirical testing this session (mint →
+replay from this machine, sometimes via `CLOAK_PROXY`), not assumption.
+Consolidated here since the findings are scattered across dated bullets
+above. **As of 2026-07-30 this machine's IP is fully blocked by Walmart**
+(zero-cookie AND every pool cookie fail identically, direct — see
+concurrency note below for why) — re-check with one lightweight request
+before trusting anything Walmart-related live from here again; don't probe
+it repeatedly in the meantime (see rolling-window note).
+
+| Property | Target | Walmart |
+|---|---|---|
+| WAF vendor | PerimeterX (not Imperva, despite code comments) | PerimeterX |
+| **Cookie TTL** | Alive at 27+ hours post-mint (5/5 pool cookies); dead by the ~30h mark (all 5 found dead in a later check). Far past the code's assumed 3600s. Not pinned down to an exact death time. | Not rigorously characterized (deprioritized this session). One data point: alive at mint, dead ~11.6h later. Assumed-safe TTL in code (3600s) is unverified either way. |
+| **Concurrency limit** | Not isolated this session — only tested inside a 20-worker-capped harness (101/101 succeeded, but the harness itself caps at 20 concurrent, so the *true* per-cookie wall is still unknown for Target). | **Confirmed hard wall at exactly 20 simultaneous requests** (8 controlled trials, independently-configurable-concurrency harness). 20 always succeeds; 21/22/23/25/30 all fail *instantly and completely* — not a gradual/queued-tail failure. |
+| **Cumulative request volume** (staying under the concurrency wall) | Not tested. | **Not a limiting factor** — 700 sequential/low-concurrency requests against one cookie, zero failures, as long as concurrency stayed ≤15. |
+| **Over-limit → IP escalation risk** | Not tested (never intentionally exceeded a concurrency limit for Target). | **Confirmed real.** Repeating over-the-wall bursts (21-30 concurrent, several times in a few minutes) escalated into a durable IP-level block — a brand-new, never-used cookie failed from this IP afterward but worked immediately via a different exit. Production must never cross the wall, not just because that burst fails but because repeating it risks the broader penalty. Unknown whether continued *light* diagnostic requests also extend the block (rolling-window vs fixed-timer WAF behavior — not established either way; treat as a real risk and don't probe repeatedly). |
+| **Cross-location / cross-store** | **Works.** An explicit `store_id` URL param is fully decoupled from cookie identity — any pool cookie prices any store (verified: LA/Chicago/Miami/Seattle/Carmel all returned genuinely different prices from the same cookies). Only the *dynamic* nearest-store lookup (`nearby_stores_v1`) is broken (403 even with zero cookies) — replaced with an offline sitemap+geocoded directory (1893 stores, `build_target_store_directory.py`). | **No mechanism found.** Overriding the `assortmentStoreId` cookie to different real store IDs produced byte-for-byte identical search results. Pricing is genuinely national (`_STORE_ID = "national"`), not just "unconfigured" — confirmed, not assumed. A store directory *could* be built the same way as Target's (Walmart's sitemap + per-store `geoPoint` lat/lon is even higher-precision than Target's), but there's currently nothing for it to feed into. |
+| **Mint → replay reliability** | Not specifically stress-tested this session. | **~1/3 to 2/3 of mints don't survive a subsequent curl_cffi replay check**, despite passing `_warm_http_session()`'s own in-browser validation (captcha-marker + `__NEXT_DATA__` length check on the live page). "Mint succeeded" ≠ "cookie will actually replay" — always validate with a real post-mint replay call before trusting a freshly minted cookie, don't rely on the warm's own success signal alone. |
+| **Portability across proxy/IP** | Confirmed: cookies aren't IP-pinned — work fine from a different IP than they were minted on. | Confirmed same way (a fresh cookie failed from our blocked local IP but worked immediately via a different exit) — also not IP-pinned. |
+| **Production wiring status** | Pool-first (`saved_target_cookies.json`, 5 entries) wired into `target_pricing.py` — tried before any mint. | Pool-first (`.minted_walmart_cookies.json`, 12 entries) wired into `walmart_pricing.py` the same way. `WALMART_HTTP_CONCURRENCY` raised 8→18 (safety margin below the confirmed 20-wall). |
 
 ## Chain mechanism map (US chains)
 
 | Chain | Mechanism | WAF vendor | Proxy/IP rotation | Categorized block detection |
 |---|---|---|---|---|
-| Walmart | browser warm → curl_cffi replay | PerimeterX | yes — 5-IP no-repeat cap | yes: explicit/soft/transport |
-| Target | browser warm → curl_cffi replay | PerimeterX (not Imperva) | yes — 5-IP no-repeat cap | yes |
+| Walmart | pool cookie first (2026-07-30) → curl_cffi replay; browser warm only once pool exhausted | PerimeterX | yes on fallback path only — 5-IP no-repeat cap; pool blocks just advance the pool cursor, no rotation | yes: explicit/soft/transport |
+| Target | pool cookie first (2026-07-30) → curl_cffi replay; browser warm only once pool exhausted | PerimeterX (not Imperva) | yes on fallback path only — 5-IP no-repeat cap; pool blocks just advance the pool cursor, no rotation | yes |
 | ALDI | one session, valid ~30d, GraphQL via Instacart's own backend | effectively none (401/403 just invalidates) | no pool, no rotation | yes, logged only — no retry loop |
 | Instacart | same shape as ALDI (ALDI rides on this backend) | same | no | yes, logged only |
 | Meijer | Constructor.io API, API-key auth | none (docstring: "no WAF protection, just an API key") | proxy support in code, nothing to react to | no |
@@ -355,10 +456,19 @@ lightweight and CI-friendly.
 | `test_walmart_cookie_replay.py` | Walmart | Same as above for Walmart. Checks `px-captcha` + `__NEXT_DATA__`. Auto-reads `.walmart_http_session.json`. | curl_cffi only |
 | `test_saved_target_cookies.py` | Target | Batch-test all cookies in `saved_target_cookies.json` (5 as of 2026-07-28). Prints per-cookie status + summary. | curl_cffi only |
 | `mint_walmart_cookies.py` | Walmart | Mint fresh PerimeterX cookies via CloakBrowser home→search warm. Supports `--count N`, `--proxy`, `--headed`. Saves to `.minted_walmart_cookies.json`. | cloakbrowser + stdlib |
+| `monitor_walmart_cookie_ttl.py` | Walmart | Health/TTL monitor: pings ONE cookie at a fixed interval until it dies (N consecutive fails) or hits a runtime cap, logging latency + JSONL to `.walmart_cookie_ttl_log.jsonl`. Not yet run to a real death (deprioritized 2026-07-30 in favor of the concurrency investigation). | curl_cffi only |
+| `test_walmart_concurrency_matrix.py` | Walmart | Independently configurable item-count/concurrency/wave-count burst tester (unlike `test_walmart_cookie_replay.py`, whose `max_workers=20` is hardcoded and conflates the two). Used to find the exact 20-request concurrency wall — see findings above. | curl_cffi only |
 
 CI workflows (`.github/workflows/`):
 - `test-cookie-replay.yml` — manual `workflow_dispatch`, runs `test_cookie_replay.py` on ubuntu-latest, 5min timeout.
 - `test-walmart-cookie-replay.yml` — same for Walmart, runs `test_walmart_cookie_replay.py`.
+
+`backend/build_target_store_directory.py` (2026-07-30, not a cookie script)
+geocodes Target's public store sitemap into `target_store_directory.json`
+(`{store_id, slug, lat, lon}`) so `target_pricing._resolve_store_id` can do
+an offline nearest-neighbor lookup instead of calling the confirmed-dead
+`nearby_stores_v1`. One-time/occasional re-run (~30-35min, Nominatim-rate-
+limited), not on any schedule. Deps: `curl_cffi`, `geopy`.
 
 Usage examples:
 ```bash

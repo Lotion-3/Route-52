@@ -18,13 +18,28 @@ curl_cffi's JA3 while real renders still pass), a pool of CloakBrowser workers
 navigates the search pages directly. A residential proxy (CLOAK_PROXY) makes
 either path reliable from a datacenter host.
 
+Session sourcing: a pool of pre-minted cookies (.minted_walmart_cookies.json)
+is tried FIRST, before ever launching a browser — see _next_pool_session().
+Only once every pool cookie is individually confirmed dead does this module
+fall back to the Supabase/disk-cache/CloakBrowser-mint chain. Mirrors
+target_pricing.py's pool, same reasoning: minting is the fragile, slow step.
+
+Store scoping: confirmed (2026-07-30) that Walmart pricing has no accessible
+store-selection mechanism via this replay method — overriding the
+`assortmentStoreId` cookie to different real store IDs produced byte-for-byte
+identical product listings. Pricing here is genuinely national, matching
+_STORE_ID = "national" below; whatever assortment/pricing Walmart's backend
+defaults to for a session is what gets returned, not something this module
+can steer per-request.
+
 Entry point:
     store_name, store_id, prices = price_all_walmart(ingredients, lat, lon)
 
 Self-test:  python walmart_pricing.py
 Env: CLOAK_PROXY, WALMART_HTTP_CONCURRENCY, WALMART_WARM_TRIES,
      WALMART_IMPERSONATE, WALMART_POOL_SIZE, WALMART_MAX_IP_REFRESHES,
-     WALMART_SEARCH_TTL
+     WALMART_SEARCH_TTL, WALMART_COOKIE_POOL_FILE (path to the pool JSON
+     tried before the mint chain; set to "" to disable the pool)
 """
 from __future__ import annotations
 
@@ -98,11 +113,22 @@ def _log_block(category: str, detail: str = "") -> None:
 # PerimeterX validates the caller's TLS/JA3 fingerprint AND a JS-minted cookie
 # (_px3). A real browser is only needed to MINT that cookie; once we have it,
 # curl_cffi (which impersonates Chrome's exact JA3) can replay the search over
-# plain HTTP — fast and parallel, like the ALDI path. Validated: a search-nav
-# warm yields a strong cookie that serves a 90-item basket at concurrency 8.
-# A burst that's too wide gets throttled, so we cap concurrency and re-mint the
-# cookie (re-warm a browser) on a wave of blocks, up to MAX_IP_REFRESHES.
-_HTTP_CONCURRENCY = int(os.environ.get("WALMART_HTTP_CONCURRENCY", "8"))
+# plain HTTP — fast and parallel, like the ALDI path.
+#
+# Concurrency ceiling confirmed empirically (test_walmart_concurrency_matrix.py,
+# 8 trials across 8 fresh cookies, 2026-07-30): the limit is a HARD, INSTANT
+# cap on simultaneous requests per cookie, not a total-item-count or
+# cumulative-volume limit. 20 concurrent always succeeded (including 40 total
+# items split across two 20-wide waves, and 30 total items at concurrency 5);
+# 21, 22, 23, 25, and 30 concurrent ALL failed completely and immediately —
+# every request in the burst blocked, including the very first one submitted.
+# The wall is exactly 20. Default here is 18 (a small safety margin below the
+# confirmed-clean ceiling, not the wall itself) — repeatedly crossing the wall
+# during that testing escalated into a longer-lived IP-level block (confirmed:
+# a fresh, never-used cookie still failed from the same IP afterward, but
+# worked immediately when replayed through a different exit), so production
+# must never intentionally test that edge.
+_HTTP_CONCURRENCY = int(os.environ.get("WALMART_HTTP_CONCURRENCY", "18"))
 # 2 (was 3): each warm holds the one shared browser gate for ~30-45s on a slow
 # host; 3 tries could hog it long enough to time out every other chain waiting
 # behind it. Fail to fallback a try sooner.
@@ -112,11 +138,58 @@ _NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>
 
 _http_session: Optional[dict] = None       # {"cookies": {...}, "ua": str}
 _http_lock = threading.Lock()              # serialize warm/re-mint of the session
+_session_source: Optional[str] = None      # "pool" | "fallback" — origin of _http_session
 # Disk cache so the last cookie survives restarts and can be reused next run
 # (validated first). PerimeterX _px3 lives minutes, so a short max-age is safe.
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".walmart_http_session.json"
 _HTTP_COOKIE_TTL = int(os.environ.get("WALMART_COOKIE_TTL", str(60 * 60)))
 _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".walmart_asset_cache.pkl"
+
+# Pool of pre-minted cookies (backend/.minted_walmart_cookies.json) tried
+# BEFORE the remote/disk/warm chain below — see _next_pool_session(). Mirrors
+# target_pricing.py's pool, added after target_pricing.py's cookies were
+# empirically confirmed to survive 27+ hours, far past _HTTP_COOKIE_TTL.
+# Set WALMART_COOKIE_POOL_FILE="" to disable the pool and restore old behavior.
+_env_pool_file = os.environ.get("WALMART_COOKIE_POOL_FILE")
+if _env_pool_file is not None:
+    _COOKIE_POOL_FILE = Path(_env_pool_file) if _env_pool_file else None
+else:
+    _COOKIE_POOL_FILE = Path(__file__).parent / ".minted_walmart_cookies.json"
+_pool_idx: int = 0             # cursor into _cookie_pool; persists for process lifetime
+_pool_exhausted_logged = False # warn-once guard, mirrors the no-proxy warning pattern
+
+
+def _load_cookie_pool() -> list[dict]:
+    """Load the pool once at import. Missing/malformed file degrades to an
+    empty pool — _next_pool_session() then always returns None immediately,
+    so _ensure_http_session() falls straight through to the existing
+    remote/disk/warm chain, exactly like before this pool existed."""
+    if _COOKIE_POOL_FILE is None:
+        return []
+    try:
+        raw = json.loads(_COOKIE_POOL_FILE.read_text())
+    except FileNotFoundError:
+        print(f"[Walmart] No cookie pool file at {_COOKIE_POOL_FILE} — "
+              "skipping straight to remote/disk/warm.", flush=True)
+        return []
+    except Exception as e:
+        print(f"[Walmart] Cookie pool file unreadable ({repr(e)[:100]}) — "
+              "skipping straight to remote/disk/warm.", flush=True)
+        return []
+    if not isinstance(raw, list):
+        print("[Walmart] Cookie pool file is not a JSON array — ignoring.", flush=True)
+        return []
+    pool = []
+    for i, entry in enumerate(raw):
+        if isinstance(entry, dict) and entry.get("cookies") and entry.get("ua"):
+            pool.append(entry)
+        else:
+            print(f"[Walmart] Cookie pool entry #{i + 1} missing cookies/ua — skipped.", flush=True)
+    print(f"[Walmart] Loaded {len(pool)} pooled cookie(s) from {_COOKIE_POOL_FILE.name}.", flush=True)
+    return pool
+
+
+_cookie_pool: list[dict] = _load_cookie_pool()
 
 
 class _Blocked(Exception):
@@ -788,28 +861,62 @@ def _load_remote_session() -> Optional[dict]:
         return None
 
 
+def _next_pool_session() -> Optional[dict]:
+    """(caller holds _http_lock) Return the first pool cookie at/after
+    _pool_idx that passes a live validate, advancing _pool_idx past any dead
+    ones along the way. None once the whole pool has been exhausted this
+    process — caller falls through to the remote/disk/warm chain."""
+    global _pool_idx, _pool_exhausted_logged
+    n = len(_cookie_pool)
+    while _pool_idx < n:
+        candidate = _cookie_pool[_pool_idx]
+        if _validate_http_session(candidate):
+            print(f"[Walmart] Using pool cookie #{_pool_idx + 1}/{n} "
+                  f"(saved {candidate.get('saved_at_iso', '?')}).", flush=True)
+            return candidate
+        print(f"[Walmart] Pool cookie #{_pool_idx + 1}/{n} is dead — advancing.", flush=True)
+        _pool_idx += 1
+    if n and not _pool_exhausted_logged:
+        _pool_exhausted_logged = True
+        print(f"[Walmart] Cookie pool exhausted ({n}/{n} dead) — "
+              "falling back to remote/disk/warm from now on.", flush=True)
+    return None
+
+
 def _ensure_http_session() -> dict:
-    """Return the shared HTTP session: reuse the in-memory one, else a still-valid
-    disk-cached cookie (no browser), else warm a fresh one and persist it."""
-    global _http_session
+    """Return the shared HTTP session: reuse the in-memory one, else the next
+    live cookie from the saved pool (see _next_pool_session), else a
+    still-valid disk-cached cookie (no browser), else warm a fresh one and
+    persist it. Minting is reached ONLY once every pool cookie has been
+    individually confirmed dead."""
+    global _http_session, _session_source
     if _http_session is not None:
         return _http_session
     with _http_lock:
         if _http_session is None:
+            pool_session = _next_pool_session()
+            if pool_session is not None:
+                _http_session = pool_session
+                _session_source = "pool"
+                return _http_session
+
             # Off-box cookie (GitHub Actions -> Supabase) first, so the 512MB
             # server skips launching a browser; then disk; then warm here.
             cached = _load_remote_session()
             if cached and _validate_http_session(cached):
                 _http_session = cached
+                _session_source = "fallback"
                 print("[Walmart] Reused off-box cookie (Supabase, no warm).", flush=True)
             elif (cached := _load_http_session()) and _validate_http_session(cached):
                 _http_session = cached
+                _session_source = "fallback"
                 print("[Walmart] Reused cached HTTP cookie (no warm).", flush=True)
             else:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
                     try:
                         _http_session = _warm_http_session()
+                        _session_source = "fallback"
                         _save_http_session(_http_session)
                         print(f"[Walmart] HTTP session warmed (curl_cffi"
                               f"{', proxy' if _PROXY else ''}).", flush=True)
@@ -827,31 +934,44 @@ def try_cached_http_session() -> bool:
     activate it if still good. Returns True if a valid session is now ready. Used
     by the early (screen-mount) prewarm: send the last cookie immediately; if it's
     dead, clear it so the address-submit step warms fresh."""
-    global _http_session
+    global _http_session, _session_source
     with _http_lock:
         candidate = _http_session or _load_http_session()
         if candidate and _validate_http_session(candidate):
             _http_session = candidate
+            if _session_source is None:
+                _session_source = "fallback"
             return True
         _http_session = None  # stale — force a fresh warm next
+        _session_source = None
     return False
 
 
 def _drop_http_session() -> None:
     """Clear the in-memory session (the disk cache is kept for reuse)."""
-    global _http_session
+    global _http_session, _session_source
     _http_session = None
+    _session_source = None
 
 
 def _invalidate_http_session() -> None:
-    """Drop the in-memory session AND delete the disk cache — used on a real block
-    so the next ensure mints a genuinely fresh cookie (never the bad one)."""
-    global _http_session
-    _http_session = None
-    try:
-        _HTTP_SESSION_CACHE.unlink()
-    except Exception:
-        pass
+    """Drop the in-memory session. Pool-sourced: just advance the pool cursor
+    past the dead entry — disk cache is untouched (pool cookies are never
+    written there) and no proxy rotation is triggered (switching pool cookies
+    involves no browser re-warm, so there's no future warm's IP to prep by
+    rotating). Fallback-sourced: unchanged — delete the disk cache too, so
+    the next ensure mints a genuinely fresh cookie (never the bad one)."""
+    global _http_session, _session_source, _pool_idx
+    with _http_lock:
+        if _session_source == "pool":
+            _pool_idx += 1
+        else:
+            try:
+                _HTTP_SESSION_CACHE.unlink()
+            except Exception:
+                pass
+        _http_session = None
+        _session_source = None
 
 
 def _price_via_http(ingredients: dict) -> dict:
@@ -903,20 +1023,29 @@ def _price_via_http(ingredients: dict) -> dict:
         if categories - {"transport"}:
             # At least one item showed a real WAF signal this round.
             waf_category = "explicit" if "explicit" in categories else "soft"
-            cur_idx = getattr(_thread_local, "proxy_idx", None)
-            if cur_idx is not None:
-                tried_idxs.add(cur_idx)
-            if not _rotate_to_unused_proxy(tried_idxs):
-                print(f"[Walmart] Still throttled after {len(tried_idxs)} distinct IP(s) — "
-                      f"{len(pending)} item(s) unpriced.", flush=True)
-                _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
-                break
-            print(f"[Walmart] PerimeterX throttle ({waf_category}) — switching to a "
-                  f"fresh IP ({len(tried_idxs)} tried so far).", flush=True)
-            _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
-            _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
-            transport_retries = 0
-            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
+            if _session_source == "pool":
+                pool_num = _pool_idx + 1  # log before invalidate advances it
+                print(f"[Walmart] Pool cookie #{pool_num}/{len(_cookie_pool)} blocked "
+                      f"({waf_category}) — advancing (no IP rotation needed).", flush=True)
+                _log_block(waf_category, f"pool cookie #{pool_num} blocked")
+                _invalidate_http_session()
+                transport_retries = 0
+                time.sleep(random.uniform(0, 0.25))  # trivial jitter — pool swap is free
+            else:
+                cur_idx = getattr(_thread_local, "proxy_idx", None)
+                if cur_idx is not None:
+                    tried_idxs.add(cur_idx)
+                if not _rotate_to_unused_proxy(tried_idxs):
+                    print(f"[Walmart] Still throttled after {len(tried_idxs)} distinct IP(s) — "
+                          f"{len(pending)} item(s) unpriced.", flush=True)
+                    _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
+                    break
+                print(f"[Walmart] PerimeterX throttle ({waf_category}) — switching to a "
+                      f"fresh IP ({len(tried_idxs)} tried so far).", flush=True)
+                _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
+                _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
+                transport_retries = 0
+                time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
         else:
             # Every failure this round was transport-only — not a WAF signal.
             transport_retries += 1
@@ -1048,7 +1177,12 @@ def price_all_walmart(
             print(f"[Walmart] HTTP path unavailable ({repr(e)[:120]}).", flush=True)
             prices = {}
         finally:
-            _drop_http_session()
+            # A working pool session is kept alive across requests instead of
+            # being dropped every time (fallback sessions keep the old
+            # unconditional-drop behavior — that path already assumes a short
+            # TTL and re-validates via disk cache next time regardless).
+            if _session_source != "pool":
+                _drop_http_session()
 
         # Fallback: browser pool, only if HTTP produced nothing at all.
         if prices:

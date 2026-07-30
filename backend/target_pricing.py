@@ -35,13 +35,22 @@ Flow:
   4. Convert RedSky products to the Kroger shape; reuse find_best_purchase().
 
 Reliability:
+  * The HTTP session is sourced from a pool of pre-minted cookies
+    (saved_target_cookies.json) FIRST — a dump from 2026-07-28 was confirmed
+    to still price live products 27+ hours later. Only once every pool
+    cookie is individually confirmed dead does the module fall back to the
+    Supabase/disk-cache/CloakBrowser-mint chain below. See
+    _next_pool_session/_ensure_http_session and TARGET_COOKIE_POOL_FILE.
   * Search results are cached per (store_id, term) for TARGET_SEARCH_TTL seconds
     (default 6h) — far fewer requests = far less flagging.
-  * On a captcha we tear down, ROTATE to a fresh proxy exit IP, back off, and
-    resume pricing the still-pending ingredients. After MAX_IP_REFRESHES (default
-    5) fresh IPs are all blocked we give up → caller falls back to Instacart.
-  * A residential proxy is what makes this reliable from a datacenter host
-    (CloakBrowser handles fingerprint; the proxy handles IP reputation).
+  * On a captcha from a fallback (non-pool) session, we tear down, ROTATE to a
+    fresh proxy exit IP, back off, and resume pricing the still-pending
+    ingredients. After MAX_IP_REFRESHES (default 5) fresh IPs are all blocked
+    we give up → caller falls back to Instacart. A captcha from a pool
+    session just advances to the next pool cookie — no IP rotation needed.
+  * A residential proxy is what makes the fallback path reliable from a
+    datacenter host (CloakBrowser handles fingerprint; the proxy handles IP
+    reputation).
 
 Entry point:
     store_name, store_id, prices = price_all_target(ingredients, lat, lon)
@@ -52,11 +61,14 @@ for Target — so this integration is strictly additive and never makes Target w
 
 Self-test:  python target_pricing.py
 Env overrides:  TARGET_API_KEY, TARGET_STORE_ID, CLOAK_PROXY,
-                TARGET_MAX_IP_REFRESHES, TARGET_SEARCH_TTL, TARGET_COOKIE_TTL
+                TARGET_MAX_IP_REFRESHES, TARGET_SEARCH_TTL, TARGET_COOKIE_TTL,
+                TARGET_COOKIE_POOL_FILE (path to the pool JSON tried before
+                the mint chain; set to "" to disable the pool)
 """
 from __future__ import annotations
 
 import json
+import math
 import os
 import pickle
 import random
@@ -188,6 +200,7 @@ def _warm_search_url() -> str:
 
 _http_session: Optional[dict] = None       # {"cookies": {...}, "ua": str}
 _http_lock = threading.Lock()              # serialize warm/re-mint of the session
+_session_source: Optional[str] = None      # "pool" | "fallback" — origin of _http_session
 _thread_local = threading.local()          # per-worker: .http routes RedSky → curl_cffi
 # Disk cache so the last cookie survives restarts and can be reused next run
 # (validated first). Imperva's clearance cookie lives minutes, so a short max-age
@@ -196,6 +209,54 @@ _thread_local = threading.local()          # per-worker: .http routes RedSky →
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".target_http_session.json"
 _HTTP_COOKIE_TTL = int(os.environ.get("TARGET_COOKIE_TTL", str(60 * 60)))
 _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".target_asset_cache.pkl"
+
+# Pool of pre-minted cookies (backend/saved_target_cookies.json) tried BEFORE
+# the remote/disk/warm chain below — see _next_pool_session(). A cookie dump
+# minted 2026-07-28 was empirically confirmed to still price live products
+# 27+ hours later, far outliving _HTTP_COOKIE_TTL above, so leaning on this
+# pool first means the fragile/slow CloakBrowser mint is only ever reached
+# once every pool entry is individually confirmed dead. Set
+# TARGET_COOKIE_POOL_FILE="" to disable the pool and restore old behavior.
+_env_pool_file = os.environ.get("TARGET_COOKIE_POOL_FILE")
+if _env_pool_file is not None:
+    _COOKIE_POOL_FILE = Path(_env_pool_file) if _env_pool_file else None
+else:
+    _COOKIE_POOL_FILE = Path(__file__).parent / "saved_target_cookies.json"
+_pool_idx: int = 0             # cursor into _cookie_pool; persists for process lifetime
+_pool_exhausted_logged = False # warn-once guard, mirrors _no_proxy_warned below
+
+
+def _load_cookie_pool() -> list[dict]:
+    """Load the pool once at import. Missing/malformed file degrades to an
+    empty pool — _next_pool_session() then always returns None immediately,
+    so _ensure_http_session() falls straight through to the existing
+    remote/disk/warm chain, exactly like before this pool existed."""
+    if _COOKIE_POOL_FILE is None:
+        return []
+    try:
+        raw = json.loads(_COOKIE_POOL_FILE.read_text())
+    except FileNotFoundError:
+        print(f"[Target] No cookie pool file at {_COOKIE_POOL_FILE} — "
+              "skipping straight to remote/disk/warm.", flush=True)
+        return []
+    except Exception as e:
+        print(f"[Target] Cookie pool file unreadable ({repr(e)[:100]}) — "
+              "skipping straight to remote/disk/warm.", flush=True)
+        return []
+    if not isinstance(raw, list):
+        print("[Target] Cookie pool file is not a JSON array — ignoring.", flush=True)
+        return []
+    pool = []
+    for i, entry in enumerate(raw):
+        if isinstance(entry, dict) and entry.get("cookies") and entry.get("ua"):
+            pool.append(entry)
+        else:
+            print(f"[Target] Cookie pool entry #{i + 1} missing cookies/ua — skipped.", flush=True)
+    print(f"[Target] Loaded {len(pool)} pooled cookie(s) from {_COOKIE_POOL_FILE.name}.", flush=True)
+    return pool
+
+
+_cookie_pool: list[dict] = _load_cookie_pool()
 
 
 class _ImpervaBlocked(Exception):
@@ -754,7 +815,68 @@ def _to_kroger_format(product: dict) -> Optional[dict]:
 # Store discovery (worker thread)
 # ---------------------------------------------------------------------------
 
+# Local {store_id, slug, lat, lon} directory built offline by
+# build_target_store_directory.py from Target's public store sitemap +
+# Nominatim geocoding — see that script's docstring. Used to resolve
+# "nearest store" WITHOUT ever calling RedSky (nearby_stores_v1 is confirmed
+# dead via curl_cffi regardless of cookie). Heuristic, not exact-address
+# precision, but zero WAF exposure and instant.
+_STORE_DIRECTORY_FILE = Path(__file__).parent / "target_store_directory.json"
+
+
+def _load_store_directory() -> list[dict]:
+    try:
+        raw = json.loads(_STORE_DIRECTORY_FILE.read_text())
+    except FileNotFoundError:
+        print(f"[Target] No store directory at {_STORE_DIRECTORY_FILE} — "
+              "nearest-store resolution will use the legacy nearby_stores_v1 "
+              "fallback (confirmed dead) then the default store. Run "
+              "build_target_store_directory.py to generate it.", flush=True)
+        return []
+    except Exception as e:
+        print(f"[Target] Store directory unreadable ({repr(e)[:100]}).", flush=True)
+        return []
+    if not isinstance(raw, list) or not raw:
+        return []
+    print(f"[Target] Loaded {len(raw)}-store directory for nearest-store resolution.", flush=True)
+    return raw
+
+
+_store_directory: list[dict] = _load_store_directory()
+
+
+def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 3958.8  # Earth radius, miles
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _nearest_store_from_directory(lat: float, lon: float) -> Optional[str]:
+    """O(n) nearest-neighbor over the local store directory (~2000 rows,
+    sub-millisecond) — no network call, no WAF exposure. None if the
+    directory hasn't been built yet, so the caller can fall back."""
+    if not _store_directory:
+        return None
+    best_id, best_dist = None, float("inf")
+    for entry in _store_directory:
+        d = _haversine_miles(lat, lon, entry["lat"], entry["lon"])
+        if d < best_dist:
+            best_id, best_dist = entry["store_id"], d
+    return str(best_id) if best_id is not None else None
+
+
 def _resolve_store_id(lat: float, lon: float) -> str:
+    nearest = _nearest_store_from_directory(lat, lon)
+    if nearest is not None:
+        return nearest
+
+    # Legacy fallback: nearby_stores_v1 is confirmed dead via curl_cffi (403 +
+    # captcha for ANY cookie, including zero cookies, for ANY postal code) —
+    # kept only in case Target ever un-blocks it. Reached only when the local
+    # store directory is empty/unavailable.
     try:
         from instacart_pricing import _get_postal
         postal = _get_postal(lat, lon)
@@ -992,27 +1114,63 @@ def _load_remote_session() -> Optional[dict]:
         return None
 
 
+def _next_pool_session() -> Optional[dict]:
+    """(caller holds _http_lock) Return the first pool cookie at/after
+    _pool_idx that passes a live validate, advancing _pool_idx past any dead
+    ones along the way. None once the whole pool has been exhausted this
+    process — caller falls through to the remote/disk/warm chain. Cheap to
+    call repeatedly once exhausted: the loop is then a 0-iteration no-op,
+    and the "exhausted" log fires only once."""
+    global _pool_idx, _pool_exhausted_logged
+    n = len(_cookie_pool)
+    while _pool_idx < n:
+        candidate = _cookie_pool[_pool_idx]
+        if _validate_http_session(candidate):
+            print(f"[Target] Using pool cookie #{_pool_idx + 1}/{n} "
+                  f"(saved {candidate.get('saved_at_iso', '?')}).", flush=True)
+            return candidate
+        print(f"[Target] Pool cookie #{_pool_idx + 1}/{n} is dead — advancing.", flush=True)
+        _pool_idx += 1
+    if n and not _pool_exhausted_logged:
+        _pool_exhausted_logged = True
+        print(f"[Target] Cookie pool exhausted ({n}/{n} dead) — "
+              "falling back to remote/disk/warm from now on.", flush=True)
+    return None
+
+
 def _ensure_http_session() -> dict:
-    """Return the shared HTTP session: reuse the in-memory one, else a still-valid
-    disk-cached cookie (no browser), else warm a fresh one and persist it."""
-    global _http_session
+    """Return the shared HTTP session: reuse the in-memory one, else the next
+    live cookie from the saved pool (see _next_pool_session), else a
+    still-valid disk-cached cookie (no browser), else warm a fresh one and
+    persist it. Minting is reached ONLY once every pool cookie has been
+    individually confirmed dead."""
+    global _http_session, _session_source
     if _http_session is not None:
         return _http_session
     with _http_lock:
         if _http_session is None:
+            pool_session = _next_pool_session()
+            if pool_session is not None:
+                _http_session = pool_session
+                _session_source = "pool"
+                return _http_session
+
             # Off-box cookie (GitHub Actions -> Supabase) first, then disk, then warm.
             cached = _load_remote_session()
             if cached and _validate_http_session(cached):
                 _http_session = cached
+                _session_source = "fallback"
                 print("[Target] Reused off-box cookie (Supabase, no warm).", flush=True)
             elif (cached := _load_http_session()) and _validate_http_session(cached):
                 _http_session = cached
+                _session_source = "fallback"
                 print("[Target] Reused cached HTTP cookie (no warm).", flush=True)
             else:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
                     try:
                         _http_session = _warm_http_session()
+                        _session_source = "fallback"
                         _save_http_session(_http_session)
                         print(f"[Target] HTTP session warmed (curl_cffi"
                               f"{', proxy' if _PROXY else ''}).", flush=True)
@@ -1027,19 +1185,29 @@ def _ensure_http_session() -> dict:
 
 def _drop_http_session() -> None:
     """Clear the in-memory session (the disk cache is kept for reuse)."""
-    global _http_session
+    global _http_session, _session_source
     _http_session = None
+    _session_source = None
 
 
 def _invalidate_http_session() -> None:
-    """Drop the in-memory session AND delete the disk cache — used on a real block
-    so the next ensure mints a genuinely fresh cookie (never the throttled one)."""
-    global _http_session
-    _http_session = None
-    try:
-        _HTTP_SESSION_CACHE.unlink()
-    except Exception:
-        pass
+    """Drop the in-memory session. Pool-sourced: just advance the pool cursor
+    past the dead entry — disk cache is untouched (pool cookies are never
+    written there) and no proxy rotation is triggered (switching pool cookies
+    involves no browser re-warm, so there's no future warm's IP to prep by
+    rotating). Fallback-sourced: unchanged — delete the disk cache too, so
+    the next ensure mints a genuinely fresh cookie (never the throttled one)."""
+    global _http_session, _session_source, _pool_idx
+    with _http_lock:
+        if _session_source == "pool":
+            _pool_idx += 1
+        else:
+            try:
+                _HTTP_SESSION_CACHE.unlink()
+            except Exception:
+                pass
+        _http_session = None
+        _session_source = None
 
 
 def _price_via_http(ingredients: dict, lat: float, lon: float) -> tuple[Optional[str], dict]:
@@ -1097,18 +1265,27 @@ def _price_via_http(ingredients: dict, lat: float, lon: float) -> tuple[Optional
 
         if categories - {"transport"}:
             waf_category = "explicit" if "explicit" in categories else "soft"
-            tried_idxs.add(_proxy_idx)
-            if not _rotate_to_unused_proxy(tried_idxs):
-                print(f"[Target] Still throttled after {len(tried_idxs)} distinct IP(s) — "
-                      f"{len(pending)} item(s) unpriced.", flush=True)
-                _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
-                break
-            print(f"[Target] Imperva throttle ({waf_category}) — switching to a fresh IP "
-                  f"({len(tried_idxs)} tried so far).", flush=True)
-            _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
-            _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
-            transport_retries = 0
-            time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
+            if _session_source == "pool":
+                pool_num = _pool_idx + 1  # log before invalidate advances it
+                print(f"[Target] Pool cookie #{pool_num}/{len(_cookie_pool)} blocked "
+                      f"({waf_category}) — advancing (no IP rotation needed).", flush=True)
+                _log_block(waf_category, f"pool cookie #{pool_num} blocked")
+                _invalidate_http_session()
+                transport_retries = 0
+                time.sleep(random.uniform(0, 0.25))  # trivial jitter — pool swap is free
+            else:
+                tried_idxs.add(_proxy_idx)
+                if not _rotate_to_unused_proxy(tried_idxs):
+                    print(f"[Target] Still throttled after {len(tried_idxs)} distinct IP(s) — "
+                          f"{len(pending)} item(s) unpriced.", flush=True)
+                    _log_block(waf_category, f"exhausted {len(tried_idxs)} IPs, {len(pending)} unpriced")
+                    break
+                print(f"[Target] Imperva throttle ({waf_category}) — switching to a fresh IP "
+                      f"({len(tried_idxs)} tried so far).", flush=True)
+                _log_block(waf_category, f"rotating, {len(tried_idxs)} tried")
+                _invalidate_http_session()  # delete the bad cookie so we warm truly fresh
+                transport_retries = 0
+                time.sleep(min(1.0 * len(tried_idxs), 5.0) + random.uniform(0, 0.75))
         else:
             transport_retries += 1
             if transport_retries > _TRANSPORT_RETRIES:
@@ -1238,7 +1415,14 @@ def price_all_target(
             print(f"[Target] HTTP path unavailable ({repr(e)[:120]}).", flush=True)
             store_id, prices = None, {}
         finally:
-            _drop_http_session()
+            # A working pool session is proven to survive 27+ hours (far past
+            # _HTTP_COOKIE_TTL), so it's kept alive across requests instead of
+            # being dropped every time — avoids a redundant live validate-call
+            # on every single pricing call. Fallback sessions keep the old
+            # unconditional-drop behavior (that path already assumes a short
+            # TTL and re-validates via disk cache next time regardless).
+            if _session_source != "pool":
+                _drop_http_session()
 
         # Fallback: original CloakBrowser request-context path.
         if not prices:
