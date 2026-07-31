@@ -25,8 +25,12 @@ name: Mint WAF sessions
 # Tune the cron below to your budget.
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"
+  # Schedule disabled 2026-07-31 -- paused while Walmart's IP-level block
+  # (from earlier concurrency-limit testing) cools down; this cron would
+  # otherwise keep hitting Walmart every 30 min regardless. Re-enable by
+  # uncommenting the schedule block below.
+  # schedule:
+  #   - cron: "*/30 * * * *"
   workflow_dispatch: {}          # lets you run it manually from the Actions tab
 
 concurrency:

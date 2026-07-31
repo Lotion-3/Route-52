@@ -15,6 +15,10 @@ on:
       cookie_json:
         description: 'The "cookies" object from a saved session file (paste as JSON)'
         required: true
+      ua:
+        description: "User-agent matching the cookie's own UA, if known. Leave blank to use a generic Chrome UA (may not match the cookie's real fingerprint -- e.g. saved_target_cookies.json's cookies carry Chrome/146.0.0.0)."
+        required: false
+        default: ""
       term:
         description: "Search term to test (ignored if item_count > 1)"
         required: false
@@ -24,9 +28,13 @@ on:
         required: false
         default: "1771"
       item_count:
-        description: "If > 1, fires this many CONCURRENT requests (one per grocery term) instead of a single one"
+        description: "If > 1, fires this many requests (one per grocery term) instead of a single one"
         required: false
         default: "1"
+      concurrency:
+        description: "How many of item_count fire simultaneously. Leave blank to default to min(item_count, 20). Set explicitly (e.g. equal to item_count) for a true N-wide burst -- Target's real concurrency wall hasn't been isolated yet, unlike Walmart's (confirmed at 20)."
+        required: false
+        default: ""
 
 jobs:
   replay:
@@ -48,7 +56,9 @@ jobs:
       - name: Replay cookie from this runner's IP
         env:
           COOKIE_JSON: ${{ inputs.cookie_json }}
+          UA: ${{ inputs.ua }}
           TERM: ${{ inputs.term }}
           STORE_ID: ${{ inputs.store_id }}
           ITEM_COUNT: ${{ inputs.item_count }}
+          CONCURRENCY: ${{ inputs.concurrency }}
         run: python test_cookie_replay.py

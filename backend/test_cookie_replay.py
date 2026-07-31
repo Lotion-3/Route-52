@@ -17,13 +17,26 @@ Cookie source (checked in order):
 Env:
     COOKIE_JSON   optional. The "cookies" dict from a saved Target session.
                   If unset, reads from backend/.target_http_session.json.
-    UA            optional user-agent string (defaults to file's ua or Chrome).
+    UA            optional user-agent string -- should match the cookie's own
+                  UA if known (a mismatch between the header and curl_cffi's
+                  JA3 impersonation profile is a plausible, unconfirmed risk --
+                  e.g. saved_target_cookies.json's 5 entries all carry
+                  Chrome/146.0.0.0, not the Chrome/122.0.0.0 default below).
+                  Defaults to the session file's ua, else a generic Chrome UA.
     TERM          optional search term (default "milk"). Ignored if ITEM_COUNT > 1.
     STORE_ID      optional Target store id (default 1771).
-    ITEM_COUNT    optional (default 1). If > 1, fires that many CONCURRENT
-                  requests (one per grocery term, cycling the built-in list if
-                  ITEM_COUNT exceeds it) against this one cookie instead of a
-                  single request -- same shape as real basket-pricing volume.
+    ITEM_COUNT    optional (default 1). If > 1, fires that many requests (one
+                  per grocery term, cycling the built-in list if ITEM_COUNT
+                  exceeds it) against this one cookie instead of a single
+                  request -- same shape as real basket-pricing volume.
+    CONCURRENCY   optional (default: min(ITEM_COUNT, 20)). How many of those
+                  ITEM_COUNT requests fire simultaneously. Previously
+                  hardcoded to 20 regardless of ITEM_COUNT, conflating "item
+                  count" with "concurrency" -- Target's TRUE concurrency wall
+                  has never actually been isolated this way (unlike Walmart's,
+                  confirmed at exactly 20 via test_walmart_concurrency_matrix.py).
+                  Set this explicitly (e.g. equal to ITEM_COUNT) to test past
+                  the old accidental cap.
 """
 from __future__ import annotations
 
@@ -135,9 +148,13 @@ def main() -> int:
     term = os.environ.get("TERM") or "milk"
     store_id = os.environ.get("STORE_ID") or "1771"
     item_count = int(os.environ.get("ITEM_COUNT") or "1")
+    # Default preserves the old (accidentally-safe) behavior -- capped at 20
+    # regardless of item_count -- but now it's an explicit, overridable
+    # choice instead of a hardcoded conflation.
+    concurrency = int(os.environ.get("CONCURRENCY") or str(min(item_count, 20)))
 
     if item_count > 1:
-        return _run_batch(cookies, ua, store_id, item_count)
+        return _run_batch(cookies, ua, store_id, item_count, concurrency)
     return _run_single(cookies, ua, term, store_id)
 
 
@@ -166,20 +183,17 @@ def _hit(term: str, store_id: str, cookies: dict, ua: str) -> tuple[str, bool, s
     return term, False, f"no products (status={resp.status_code})", time.time() - t0
 
 
-def _run_batch(cookies: dict, ua: str, store_id: str, item_count: int) -> int:
+def _run_batch(cookies: dict, ua: str, store_id: str, item_count: int, concurrency: int) -> int:
     # Cycle the list rather than require item_count <= len(_GROCERY_TERMS) --
     # repeated terms are fine here, this is testing WAF/volume tolerance for
     # one cookie, not product-matching variety.
     terms = [_GROCERY_TERMS[i % len(_GROCERY_TERMS)] for i in range(item_count)]
     print(f"Replaying saved cookie ({len(cookies)} entries) from THIS runner's IP "
-          f"-- {item_count} CONCURRENT requests, store={store_id}\n", flush=True)
+          f"-- {item_count} items @ concurrency={concurrency}, store={store_id}\n", flush=True)
 
     t0 = time.time()
     results = []
-    # 20 workers matches the earlier local burst test (20/20 succeeded there);
-    # not tuned for a ceiling, just enough concurrency to look like real
-    # basket-pricing load rather than a trickle of sequential requests.
-    with ThreadPoolExecutor(max_workers=20) as pool:
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
         futs = {pool.submit(_hit, t, store_id, cookies, ua): t for t in terms}
         for fut in as_completed(futs):
             r = fut.result()
