@@ -23,6 +23,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="optimizer"
+        options={{
+          title: 'Optimizer',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.triangle.branch" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

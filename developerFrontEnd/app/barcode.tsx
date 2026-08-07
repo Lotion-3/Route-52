@@ -48,7 +48,7 @@ export default function BarcodeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F0E9', // Warmer background
+        backgroundColor: '#FFF2E0', // Warmer background
         padding: 24,
         paddingTop: 60,
     },

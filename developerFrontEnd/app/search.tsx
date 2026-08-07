@@ -591,7 +591,7 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-    page: { backgroundColor: '#F9F9F9', padding: 20, paddingTop: 20, flexGrow: 1 },
+    page: { backgroundColor: '#FFF2E0', padding: 20, paddingTop: 20, flexGrow: 1 },
     sectionHead: { marginBottom: 32, alignItems: 'center' },
     header: { fontSize: 28, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold', marginTop: 16 },
     section: { marginBottom: 16 },
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     chipCustomText: { fontSize: 13, color: '#ee7422', fontWeight: '600' },
 
     // Ingredient modal
-    modalContainer: { flex: 1, backgroundColor: '#F9F9F9' },
+    modalContainer: { flex: 1, backgroundColor: '#FFF2E0' },
     modalHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingVertical: 16,

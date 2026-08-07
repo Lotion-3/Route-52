@@ -413,7 +413,7 @@ export default function ResultsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: '#F9F9F9' }]}>
+      <View style={[styles.container, styles.center, { backgroundColor: '#FFF2E0' }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <Logo size={180} />
         <View style={{ height: 24 }} />
@@ -428,7 +428,7 @@ export default function ResultsScreen() {
 
   if (error || !plan) {
     return (
-      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#F9F9F9' }]}>
+      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#FFF2E0' }]}>
         <Stack.Screen options={{ title: 'Error' }} />
         <IconSymbol name="exclamationmark.circle.fill" size={60} color={Colors.error} />
         <Text style={[styles.loadingText, { marginTop: 20 }]}>Planning Failed</Text>
@@ -604,14 +604,14 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9F9F9' },
+  container: { flex: 1, backgroundColor: '#FFF2E0' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
   brandHeader: {
     paddingTop: 60,
     paddingBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFF2E0',
   },
   brandTitle: {
     fontSize: 24,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFF2E0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,

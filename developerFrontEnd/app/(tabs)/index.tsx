@@ -49,6 +49,10 @@ export default function HomeScreen() {
           title="Start New Meal Plan"
           onPress={handleStartNew}
         />
+        <GradientButton
+          title="Grocery Store Optimizer"
+          onPress={() => router.push('/optimizer')}
+        />
       </View>
 
       <View style={styles.savedSection}>
@@ -97,7 +101,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFF2E0',
     padding: 24,
     paddingTop: 80,
   },
