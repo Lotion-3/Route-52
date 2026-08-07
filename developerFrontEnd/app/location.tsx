@@ -3,7 +3,7 @@ import {
     View, Text, TextInput, StyleSheet, TouchableOpacity,
     KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
@@ -87,11 +87,13 @@ export default function LocationScreen() {
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+            <Stack.Screen options={{ headerShown: false }} />
             <TopBanner />
-            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: 76 }]} keyboardShouldPersistTaps="handled">
                 <View style={styles.headerWrap}>
-                    <Logo size={80} />
-                    <View style={{ height: 8 }} />
+                    <View style={{ marginTop: -20 }}>
+                        <Logo size={240} />
+                    </View>
                     <Text style={styles.header}>Where are you shopping?</Text>
                     <Text style={styles.sub}>
                         We'll find the stores near you and start checking live prices
@@ -161,7 +163,7 @@ const styles = StyleSheet.create({
     scroll: {
         flexGrow: 1,
         padding: 20,
-        paddingTop: 32,
+        paddingTop: 2,
     },
     headerWrap: {
         alignItems: 'center',
@@ -173,12 +175,13 @@ const styles = StyleSheet.create({
         color: '#1A1A1A',
         fontFamily: 'Fraunces-Bold',
         textAlign: 'center',
+        marginTop: -16,
     },
     sub: {
         fontSize: 14,
         color: '#6B7280',
         textAlign: 'center',
-        marginTop: 8,
+        marginTop: 4,
         paddingHorizontal: 12,
     },
     section: {

@@ -356,11 +356,12 @@ export default function SearchScreen() {
                 <View style={{ flex: 1, backgroundColor: '#F9F9F9' }}>
                     <Stack.Screen options={{ headerShown: false }} />
                     <TopBanner />
-                    <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+                    <ScrollView contentContainerStyle={[styles.page, { paddingTop: 76 }]} showsVerticalScrollIndicator={false}>
 
                         <View style={styles.sectionHead}>
-                            <Logo size={80} />
-                            <View style={{ height: 8 }} />
+                            <View style={{ marginTop: -35 }}>
+                                <Logo size={240} />
+                            </View>
                             <Text style={styles.header}>Plan Details</Text>
                         </View>
 
@@ -591,9 +592,9 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-    page: { backgroundColor: '#FFF2E0', padding: 20, paddingTop: 20, flexGrow: 1 },
-    sectionHead: { marginBottom: 32, alignItems: 'center' },
-    header: { fontSize: 28, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold', marginTop: 16 },
+    page: { backgroundColor: '#FFF2E0', padding: 20, paddingTop: 2, flexGrow: 1 },
+    sectionHead: { marginBottom: 28, alignItems: 'center' },
+    header: { fontSize: 28, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold', marginTop: -28 },
     section: { marginBottom: 16 },
     card: {
         backgroundColor: '#FFFFFF', borderRadius: 18, padding: 18, marginBottom: 8,

@@ -11,7 +11,7 @@ export default function GradientButton({ title, onPress }: GradientButtonProps) 
     return (
         <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
             <LinearGradient
-                colors={['#E8821E', '#E8821E']}
+                colors={['#FFA54F', '#E8821E']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.button}
@@ -27,14 +27,13 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderRadius: 999, // pill shape
         alignItems: 'center',
-        marginTop: 10,
         width: '100%',
 
         shadowColor: '#000000',
-        shadowOpacity: 0.03,
-        shadowRadius: 2,
-        shadowOffset: { width: 0, height: 1 },
-        elevation: 1,
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 5,
     } as ViewStyle,
 
     text: {
