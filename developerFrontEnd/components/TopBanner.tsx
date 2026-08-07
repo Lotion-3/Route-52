@@ -19,12 +19,12 @@ export default function TopBanner() {
 const styles = StyleSheet.create({
     header: {
         height: 56,
-        backgroundColor: "#ee7422",
+        backgroundColor: "#b0db9d",
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#ee7422",
+        borderBottomColor: "#b0db9d",
     },
     back: {
         paddingRight: 12,
@@ -32,11 +32,12 @@ const styles = StyleSheet.create({
     },
     backText: {
         fontSize: 18,
-        color: "#FFFFFF",
+        color: "#1A1A1A",
     },
     title: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: "700",
-        color: "#FFFFFF",
+        color: "#1A1A1A",
+        fontFamily: 'Fraunces-Bold',
     },
 });

@@ -22,6 +22,9 @@ const MAPPING = {
   'clock.fill': 'access-time',
   'arrow.right': 'arrow-forward',
   'exclamationmark.circle.fill': 'error',
+  'arrow.triangle.branch': 'alt-route',
+  'map.fill': 'map',
+  'cart.fill': 'shopping-cart',
 } as IconMapping;
 
 /**

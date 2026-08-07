@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useRouter, useNavigation } from 'expo-router';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { planStore, SavedPlan } from '@/services/planStore';
 
 export default function HomeScreen() {
@@ -39,60 +40,71 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.headerSection}>
-        <Logo size={144} />
-        <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
+      <View style={styles.topBanner}>
+        <Text style={styles.topBannerText}>Route 52: Smart Shopping, Simplified</Text>
       </View>
-
-      <View style={styles.actionSection}>
-        <GradientButton
-          title="Start New Meal Plan"
-          onPress={handleStartNew}
-        />
-        <GradientButton
-          title="Grocery Store Optimizer"
-          onPress={() => router.push('/optimizer')}
-        />
+ 
+      <View style={styles.contentContainer}>
+        <View style={styles.headerSection}>
+        <Logo size={288} />
       </View>
-
-      <View style={styles.savedSection}>
-        <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
-        {savedPlans.length === 0 ? (
-          <View style={styles.emptyCard}>
+ 
+        <View style={styles.actionSection}>
+          <GradientButton
+            title="Start New Meal Plan"
+            onPress={handleStartNew}
+          />
+          <GradientButton
+            title="Grocery Store Optimizer"
+            onPress={() => router.push('/optimizer')}
+          />
+        </View>
+ 
+        <View style={styles.savedSection}>
+          <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
+          {savedPlans.length === 0 ? (
+            <View style={styles.emptyCard}>
+            <IconSymbol name="basket.fill" size={32} color="#9CA3AF" style={styles.emptyIcon} />
             <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
           </View>
-        ) : (
-          savedPlans.map((entry, index) => (
-            <View key={entry.id} style={styles.savedCardContainer}>
-              <TouchableOpacity
-                style={styles.savedCard}
-                onPress={() => handleViewSaved(entry.id)}
-              >
-                <View style={styles.savedCardContent}>
-                  <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
-                  <Text style={styles.savedCardMeta}>
-                    {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
-                  </Text>
-                </View>
-                <Text style={styles.viewLink}>View →</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => {
-                  planStore.deleteById(entry.id);
-                  setSavedPlans(planStore.getSavedPlans());
-                }}
-              >
-                <Text style={styles.deleteText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-        {planStore.isFull && (
-          <Text style={styles.limitText}>
-            Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
-          </Text>
-        )}
+          ) : (
+            savedPlans.map((entry, index) => (
+              <View key={entry.id} style={styles.savedCardContainer}>
+                <TouchableOpacity
+                  style={styles.savedCard}
+                  onPress={() => handleViewSaved(entry.id)}
+                >
+                  <IconSymbol name="cart.fill" size={24} color="#ee7422" style={styles.cartIcon} />
+                  <View style={styles.savedCardContent}>
+                    <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
+                    <Text style={styles.savedCardMeta}>
+                      {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
+                    </Text>
+                  </View>
+                  <Text style={styles.viewLink}>View →</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => {
+                    planStore.deleteById(entry.id);
+                    setSavedPlans(planStore.getSavedPlans());
+                  }}
+                >
+                  <Text style={styles.deleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+          {planStore.isFull && (
+            <Text style={styles.limitText}>
+              Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
+            </Text>
+          )}
+        </View>
+ 
+        <View style={styles.footerSection}>
+          <Text style={styles.footerText}>Your AI Grocery & Meal Assistant</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -102,19 +114,28 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: '#FFF2E0',
+  },
+  contentContainer: {
     padding: 24,
-    paddingTop: 80,
+    paddingTop: 4,
+  },
+  topBanner: {
+    backgroundColor: '#b0db9d',
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  topBannerText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 24,
+    letterSpacing: 0.5,
+    fontFamily: 'WorkSans-Bold',
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    fontFamily: 'Garamond-Bold',
-    marginTop: 16,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
@@ -123,7 +144,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionSection: {
-    marginBottom: 40,
+    marginBottom: 20,
   },
   savedSection: {
     flex: 1,
@@ -133,21 +154,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 16,
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 30,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    borderStyle: 'dashed',
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  emptyIcon: {
+    marginRight: 12,
   },
   emptyText: {
+    flexShrink: 1,
     color: '#9CA3AF',
     textAlign: 'center',
     fontSize: 14,
+    fontFamily: 'WorkSans-Regular',
   },
   savedCardContainer: {
     flexDirection: 'row',
@@ -163,11 +195,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
   deleteButton: {
@@ -191,16 +223,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+    fontFamily: 'WorkSans-SemiBold',
   },
   savedCardMeta: {
     fontSize: 12,
     color: '#6B7280',
     marginTop: 4,
+    fontFamily: 'WorkSans-Regular',
   },
   viewLink: {
     color: '#1A1A1A',
     fontWeight: '700',
     fontSize: 14,
+    fontFamily: 'WorkSans-Bold',
   },
   limitText: {
     fontSize: 12,
@@ -208,5 +243,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
-  }
+    fontFamily: 'WorkSans-Regular',
+  },
+  footerSection: {
+    marginTop: 32,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontFamily: 'WorkSans-Bold',
+  },
+  cartIcon: {
+    marginRight: 16,
+  },
 });

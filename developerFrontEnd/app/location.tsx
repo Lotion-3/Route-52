@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
+import TopBanner from '@/components/TopBanner';
 import { prewarm, autocompleteAddress } from '@/services/api';
 import { notify } from '@/services/notify';
 
@@ -86,6 +87,7 @@ export default function LocationScreen() {
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+            <TopBanner />
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
                 <View style={styles.headerWrap}>
                     <Logo size={80} />
@@ -169,7 +171,7 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '700',
         color: '#1A1A1A',
-        fontFamily: 'Garamond-Bold',
+        fontFamily: 'Fraunces-Bold',
         textAlign: 'center',
     },
     sub: {

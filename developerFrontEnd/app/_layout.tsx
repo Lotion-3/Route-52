@@ -11,6 +11,8 @@ import MainLayout from '@/components/MainLayout';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { useFonts, EBGaramond_400Regular, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
+import { Fraunces_400Regular, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
+import { WorkSans_400Regular, WorkSans_600SemiBold, WorkSans_700Bold } from '@expo-google-fonts/work-sans';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -21,6 +23,11 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     'Garamond-Regular': EBGaramond_400Regular,
     'Garamond-Bold': EBGaramond_700Bold,
+    'Fraunces-Regular': Fraunces_400Regular,
+    'Fraunces-Bold': Fraunces_700Bold,
+    'WorkSans-Regular': WorkSans_400Regular,
+    'WorkSans-SemiBold': WorkSans_600SemiBold,
+    'WorkSans-Bold': WorkSans_700Bold,
   });
 
   useEffect(() => {

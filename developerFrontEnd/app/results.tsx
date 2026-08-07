@@ -459,7 +459,11 @@ export default function ResultsScreen() {
       />
 
       <View style={styles.brandHeader}>
-        <Logo size={84} />
+        <View style={styles.brandHeaderSpacer} />
+        <View style={styles.greenBannerContainer}>
+          <Logo size={120} />
+        </View>
+        <View style={styles.brandHeaderSpacer} />
       </View>
 
       <FlatList
@@ -608,20 +612,30 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
 
   brandHeader: {
-    paddingTop: 60,
-    paddingBottom: 10,
     alignItems: 'center',
     backgroundColor: '#FFF2E0',
+  },
+  brandHeaderSpacer: {
+    height: 20,
+    width: '100%',
+    backgroundColor: '#FFF2E0',
+  },
+  greenBannerContainer: {
+    backgroundColor: '#b0db9d',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
   },
   brandTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
     marginTop: 8,
   },
 
-  loadingText: { fontSize: 40, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold' },
+  loadingText: { fontSize: 40, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold' },
   loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
 
   titleRow: {
@@ -940,7 +954,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButton: {
-    backgroundColor: '#ee7422',
+    backgroundColor: '#E8821E',
   },
   discardButton: {
     backgroundColor: 'transparent',
@@ -1013,7 +1027,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   storeActionButton: {
-    backgroundColor: '#ee7422',
+    backgroundColor: '#E8821E',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

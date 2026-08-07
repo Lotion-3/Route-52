@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '700',
         color: '#1A1A1A',
-        fontFamily: 'Garamond-Bold',
+        fontFamily: 'Fraunces-Bold',
         marginTop: 20,
     },
     sub: {
@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 28,
         minHeight: 20,
+        fontFamily: 'WorkSans-Regular',
     },
     barTrack: {
         width: '100%',
@@ -138,5 +139,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#9CA3AF',
+        fontFamily: 'WorkSans-Regular',
     },
 });

@@ -122,7 +122,18 @@ export default function GroceryStoreOptimizerView() {
         </View>
 
         {/* Feature 3: Action Trigger */}
-        <TouchableOpacity style={styles.optimizeButton}>
+        <TouchableOpacity
+          style={styles.optimizeButton}
+          onPress={() => {
+            router.push({
+              pathname: '/results',
+              params: {
+                selectedStores: JSON.stringify(selectedStores),
+                strategy: strategy
+              }
+            });
+          }}
+        >
           <Text style={styles.optimizeButtonText}>Optimize Current Shopping List</Text>
         </TouchableOpacity>
       </View>
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#1A1A1A',
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
     letterSpacing: 0.5,
   },
   headerSub: {
@@ -181,7 +192,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333333',
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
   },
   backButton: {
     padding: 4,

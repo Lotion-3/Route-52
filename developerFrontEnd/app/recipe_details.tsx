@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: '700',
         color: '#1A1A1A',
-        fontFamily: 'Garamond-Bold',
+        fontFamily: 'Fraunces-Bold',
         lineHeight: 34,
     },
     metaRow: {
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1A1A1A',
         marginBottom: 16,
-        fontFamily: 'Garamond-Bold',
+        fontFamily: 'Fraunces-Bold',
     },
     card: {
         backgroundColor: '#FFFFFF',
