@@ -76,7 +76,7 @@ export default function TopBanner() {
 
 const styles = StyleSheet.create({
     header: {
-        height: 64,
+        height: 80,
         backgroundColor: "#b0db9d",
         justifyContent: "center",
         width: '100%',

@@ -89,7 +89,7 @@ export default function LocationScreen() {
         >
             <Stack.Screen options={{ headerShown: false }} />
             <TopBanner />
-            <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: 76 }]} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: 92 }]} keyboardShouldPersistTaps="handled">
                 <View style={styles.headerWrap}>
                     <View style={{ marginTop: -20 }}>
                         <Logo size={240} />

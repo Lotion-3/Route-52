@@ -356,7 +356,7 @@ export default function SearchScreen() {
                 <View style={{ flex: 1, backgroundColor: '#F9F9F9' }}>
                     <Stack.Screen options={{ headerShown: false }} />
                     <TopBanner />
-                    <ScrollView contentContainerStyle={[styles.page, { paddingTop: 76 }]} showsVerticalScrollIndicator={false}>
+                    <ScrollView contentContainerStyle={[styles.page, { paddingTop: 92 }]} showsVerticalScrollIndicator={false}>
 
                         <View style={styles.sectionHead}>
                             <View style={{ marginTop: -35 }}>
