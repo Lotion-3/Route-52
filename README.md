@@ -2,16 +2,16 @@ FOR ALAN LAI AND NOVAK G.
 
 Step 1
 
-Go to cmd, navigate to the directory and execute
+Go to cmd, navigate to the root directory (`basketBuddy`) and execute:
 
-".venv\Scripts\activate"
+`backend\.venv\Scripts\activate`
 
-after running that command, you will use "(route52)" on the left hadn side of each line in cmd
+after running that command, you will see "(.venv)" on the left hand side of each line in cmd.
 
 THEN
 
-"cd backend"
-"python server.py" (starts the backend server)
+`cd backend`
+`python server.py` (starts the backend server)
 
 THEN MAKE A NEW TERMINAL
  make sure you are in the frontend repo

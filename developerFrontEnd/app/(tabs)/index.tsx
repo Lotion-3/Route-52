@@ -1,9 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
 import Logo from '@/components/Logo';
 import GradientButton from '@/components/GradientButton';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { planStore, SavedPlan } from '@/services/planStore';
+
+function ZigzagEdge({ color = '#b0db9d' }: { color?: string }) {
+  if (Platform.OS !== 'web') return null;
+
+  return React.createElement(
+    'svg',
+    {
+      viewBox: '0 0 100 10',
+      preserveAspectRatio: 'none',
+      style: { width: '100%', height: '12px', display: 'block' },
+    },
+    React.createElement('polygon', {
+      points: '0,0 5,10 10,0 15,10 20,0 25,10 30,0 35,10 40,0 45,10 50,0 55,10 60,0 65,10 70,0 75,10 80,0 85,10 90,0 95,10 100,0',
+      fill: color,
+    })
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,79 +56,163 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.headerSection}>
-        <Logo size={144} />
-        <Text style={styles.subtitle}>Your AI Grocery & Meal Assistant</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#FFF2E0' }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <View style={styles.topBanner}>
+          {/* CSS background dot grid on Web */}
+          {Platform.OS === 'web' && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundImage: 'radial-gradient(rgba(74, 122, 58, 0.08) 12%, transparent 13%)',
+                backgroundSize: '16px 16px',
+                backgroundPosition: '8px 8px',
+              } as any}
+              pointerEvents="none"
+            />
+          )}
 
-      <View style={styles.actionSection}>
-        <GradientButton
-          title="Start New Meal Plan"
-          onPress={handleStartNew}
-        />
-      </View>
-
-      <View style={styles.savedSection}>
-        <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
-        {savedPlans.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
+          <View style={styles.bannerContentRow}>
+            <View style={[styles.notch, { left: 16 }]} />
+            <Text style={styles.topBannerText}>Route 52: Savings All Around</Text>
+            <View style={[styles.notch, { right: 16 }]} />
           </View>
-        ) : (
-          savedPlans.map((entry, index) => (
-            <View key={entry.id} style={styles.savedCardContainer}>
-              <TouchableOpacity
-                style={styles.savedCard}
-                onPress={() => handleViewSaved(entry.id)}
-              >
-                <View style={styles.savedCardContent}>
-                  <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
-                  <Text style={styles.savedCardMeta}>
-                    {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
-                  </Text>
-                </View>
-                <Text style={styles.viewLink}>View →</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => {
-                  planStore.deleteById(entry.id);
-                  setSavedPlans(planStore.getSavedPlans());
-                }}
-              >
-                <Text style={styles.deleteText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-        {planStore.isFull && (
-          <Text style={styles.limitText}>
-            Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
-          </Text>
-        )}
+
+          {/* Perforation line */}
+          <View style={[styles.perforationLine, Platform.OS === 'web' && {
+            backgroundImage: 'linear-gradient(to right, #FFF8F0 65%, transparent 65%)',
+            backgroundSize: '24px 2px',
+            backgroundRepeat: 'repeat-x',
+            borderStyle: 'none',
+            borderWidth: 0,
+            height: 2,
+          } as any]} />
+        </View>
+        <ZigzagEdge />
       </View>
-    </ScrollView>
+
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 97 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.contentContainer}>
+          <View style={styles.headerSection}>
+            <Logo size={288} />
+          </View>
+     
+          <View style={styles.actionSection}>
+            <GradientButton
+              title="Start New Meal Plan"
+              onPress={handleStartNew}
+            />
+            <GradientButton
+              title="Grocery List Optimizer"
+              onPress={() => router.push('/optimizer')}
+            />
+          </View>
+     
+          <View style={styles.savedSection}>
+            <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
+            {savedPlans.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <IconSymbol name="basket.fill" size={32} color="#9CA3AF" style={styles.emptyIcon} />
+                <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
+              </View>
+            ) : (
+              savedPlans.map((entry, index) => (
+                <View key={entry.id} style={styles.savedCardContainer}>
+                  <TouchableOpacity
+                    style={styles.savedCard}
+                    onPress={() => handleViewSaved(entry.id)}
+                  >
+                    <IconSymbol name="cart.fill" size={24} color="#ee7422" style={styles.cartIcon} />
+                    <View style={styles.savedCardContent}>
+                      <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
+                      <Text style={styles.savedCardMeta}>
+                        {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
+                      </Text>
+                    </View>
+                    <Text style={styles.viewLink}>View →</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => {
+                      planStore.deleteById(entry.id);
+                      setSavedPlans(planStore.getSavedPlans());
+                    }}
+                  >
+                    <Text style={styles.deleteText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+            {planStore.isFull && (
+              <Text style={styles.limitText}>
+                Cap reached ({planStore.max}/{planStore.max}). Discard a plan to save a new one.
+              </Text>
+            )}
+          </View>
+     
+          <View style={styles.footerSection}>
+            <Text style={styles.footerText}>Your AI Grocery & Meal Assistant</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFF2E0',
+  },
+  contentContainer: {
     padding: 24,
-    paddingTop: 80,
+    paddingTop: 4,
+  },
+  topBanner: {
+    backgroundColor: '#b0db9d',
+    paddingVertical: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    position: 'relative',
+  },
+  perforationLine: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    borderWidth: 1,
+    borderColor: '#FFF8F0',
+    borderStyle: 'dashed',
+    height: 0,
+  },
+  bannerContentRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notch: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF2E0',
+    zIndex: 5,
+  },
+  topBannerText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 28,
+    letterSpacing: 0.5,
+    fontFamily: 'Fraunces-Bold',
+    zIndex: 2,
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    fontFamily: 'Garamond-Bold',
-    marginTop: 16,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
@@ -120,6 +222,7 @@ const styles = StyleSheet.create({
   },
   actionSection: {
     marginBottom: 40,
+    gap: 10,
   },
   savedSection: {
     flex: 1,
@@ -129,21 +232,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 16,
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 30,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    borderStyle: 'dashed',
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+    gap: 16,
   },
+  emptyIcon: {},
   emptyText: {
+    flex: 1,
     color: '#9CA3AF',
-    textAlign: 'center',
+    textAlign: 'left',
     fontSize: 14,
+    fontFamily: 'WorkSans-Regular',
   },
   savedCardContainer: {
     flexDirection: 'row',
@@ -159,11 +272,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
   deleteButton: {
@@ -187,16 +300,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+    fontFamily: 'WorkSans-SemiBold',
   },
   savedCardMeta: {
     fontSize: 12,
     color: '#6B7280',
     marginTop: 4,
+    fontFamily: 'WorkSans-Regular',
   },
   viewLink: {
     color: '#1A1A1A',
     fontWeight: '700',
     fontSize: 14,
+    fontFamily: 'WorkSans-Bold',
   },
   limitText: {
     fontSize: 12,
@@ -204,5 +320,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
-  }
+    fontFamily: 'WorkSans-Regular',
+  },
+  footerSection: {
+    marginTop: 32,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontFamily: 'WorkSans-Regular',
+  },
+  cartIcon: {
+    marginRight: 16,
+  },
 });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface GradientButtonProps {
     title: string;
@@ -8,8 +9,15 @@ interface GradientButtonProps {
 
 export default function GradientButton({ title, onPress }: GradientButtonProps) {
     return (
-        <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.button}>
-            <Text style={styles.text}>{title}</Text>
+        <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+            <LinearGradient
+                colors={['#FFA54F', '#E8821E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.button}
+            >
+                <Text style={styles.text}>{title}</Text>
+            </LinearGradient>
         </TouchableOpacity>
     );
 }
@@ -19,16 +27,14 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderRadius: 999, // pill shape
         alignItems: 'center',
-        marginTop: 20,
-        backgroundColor: '#ee7422',
+        width: '100%',
 
-        shadowColor: '#ee7422',
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-
-        elevation: 6,
-    } as ViewStyle, // Explicitly casting to ViewStyle for TS compatibility if needed
+        shadowColor: '#000000',
+        shadowOpacity: 0.25,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 5,
+    } as ViewStyle,
 
     text: {
         color: '#fff',

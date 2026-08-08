@@ -6,10 +6,13 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import MainLayout from '@/components/MainLayout';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { useFonts, EBGaramond_400Regular, EBGaramond_700Bold } from '@expo-google-fonts/eb-garamond';
+import { Fraunces_400Regular, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
+import { WorkSans_400Regular, WorkSans_600SemiBold, WorkSans_700Bold } from '@expo-google-fonts/work-sans';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -20,6 +23,11 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     'Garamond-Regular': EBGaramond_400Regular,
     'Garamond-Bold': EBGaramond_700Bold,
+    'Fraunces-Regular': Fraunces_400Regular,
+    'Fraunces-Bold': Fraunces_700Bold,
+    'WorkSans-Regular': WorkSans_400Regular,
+    'WorkSans-SemiBold': WorkSans_600SemiBold,
+    'WorkSans-Bold': WorkSans_700Bold,
   });
 
   useEffect(() => {
@@ -35,17 +43,12 @@ export default function RootLayout() {
   }
 
   if (!loaded && isWeb) {
-    SplashScreen.hideAsync().catch(() => {});
+    SplashScreen.hideAsync().catch(() => { });
   }
 
   return (
     <View style={{ flex: 1, position: 'relative' }}>
-      <LinearGradient
-        colors={['#FFFFFF', '#F3EDE4']} // white → soft beige
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ flex: 1 }}
-      >
+      <MainLayout>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack
             screenOptions={{
@@ -58,7 +61,7 @@ export default function RootLayout() {
                 fontWeight: 'bold',
               },
               contentStyle: {
-                backgroundColor: '#F3F0E9', // Warmer background
+                backgroundColor: '#FFF2E0', // Set background color to #FFF2E0
               }
             }}
           >
@@ -71,7 +74,7 @@ export default function RootLayout() {
 
           <StatusBar style="auto" />
         </ThemeProvider>
-      </LinearGradient>
+      </MainLayout>
 
       {/* Marks this running app as the static developer copy — see
           developerFrontEnd/README.md — so it's never mistaken for the real,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions, Linking, Platform } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -40,6 +40,23 @@ const openStoreSite = (storeName: string, delivery: boolean) => {
       )}`;
   Linking.openURL(url).catch(() => notify('Could not open', 'No browser is available to open that link.'));
 };
+
+function ZigzagEdge({ color = '#b0db9d' }: { color?: string }) {
+  if (Platform.OS !== 'web') return null;
+
+  return React.createElement(
+    'svg',
+    {
+      viewBox: '0 0 100 10',
+      preserveAspectRatio: 'none',
+      style: { width: '100%', height: '12px', display: 'block' },
+    },
+    React.createElement('polygon', {
+      points: '0,0 5,10 10,0 15,10 20,0 25,10 30,0 35,10 40,0 45,10 50,0 55,10 60,0 65,10 70,0 75,10 80,0 85,10 90,0 95,10 100,0',
+      fill: color,
+    })
+  );
+}
 
 export default function ResultsScreen() {
   const {
@@ -413,11 +430,10 @@ export default function ResultsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: '#F9F9F9' }]}>
+      <View style={[styles.container, styles.center, { backgroundColor: '#FFF2E0' }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Logo size={180} />
-        <View style={{ height: 24 }} />
-        <View style={styles.titleRow}>
+        <Logo size={264} />
+        <View style={[styles.titleRow, { marginTop: -52 }]}>
           <Text style={styles.loadingText}>Optimizing your shopping trip</Text>
           <BeigeLoadingDots />
         </View>
@@ -428,7 +444,7 @@ export default function ResultsScreen() {
 
   if (error || !plan) {
     return (
-      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#F9F9F9' }]}>
+      <View style={[styles.container, styles.center, { padding: 20, backgroundColor: '#FFF2E0' }]}>
         <Stack.Screen options={{ title: 'Error' }} />
         <IconSymbol name="exclamationmark.circle.fill" size={60} color={Colors.error} />
         <Text style={[styles.loadingText, { marginTop: 20 }]}>Planning Failed</Text>
@@ -458,8 +474,41 @@ export default function ResultsScreen() {
         }}
       />
 
-      <View style={styles.brandHeader}>
-        <Logo size={84} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <View style={styles.brandHeader}>
+          <View style={styles.greenBannerContainer}>
+            {/* CSS background dot grid on Web */}
+            {Platform.OS === 'web' && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundImage: 'radial-gradient(rgba(74, 122, 58, 0.08) 12%, transparent 13%)',
+                  backgroundSize: '16px 16px',
+                  backgroundPosition: '8px 8px',
+                } as any}
+                pointerEvents="none"
+              />
+            )}
+
+            <View style={styles.bannerContentRow}>
+              <View style={[styles.notch, { left: 16 }]} />
+              <Text style={styles.topBannerText}>Your Route</Text>
+              <View style={[styles.notch, { right: 16 }]} />
+            </View>
+
+            {/* Perforation line */}
+            <View style={[styles.perforationLine, Platform.OS === 'web' && {
+              backgroundImage: 'linear-gradient(to right, #FFF8F0 65%, transparent 65%)',
+              backgroundSize: '24px 2px',
+              backgroundRepeat: 'repeat-x',
+              borderStyle: 'none',
+              borderWidth: 0,
+              height: 2,
+            } as any]} />
+          </View>
+          <ZigzagEdge />
+        </View>
       </View>
 
       <FlatList
@@ -595,7 +644,7 @@ export default function ResultsScreen() {
           </View>
         }
         ListFooterComponent={ListFooter}
-        contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 24, paddingTop: 92 + 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       />
       <DownloadFab label="Download list" onPress={handleDownloadPdf} />
@@ -604,24 +653,75 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9F9F9' },
+  container: { flex: 1, backgroundColor: '#FFF2E0' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
   brandHeader: {
-    paddingTop: 60,
-    paddingBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: 'transparent',
+  },
+  brandHeaderSpacer: {
+    height: 10,
+    width: '100%',
+    backgroundColor: '#FFF2E0',
+  },
+  greenBannerContainer: {
+    backgroundColor: '#b0db9d',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 80,
+    position: 'relative',
+  },
+  bannerContentRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  topBannerText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 28,
+    letterSpacing: 0.5,
+    fontFamily: 'Fraunces-Bold',
+    zIndex: 2,
+  },
+  perforationLine: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    borderWidth: 1,
+    borderColor: '#FFF8F0',
+    borderStyle: 'dashed',
+    height: 0,
+  },
+  notch: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF2E0',
+    zIndex: 5,
   },
   brandTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    fontFamily: 'Garamond-Bold',
+    fontFamily: 'Fraunces-Bold',
     marginTop: 8,
   },
+  yourRouteTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    fontFamily: 'Fraunces-Bold',
+    marginBottom: 16,
+  },
 
-  loadingText: { fontSize: 40, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold' },
+  loadingText: { fontSize: 40, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold' },
   loadingSub: { fontSize: 24, color: '#6B7280', marginTop: 12 },
 
   titleRow: {
@@ -677,7 +777,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFF2E0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -940,7 +1040,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButton: {
-    backgroundColor: '#ee7422',
+    backgroundColor: '#E8821E',
   },
   discardButton: {
     backgroundColor: 'transparent',
@@ -1013,7 +1113,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   storeActionButton: {
-    backgroundColor: '#ee7422',
+    backgroundColor: '#E8821E',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

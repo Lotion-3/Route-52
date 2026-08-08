@@ -65,13 +65,13 @@ export default function LoadingGate({ durationMs = 5000, onDone }: LoadingGatePr
     return (
         <View style={styles.overlay} pointerEvents="auto">
             <LinearGradient
-                colors={['#FFFFFF', '#F3EDE4']}
+                colors={['#FFF2E0', '#FFF2E0']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
             />
             <View style={styles.center}>
-                <Logo size={88} />
+                <Logo size={264} />
                 <Text style={styles.title}>Building your plan</Text>
                 <Text style={styles.sub}>{stage}</Text>
 
@@ -107,8 +107,8 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '700',
         color: '#1A1A1A',
-        fontFamily: 'Garamond-Bold',
-        marginTop: 20,
+        fontFamily: 'Fraunces-Bold',
+        marginTop: -32,
     },
     sub: {
         fontSize: 15,
@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 28,
         minHeight: 20,
+        fontFamily: 'WorkSans-Regular',
     },
     barTrack: {
         width: '100%',
@@ -138,5 +139,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#9CA3AF',
+        fontFamily: 'WorkSans-Regular',
     },
 });

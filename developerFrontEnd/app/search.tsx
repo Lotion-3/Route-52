@@ -356,11 +356,12 @@ export default function SearchScreen() {
                 <View style={{ flex: 1, backgroundColor: '#F9F9F9' }}>
                     <Stack.Screen options={{ headerShown: false }} />
                     <TopBanner />
-                    <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+                    <ScrollView contentContainerStyle={[styles.page, { paddingTop: 92 }]} showsVerticalScrollIndicator={false}>
 
                         <View style={styles.sectionHead}>
-                            <Logo size={80} />
-                            <View style={{ height: 8 }} />
+                            <View style={{ marginTop: -35 }}>
+                                <Logo size={240} />
+                            </View>
                             <Text style={styles.header}>Plan Details</Text>
                         </View>
 
@@ -591,9 +592,9 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-    page: { backgroundColor: '#F9F9F9', padding: 20, paddingTop: 20, flexGrow: 1 },
-    sectionHead: { marginBottom: 32, alignItems: 'center' },
-    header: { fontSize: 28, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold', marginTop: 16 },
+    page: { backgroundColor: '#FFF2E0', padding: 20, paddingTop: 2, flexGrow: 1 },
+    sectionHead: { marginBottom: 28, alignItems: 'center' },
+    header: { fontSize: 28, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold', marginTop: -28 },
     section: { marginBottom: 16 },
     card: {
         backgroundColor: '#FFFFFF', borderRadius: 18, padding: 18, marginBottom: 8,
@@ -629,13 +630,13 @@ const styles = StyleSheet.create({
     chipCustomText: { fontSize: 13, color: '#ee7422', fontWeight: '600' },
 
     // Ingredient modal
-    modalContainer: { flex: 1, backgroundColor: '#F9F9F9' },
+    modalContainer: { flex: 1, backgroundColor: '#FFF2E0' },
     modalHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingVertical: 16,
         borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#FFFFFF',
     },
-    modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Garamond-Bold' },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', fontFamily: 'Fraunces-Bold' },
     modalDone: { fontSize: 16, fontWeight: '600', color: '#ee7422' },
     modalSearchRow: {
         flexDirection: 'row', alignItems: 'center',
@@ -657,7 +658,7 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 12 },
     labelSmall: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 },
     calcInput: { backgroundColor: '#F9F9F9', borderRadius: 8, height: 40, paddingHorizontal: 10, fontSize: 14 },
-    calcButton: { backgroundColor: '#ee7422', height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 12 },
+    calcButton: { backgroundColor: '#E8821E', height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 12 },
     calcButtonText: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
 
     // Radio

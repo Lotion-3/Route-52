@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
         zIndex: 999, // Ensure it stays above other content
     },
     button: {
-        backgroundColor: "#ee7422",
+        backgroundColor: "#E8821E",
         paddingHorizontal: 24,
         paddingVertical: 14,
         borderRadius: 999,
