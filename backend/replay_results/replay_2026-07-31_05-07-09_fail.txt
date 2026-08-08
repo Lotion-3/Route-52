@@ -1,0 +1,13 @@
+{
+  "verdict": "FAIL",
+  "exit_code": 1,
+  "summary": "<no RESULT: line found>",
+  "config": {
+    "term": "milk",
+    "item_count": "1",
+    "concurrency": "1",
+    "mint_index": null
+  },
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\vsasa\\hub\\basketBuddy\\backend\\test_walmart_cookie_replay.py\", line 49, in <module>\n    from curl_cffi import requests as ccffi\nModuleNotFoundError: No module named 'curl_cffi'\n"
+}

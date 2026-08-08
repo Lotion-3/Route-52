@@ -1,6 +1,6 @@
 # basketBuddy — Codebase Review & State
 
-_Last updated: 2026-07-30_
+_Last updated: 2026-07-31_
 
 Dense reference doc, not a narrative — written to minimize tokens spent
 re-deriving things in a future session. Trust this over a code comment that
@@ -182,7 +182,75 @@ contradicts it (some comments are stale — noted below where that's known).
   margin below the confirmed-clean 20-wall, not the wall itself) per the
   concurrency finding above.
 
-## Cookie properties — Target vs Walmart (2026-07-30)
+## Cookie properties — Target vs Walmart (2026-07-31 update)
+
+**Re-verified 2026-07-31: Walmart IP block is rolling/intermittent, not
+permanent.** Same home IP, same cookies, same script, ~13 minutes apart:
+- 04:57 — `RESULT: SUCCESS -- 52 products (2.29s)` (saved to
+  `backend/replay_results/replay_2026-07-31_04-57-10_success.txt`)
+- 05:10 — `RESULT: BLOCKED (px-captcha) status=200 (0.37s)` (saved to
+  `backend/replay_results/replay_2026-07-31_05-10-42_fail.txt`)
+
+No mint between them, no request burst, no concurrency change — the only
+thing that moved was the clock. Resolves (loosely) the "is it a rolling
+window or a fixed-timer?" question from the 2026-07-30 Walmart
+cumulative-volume note: at least sometimes it is rolling, and a single
+lightweight replay can unblock itself by waiting briefly. The block-window
+duration wasn't pinned down; treat IP-block failures as "retry after a
+pause, don't keep hammering" rather than "the cookie/IP is dead forever."
+
+**Also confirmed 2026-07-31: GitHub Actions runner IPs are blocked by
+Walmart's PerimeterX** — a properly-loaded 44-cookie Walmart dump returned
+`BLOCKED (px-captcha) status=200` immediately from a GH runner (5 logs in
+`backend/logs.txt`). Same cookie loaded from the local IP succeeded in the
+same session (see above). So `test-walmart-cookie-replay.yml` is currently
+unusable for confirming a cookie lives — any Walmart cookie tested from GH
+Actions will look dead regardless. Target's `test-cookie-replay.yml` is
+unaffected (Target tolerated much higher volume per the 2026-07-30 notes).
+Mitigation: use `backend/run_walmart_replay_local.py` (see below) instead
+of the GH workflow for Walmart replay testing — request goes from your IP,
+not GH's.
+
+---
+
+## Local cookie-replay wrapper (`backend/run_walmart_replay_local.py`)
+
+Added 2026-07-31. Local equivalent of
+`.github/workflows/test-walmart-cookie-replay.yml` — runs the EXACT same
+replay logic (`test_walmart_cookie_replay.py`) but from your machine's IP,
+not GitHub Actions' (which is on Walmart's blocklist, see above).
+
+Conveniences over running the replay script directly:
+- **Auto-reads `.minted_walmart_cookies.json`** (the actual pool file with
+  20+ entries), defaulting to the newest entry — no paste-required input
+  like the GH workflow. Override with `--mint-index N` (0-indexed).
+- **Auto-reads matching `ua`** from the same pool entry (avoids the
+  fingerprint-mismatch risk the GH workflow's blank-UA default carries).
+- **Same env-var surface as the workflow** (`COOKIE_JSON`, `UA`, `TERM`,
+  `ITEM_COUNT`, `CONCURRENCY`) — anything that worked in CI works here.
+- **Prints a clean terminal summary** after the replay's own output:
+  `VERDICT:` (SUCCESS/PARTIAL/FAIL) + `SUMMARY:` (the RESULT: line) +
+  `EXIT:` (process return code). Computed from the RESULT: line regex,
+  not the exit code, so `24/25 succeeded` shows as PARTIAL not FAIL.
+- **Saves a structured JSON record per run** to
+  `backend/replay_results/replay_YYYY-MM-DD_HH-MM-SS_<verdict>.txt`
+  (filename suffix tells you success/partial/fail at a glance; one file
+  per run, never overwritten). Contains verdict, exit_code, summary,
+  config, full captured stdout, and stderr.
+- **`--python` flag** lets you point at a venv that has `curl_cffi`
+  installed (the system Python on this machine didn't, but `venv/` did
+  after `pip install curl_cffi`).
+
+Usage (from repo root, venv active):
+```
+python backend/run_walmart_replay_local.py --python "venv\Scripts\python.exe"
+python backend/run_walmart_replay_local.py --python "venv\Scripts\python.exe" --item-count 5
+python backend/run_walmart_replay_local.py --python "venv\Scripts\python.exe" --mint-index 0 --term eggs
+```
+
+---
+
+## Cookie properties — Target vs Walmart (background, 2026-07-30 baseline)
 
 Everything below is from direct empirical testing this session (mint →
 replay from this machine, sometimes via `CLOAK_PROXY`), not assumption.
@@ -245,7 +313,29 @@ against real production traffic.
 
 ## GitHub Actions offload (`mint_sessions.py` + `session_store.py`)
 
-Mints Walmart/Target/ALDI/Instacart sessions on a 7GB GH Actions runner (not
+**Deleted 2026-07-31: `.github/workflows/mint-sessions.yml`.** The scheduled
+off-box mint pipeline is gone — the only GH Actions workflows left in the
+repo are `firebase-hosting-merge.yml`, `firebase-hosting-pull-request.yml`,
+`test-cookie-replay.yml` (Target), and `test-walmart-cookie-replay.yml`
+(Walmart, currently unusable for Walmart — see the rolling-IP-block note in
+the Cookie properties section above). `mint_sessions.py` still exists in
+`backend/` and still imports/runs cleanly, it just has no scheduled trigger
+anymore — invoke it manually (`python backend/mint_sessions.py`) if off-box
+minting is ever wanted again. Several code comments in `walmart_pricing.py`,
+`target_pricing.py`, `aldi_pricing.py`, `instacart_pricing.py`, and
+`mint_sessions.py` itself still mention `mint-sessions.yml` as if it
+exists; treat those references as stale.
+
+**Replaced 2026-07-31: Walmart CI replay testing → local replay wrapper.**
+Since GH runner IPs are blocked by Walmart's PerimeterX (confirmed — see
+above), `test-walmart-cookie-replay.yml` cannot confirm a Walmart cookie
+lives; every replay shows `px-captcha` regardless of the cookie. Use
+`backend/run_walmart_replay_local.py` instead (see its own section above)
+which runs the same replay script from your IP and writes results to
+`backend/replay_results/`. The Target CI replay workflow is unaffected and
+still works as documented.
+
+ Mints Walmart/Target/ALDI/Instacart sessions on a 7GB GH Actions runner (not
 Render, 512MB), publishes to Supabase `chain_sessions`; Render reads that
 first, falls back to a local browser warm only on a cache miss. Also
 pre-fetches Walmart/Target's static JS/CSS (`chain_assets`) so Render never
@@ -281,6 +371,17 @@ re-downloads those either. Skips re-minting a chain younger than half its TTL.
   embedded JSON. Also auto-detects `backend/.walmart_http_session.json` if
   `COOKIE_JSON` is unset. This is the file that makes cross-IP Walmart replay
   testing possible on CI without ever launching a browser.
+  **Updated 2026-07-31:** `_hit()` now returns a 5-tuple `(term, ok, detail,
+  elapsed, items)` — the items list flows to `_run_single`/`_run_batch` which
+  now print the actual products (single) or a one-line OK/FAIL per term
+  (batch, to avoid flooding 25×N products). New helpers `_format_product()`
+  /`_print_products()` render each item as `$<price>  <brand>  <name>
+  (id=<id>)` using the same field paths (`name`/`brand`/`priceInfo.linePrice`/
+  `usItemId`) as the production `walmart_pricing._item_to_kroger_format`.
+  Default `max_show=20` with a "... and N more" tail line. Backward-compatible
+  — batch callers ignoring the 5th tuple element still work. The local
+  wrapper `run_walmart_replay_local.py` (see its own section) inherits the
+  product display automatically since it captures the replay's stdout.
 - **New: `backend/mint_walmart_cookies.py`** (2026-07-29). Standalone Walmart
   PerimeterX cookie minter. Launches CloakBrowser, warms via home → search
   (two navigations, verified required), waits for `_px3` to settle, validates
@@ -458,10 +559,14 @@ lightweight and CI-friendly.
 | `mint_walmart_cookies.py` | Walmart | Mint fresh PerimeterX cookies via CloakBrowser home→search warm. Supports `--count N`, `--proxy`, `--headed`. Saves to `.minted_walmart_cookies.json`. | cloakbrowser + stdlib |
 | `monitor_walmart_cookie_ttl.py` | Walmart | Health/TTL monitor: pings ONE cookie at a fixed interval until it dies (N consecutive fails) or hits a runtime cap, logging latency + JSONL to `.walmart_cookie_ttl_log.jsonl`. Not yet run to a real death (deprioritized 2026-07-30 in favor of the concurrency investigation). | curl_cffi only |
 | `test_walmart_concurrency_matrix.py` | Walmart | Independently configurable item-count/concurrency/wave-count burst tester (unlike `test_walmart_cookie_replay.py`, whose `max_workers=20` is hardcoded and conflates the two). Used to find the exact 20-request concurrency wall — see findings above. | curl_cffi only |
+| `run_walmart_replay_local.py` (new 2026-07-31) | Walmart | Local wrapper around `test_walmart_cookie_replay.py` — runs from YOUR IP (not GH Actions' blocked one). Auto-reads newest entry of `.minted_walmart_cookies.json` (no paste required), auto-reads matching `ua`, prints `VERDICT:`/`SUMMARY:`/`EXIT:` summary lines, saves a structured JSON record per run to `backend/replay_results/replay_YYYY-MM-DD_HH-MM-SS_<verdict>.txt`. Same env vars as the workflow (`COOKIE_JSON`/`UA`/`TERM`/`ITEM_COUNT`/`CONCURRENCY`) plus `--mint-index N` and `--python PATH`. Run with `--python "venv\Scripts\python.exe"` since `curl_cffi` is in `venv/`, not system Python. | curl_cffi only (delegated to test_walmart_cookie_replay.py) |
 
 CI workflows (`.github/workflows/`):
 - `test-cookie-replay.yml` — manual `workflow_dispatch`, runs `test_cookie_replay.py` on ubuntu-latest, 5min timeout.
-- `test-walmart-cookie-replay.yml` — same for Walmart, runs `test_walmart_cookie_replay.py`.
+- `test-walmart-cookie-replay.yml` — same for Walmart, runs `test_walmart_cookie_replay.py`. **Currently unusable for Walmart — GH runner IPs return `px-captcha` regardless of cookie (confirmed 2026-07-31, see the rolling-block note). Use `run_walmart_replay_local.py` instead.**
+- ~~`mint-sessions.yml`~~ — **deleted 2026-07-31**. The scheduled off-box mint pipeline no longer exists; `mint_sessions.py` is now invokable manually only. References to it in code comments are stale.
+- `firebase-hosting-merge.yml` / `firebase-hosting-pull-request.yml` — deploy/build workflows; not cookie-related.
+
 
 `backend/build_target_store_directory.py` (2026-07-30, not a cookie script)
 geocodes Target's public store sitemap into `target_store_directory.json`
@@ -496,20 +601,39 @@ python backend/test_cookie_replay.py
    non-empty `__NEXT_DATA__`; the primary path requires length ≥ 1000.
    Inconsistent, never aligned.
 3. `"soft"` category unproven beyond the one failure mode tested.
-4. Request-velocity **is now partially captured as a real observation**
-   (not yet as logged data — `chain_block_events` still needs the schema
-   migration run): Walmart went from 7/7 clean warms to 100%-blocked within
-   one day of ordinary test volume from one IP; Target showed zero
-   degradation under materially higher volume (104-way concurrent burst, 8x
-   repeated full-basket runs). Chain-dependent, not a single "IP reputation"
-   knob. `chain_block_events` (once the table exists) would make this
-   queryable instead of inferred from test notes.
-5. Trader Joe's has no categorized detection (different mechanism).
-6. No proxy pool purchased/configured yet for Walmart specifically — Target
-   looks safe to self-host proxy-free (item 1), Walmart does not yet (item
-   4). Recommendation unchanged for Walmart: a proxy or rotating-residential
-   line until its block (2026-07-28) is confirmed either temporary (retest
-   days later) or durable.
+ 4. Request-velocity **is now partially captured as a real observation**
+    (not yet as logged data — `chain_block_events` still needs the schema
+    migration run): Walmart went from 7/7 clean warms to 100%-blocked within
+    one day of ordinary test volume from one IP; Target showed zero
+    degradation under materially higher volume (104-way concurrent burst, 8x
+    repeated full-basket runs). Chain-dependent, not a single "IP reputation"
+    knob. `chain_block_events` (once the table exists) would make this
+    queryable instead of inferred from test notes.
+    **2026-07-31 update:** confirmed Walmart's home-IP block is
+    **rolling/intermittent, not permanent** — a `52 products SUCCESS` at 04:57
+    was followed by `px-captcha BLOCKED` at 05:10 from the same IP, same
+    cookies, same script, no intervening burst or re-mint (saved records in
+    `backend/replay_results/`). The earlier "is it rolling-window or
+    fixed-timer?" parenthetical in this TODO is now loosely resolved: at
+    least sometimes it is rolling, and a single lightweight request doesn't
+    extend the block (the success at 04:57 didn't lock us out for very long).
+    Also confirmed separately on the same date that **GitHub Actions runner
+    IPs are blocked by Walmart** — every Walmart cookie replayed from a GH
+    runner returns `px-captcha` regardless of cookie validity, so
+    `test-walmart-cookie-replay.yml` can't verify a Walmart cookie lives; use
+    `backend/run_walmart_replay_local.py` instead (see its dedicated section
+    above and the diagnostic scripts table).
+ 5. Trader Joe's has no categorized detection (different mechanism).
+ 6. No proxy pool purchased/configured yet for Walmart specifically — Target
+    looks safe to self-host proxy-free (item 1), Walmart does not yet (item
+    4). Recommendation unchanged for Walmart: a proxy or rotating-residential
+    line until its block (2026-07-28) is confirmed either temporary (retest
+    days later) or durable. **2026-07-31 partial answer: at the home-IP level
+    the block was temporary/rolling, not permanent (see item 4's update).
+    Whether the GH-Actions-IP block that replaced the off-box mint pipeline
+    (now that `mint-sessions.yml` is deleted) also clears on a timer is
+    untested and probably not worth testing (GH IPs will be on Walmart's list
+    as long as GitHub runs generic automation on them).**
 
 **Rest of the app:**
 7. Meal-tagging pipeline (66k recipes) never merged into production data.

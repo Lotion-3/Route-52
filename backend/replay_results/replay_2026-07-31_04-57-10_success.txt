@@ -1,0 +1,13 @@
+{
+  "verdict": "SUCCESS",
+  "exit_code": 0,
+  "summary": "SUCCESS -- 52 products (2.29s)",
+  "config": {
+    "term": "milk",
+    "item_count": "1",
+    "concurrency": "1",
+    "mint_index": null
+  },
+  "stdout": "Loaded cookie from COOKIE_JSON env var (44 entries).\nReplaying saved Walmart cookie (44 entries) from THIS runner's IP -- term='milk'\nRESULT: SUCCESS -- 52 products (2.29s)\n",
+  "stderr": ""
+}

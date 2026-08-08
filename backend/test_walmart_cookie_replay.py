@@ -95,7 +95,10 @@ def _find_items(o) -> list[dict]:
     return []
 
 
-def _hit(term: str, cookies: dict, ua: str) -> tuple[str, bool, str, float]:
+def _hit(term: str, cookies: dict, ua: str) -> tuple[str, bool, str, float, list[dict]]:
+    """Returns (term, ok, detail, elapsed, items). `items` is the raw
+    __NEXT_DATA__ itemStacks items on success, [] otherwise — callers that
+    only want pass/fail can ignore the 5th element."""
     t0 = time.time()
     url = _SEARCH_URL.format(q=quote_plus(term))
     headers = {
@@ -108,14 +111,14 @@ def _hit(term: str, cookies: dict, ua: str) -> tuple[str, bool, str, float]:
         resp = ccffi.get(url, headers=headers, cookies=cookies,
                           impersonate="chrome", timeout=30)
     except Exception as e:
-        return term, False, f"transport error: {repr(e)[:100]}", time.time() - t0
+        return term, False, f"transport error: {repr(e)[:100]}", time.time() - t0, []
 
     if _has_explicit_block_marker(resp.text):
-        return term, False, f"BLOCKED (px-captcha) status={resp.status_code}", time.time() - t0
+        return term, False, f"BLOCKED (px-captcha) status={resp.status_code}", time.time() - t0, []
 
     m = _NEXT_DATA_RE.search(resp.text)
     if not m:
-        return term, False, f"BLOCKED (no __NEXT_DATA__) status={resp.status_code}", time.time() - t0
+        return term, False, f"BLOCKED (no __NEXT_DATA__) status={resp.status_code}", time.time() - t0, []
 
     try:
         items = _find_items(json.loads(m.group(1)))
@@ -123,16 +126,45 @@ def _hit(term: str, cookies: dict, ua: str) -> tuple[str, bool, str, float]:
         items = []
 
     if items:
-        return term, True, f"{len(items)} products", time.time() - t0
-    return term, False, f"no products (status={resp.status_code})", time.time() - t0
+        return term, True, f"{len(items)} products", time.time() - t0, items
+    return term, False, f"no products (status={resp.status_code})", time.time() - t0, []
+
+
+def _format_product(item: dict) -> str:
+    """One-line display of a raw __NEXT_DATA__ search item:
+        "$3.98  Walmart  Great Value Whole Milk, 1 gal  (id=10450112)"
+    Field names mirror walmart_pricing.py's _item_to_kroger_format (name,
+    brand, priceInfo.linePrice, usItemId). Tolerant of missing fields."""
+    name = item.get("name") or item.get("title") or "?"
+    brand = item.get("brand") or ""
+    pi = item.get("priceInfo") or {}
+    price = pi.get("linePrice")
+    price_s = f"${price:.2f}" if isinstance(price, (int, float)) else "?"
+    item_id = item.get("usItemId") or item.get("id") or ""
+    id_s = f"  (id={item_id})" if item_id else ""
+    brand_s = f"  {brand}" if brand else ""
+    return f"{price_s:>6}{brand_s}  {name}{id_s}"
+
+
+def _print_products(items: list[dict], max_show: int = 20) -> None:
+    """Print up to `max_show` products, then a '... and N more' line."""
+    if not items:
+        return
+    shown = items[:max_show]
+    for it in shown:
+        print(f"  {_format_product(it)}", flush=True)
+    extra = len(items) - len(shown)
+    if extra > 0:
+        print(f"  ... and {extra} more", flush=True)
 
 
 def _run_single(cookies: dict, ua: str, term: str) -> int:
     print(f"Replaying saved Walmart cookie ({len(cookies)} entries) from THIS runner's IP "
           f"-- term={term!r}", flush=True)
-    _, ok, detail, elapsed = _hit(term, cookies, ua)
+    _, ok, detail, elapsed, items = _hit(term, cookies, ua)
     if ok:
         print(f"RESULT: SUCCESS -- {detail} ({elapsed:.2f}s)", flush=True)
+        _print_products(items)
         return 0
     print(f"RESULT: {detail} ({elapsed:.2f}s)", flush=True)
     return 1
@@ -150,8 +182,10 @@ def _run_batch(cookies: dict, ua: str, item_count: int, concurrency: int) -> int
         for fut in as_completed(futs):
             r = fut.result()
             results.append(r)
-            if not r[1]:
-                print(f"  FAIL {r[0]}: {r[2]} ({r[3]:.2f}s)", flush=True)
+            if r[1]:
+                print(f"  OK   {r[0]:18} {r[2]} ({r[3]:.2f}s)", flush=True)
+            else:
+                print(f"  FAIL {r[0]:18} {r[2]} ({r[3]:.2f}s)", flush=True)
     elapsed = time.time() - t0
 
     ok = sum(1 for r in results if r[1])

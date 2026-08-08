@@ -1,0 +1,5 @@
+Run python test_walmart_cookie_replay.py
+Loaded cookie from COOKIE_JSON env var (44 entries).
+Replaying saved Walmart cookie (44 entries) from THIS runner's IP -- term='milk'
+RESULT: BLOCKED (px-captcha) status=200 (0.53s)
+Error: Process completed with exit code 1.
