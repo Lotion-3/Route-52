@@ -20,7 +20,13 @@ function ZigzagEdge({ color = '#b0db9d' }: { color?: string }) {
   );
 }
 
-export default function TopBanner() {
+interface TopBannerProps {
+    title?: string;
+    showHome?: boolean;
+    largeTitle?: boolean;
+}
+
+export default function TopBanner({ title = "New Meal Plan", showHome = true, largeTitle = false }: TopBannerProps) {
     const router = useRouter();
 
     return (
@@ -45,14 +51,20 @@ export default function TopBanner() {
                         <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
                     </TouchableOpacity>
                     
-                    <TouchableOpacity 
-                        style={styles.homeGroup} 
-                        onPress={() => router.replace('/')}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="home" size={20} color="#1A1A1A" style={styles.homeIcon} />
-                        <Text style={styles.title}>New Meal Plan</Text>
-                    </TouchableOpacity>
+                    {largeTitle ? (
+                      <View style={styles.centerTitleContainer} pointerEvents="box-none">
+                        <Text style={styles.largeTitleText}>{title}</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                          style={styles.homeGroup} 
+                          onPress={() => router.replace('/')}
+                          activeOpacity={0.7}
+                      >
+                          {showHome && <Ionicons name="home" size={20} color="#1A1A1A" style={styles.homeIcon} />}
+                          <Text style={styles.title}>{title}</Text>
+                      </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Perforation line */}
@@ -105,6 +117,23 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         color: "#1A1A1A",
         fontFamily: 'Fraunces-Bold',
+    },
+    centerTitleContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    largeTitleText: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#1A1A1A',
+        fontFamily: 'Fraunces-Bold',
+        letterSpacing: 0.5,
     },
     perforationLine: {
         position: 'absolute',

@@ -52,7 +52,12 @@ export default function HomeScreen() {
   // Address the plan by its stable id, not its position. With an index, deleting
   // any plan shifted every later one and the link opened the wrong plan.
   const handleViewSaved = (id: string) => {
-    router.push({ pathname: '/results', params: { savedId: id } });
+    const plan = planStore.getPlanById(id);
+    if (plan && (plan as any).isOptimizer) {
+      router.push({ pathname: '/optimizer_results', params: { savedId: id } });
+    } else {
+      router.push({ pathname: '/results', params: { savedId: id } });
+    }
   };
 
   return (
@@ -68,7 +73,7 @@ export default function HomeScreen() {
                 backgroundImage: 'radial-gradient(rgba(74, 122, 58, 0.08) 12%, transparent 13%)',
                 backgroundSize: '16px 16px',
                 backgroundPosition: '8px 8px',
-              } as any}
+                } as any}
               pointerEvents="none"
             />
           )}
@@ -110,11 +115,11 @@ export default function HomeScreen() {
           </View>
      
           <View style={styles.savedSection}>
-            <Text style={styles.sectionTitle}>Saved Meal Plans</Text>
+            <Text style={styles.sectionTitle}>Saved Plans & Routes</Text>
             {savedPlans.length === 0 ? (
               <View style={styles.emptyCard}>
                 <IconSymbol name="basket.fill" size={32} color="#9CA3AF" style={styles.emptyIcon} />
-                <Text style={styles.emptyText}>No saved plans yet. Create one to get started!</Text>
+                <Text style={styles.emptyText}>No saved items yet. Create one to get started!</Text>
               </View>
             ) : (
               savedPlans.map((entry, index) => (
@@ -125,9 +130,15 @@ export default function HomeScreen() {
                   >
                     <IconSymbol name="cart.fill" size={24} color="#ee7422" style={styles.cartIcon} />
                     <View style={styles.savedCardContent}>
-                      <Text style={styles.savedCardTitle}>Saved Plan {index + 1}</Text>
+                      <Text style={styles.savedCardTitle}>
+                        {(entry.plan as any).isOptimizer
+                          ? `Saved Grocery List ${index + 1}`
+                          : `Saved Meal Plan ${index + 1}`}
+                      </Text>
                       <Text style={styles.savedCardMeta}>
-                        {entry.plan.meal_plan?.length ?? 0} meals • ${(entry.plan.total_cost ?? 0).toFixed(2)}
+                        {(entry.plan as any).isOptimizer
+                          ? `${entry.plan.shopping_list?.reduce((acc, curr) => acc + (curr.items?.length ?? 0), 0) ?? 0} items • $${(entry.plan.total_cost ?? 0).toFixed(2)}`
+                          : `${entry.plan.meal_plan?.length ?? 0} meals • $${(entry.plan.total_cost ?? 0).toFixed(2)}`}
                       </Text>
                     </View>
                     <Text style={styles.viewLink}>View →</Text>

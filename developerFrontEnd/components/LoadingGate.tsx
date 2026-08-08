@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1A1A1A',
         fontFamily: 'Fraunces-Bold',
-        marginTop: -32,
+        marginTop: -35,
     },
     sub: {
         fontSize: 15,

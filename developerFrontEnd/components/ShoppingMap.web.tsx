@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Linking } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import GradientButton from '@/components/GradientButton';
 
 interface ShoppingMapProps {
     userLocation: { lat: number; lng: number };
@@ -40,12 +41,11 @@ export default function ShoppingMap({ userLocation, shoppingList }: ShoppingMapP
                     <Text key={`${s.store}-${i}`} style={styles.storeMiniItem}>📍 {s.store}</Text>
                 ))}
             </View>
-            <TouchableOpacity
-                style={styles.openMapsButton}
+            <GradientButton
+                title="View Full Route on Google Maps"
                 onPress={() => Linking.openURL(url)}
-            >
-                <Text style={styles.openMapsButtonText}>View Full Route on Google Maps</Text>
-            </TouchableOpacity>
+                style={{ width: 'auto', alignSelf: 'center', paddingHorizontal: 24, paddingVertical: 12 }}
+            />
         </View>
     );
 }
@@ -90,20 +90,4 @@ const styles = StyleSheet.create({
         marginBottom: 6,
         fontWeight: '500',
     },
-    openMapsButton: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        borderRadius: 12,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    openMapsButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 15,
-    }
 });

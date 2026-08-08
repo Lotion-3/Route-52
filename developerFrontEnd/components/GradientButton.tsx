@@ -5,16 +5,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 interface GradientButtonProps {
     title: string;
     onPress: () => void;
+    style?: any;
 }
 
-export default function GradientButton({ title, onPress }: GradientButtonProps) {
+export default function GradientButton({ title, onPress, style }: GradientButtonProps) {
     return (
-        <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+        <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={style}>
             <LinearGradient
                 colors={['#FFA54F', '#E8821E']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={styles.button}
+                style={[styles.button, style]}
             >
                 <Text style={styles.text}>{title}</Text>
             </LinearGradient>

@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, TextInput } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Logo from '@/components/Logo';
+import TopBanner from '@/components/TopBanner';
+import GradientButton from '@/components/GradientButton';
+import { autocompleteAddress } from '@/services/api';
 
 // Brand & styling constants
 const ACCENT_ORANGE = '#EA7000'; // Matching orange from design
@@ -9,21 +13,55 @@ const BG_CREAM = '#FFF2E0';
 
 type StrategyOption =
   | 'Lowest Total Cost (Split items across multiple stores)'
-  | 'Single Store Speed (Fastest shopping trip)'
-  | 'Aisle-by-Aisle Route (Sorted for minimal walk time inside store)';
+  | 'Single Store Speed (Fastest shopping trip)';
+
+
 
 export default function GroceryStoreOptimizerView() {
   const router = useRouter();
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [strategy, setStrategy] = useState<StrategyOption>('Lowest Total Cost (Split items across multiple stores)');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [location, setLocation] = useState('');
+  const [time, setTime] = useState('3');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const suppressFetch = useRef(false);
+
+  // Address autocomplete logic
+  useEffect(() => {
+    if (suppressFetch.current) {
+      suppressFetch.current = false;
+      return;
+    }
+    const q = location.trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const next = await autocompleteAddress(q, controller.signal);
+      if (!cancelled) setSuggestions(next);
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [location]);
+
+  const selectSuggestion = (s: string) => {
+    suppressFetch.current = true;
+    setLocation(s);
+    setSuggestions([]);
+  };
 
   const stores = ['Aldi', 'Kroger', "Trader Joe's", 'Walmart'];
 
   const strategies: StrategyOption[] = [
     'Lowest Total Cost (Split items across multiple stores)',
-    'Single Store Speed (Fastest shopping trip)',
-    'Aisle-by-Aisle Route (Sorted for minimal walk time inside store)'
+    'Single Store Speed (Fastest shopping trip)'
   ];
 
   const toggleStore = (store: string) => {
@@ -35,32 +73,76 @@ export default function GroceryStoreOptimizerView() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <View style={{ flex: 1, backgroundColor: BG_CREAM }}>
+      <TopBanner title="Homepage" />
 
-      {/* Header Logo Section */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/')}>
-          <Text style={styles.headerTitle}>ROUTE 52</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerSub}>Your AI Grocery & Meal Assistant</Text>
-      </View>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 92 }]} showsVerticalScrollIndicator={false}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Main Container resembling the provided HTML card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Grocery Store Optimizer</Text>
-          <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-            <Ionicons name="close" size={24} color="#666" />
+
+        {/* Header Logo Section */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.push('/')}>
+            <Logo size={288} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.cardDescription}>
-          Select your local stores and preferences to generate the fastest route and cheapest cart split.
-        </Text>
 
-        {/* Feature 1: Store Selection */}
+        {/* Page Title Section */}
+        <Text style={styles.pageTitle}>Grocery List Optimizer</Text>
+
+        {/* Main Container resembling the provided HTML card */}
+        <View style={styles.card}>
+
+
+          {/* Your Location */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Your Location</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="location-outline" size={18} color="#9CA3AF" />
+              <TextInput
+                placeholder="Address or Zip Code"
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
+                value={location}
+                onChangeText={setLocation}
+                returnKeyType="next"
+              />
+            </View>
+            {suggestions.length > 0 && (
+              <View style={styles.suggestBox}>
+                {suggestions.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={styles.suggestItem}
+                    onPress={() => selectSuggestion(s)}
+                  >
+                    <Ionicons name="location-outline" size={15} color="#9CA3AF" />
+                    <Text style={styles.suggestText} numberOfLines={1}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Shopping Time */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Shopping Time (hrs)</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="time-outline" size={18} color="#9CA3AF" />
+              <TextInput
+                placeholder="3"
+                placeholderTextColor="#9CA3AF"
+                style={styles.iconInput}
+                keyboardType="numeric"
+                value={time}
+                onChangeText={setTime}
+              />
+            </View>
+          </View>
+
+          {/* Feature 1: Store Selection */}
         <View style={styles.section}>
-          <Text style={styles.label}>Select Nearby Stores</Text>
+          <Text style={styles.label}>Preferred Nearby Stores</Text>
           <View style={styles.storeRow}>
             {stores.map((store) => {
               const isSelected = selectedStores.includes(store);
@@ -122,22 +204,25 @@ export default function GroceryStoreOptimizerView() {
         </View>
 
         {/* Feature 3: Action Trigger */}
-        <TouchableOpacity
-          style={styles.optimizeButton}
-          onPress={() => {
-            router.push({
-              pathname: '/results',
-              params: {
-                selectedStores: JSON.stringify(selectedStores),
-                strategy: strategy
-              }
-            });
-          }}
-        >
-          <Text style={styles.optimizeButtonText}>Optimize Current Shopping List</Text>
-        </TouchableOpacity>
+        <View style={{ marginTop: 12 }}>
+          <GradientButton
+            title="Optimize Shopping List"
+            onPress={() => {
+              router.push({
+                pathname: '/optimizer_search',
+                params: {
+                  selectedStores: JSON.stringify(selectedStores),
+                  strategy: strategy,
+                  location: location,
+                  time: time
+                }
+              });
+            }}
+          />
+        </View>
       </View>
     </ScrollView>
+  </View>
   );
 }
 
@@ -150,12 +235,36 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: -30,
     ...Platform.select({
       web: {
         textAlign: 'center' as any,
       }
     })
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    fontFamily: 'Fraunces-Bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  iconInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingLeft: 8,
+    fontSize: 16,
+    color: '#1A1A1A',
   },
   headerTitle: {
     fontSize: 32,
@@ -277,16 +386,26 @@ const styles = StyleSheet.create({
     color: ACCENT_ORANGE,
     fontWeight: '600',
   },
-  optimizeButton: {
-    marginTop: 12,
-    backgroundColor: ACCENT_ORANGE,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
+  suggestBox: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
-  optimizeButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 15,
+  suggestItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F0F0F0',
+    gap: 8,
+  },
+  suggestText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
   },
 });
