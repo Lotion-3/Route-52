@@ -1,0 +1,44 @@
+name: Deploy frontend to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-cloudflare.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build web bundle
+        working-directory: ./frontend
+        env:
+          # Bakes the Render backend URL into the static build at export time —
+          # see frontend/services/api.ts. Without this the auto-detect fallback
+          # still resolves to the same URL for any non-localhost host, but being
+          # explicit here matches localrun.bat/liverun.bat's convention.
+          EXPO_PUBLIC_API_TARGET: live
+        run: |
+          npm install
+          npx expo export -p web
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name=route52 --branch=main
