@@ -67,18 +67,31 @@ BANNER_TO_CHAIN = {
 
 
 def is_kroger_banner(store_name: str) -> bool:
-    """Return True if store_name matches any Kroger-family banner."""
-    lower = store_name.lower()
-    return any(banner in lower for banner in KROGER_BANNERS)
+    """Return True if store_name matches any Kroger-family banner.
+
+    Matches as a LEADING term (`startswith`), not "anywhere in the string" —
+    confirmed 2026-09-13 that substring-anywhere false-positives on generic
+    banner names: Google Places returned a real, unaffiliated small grocery
+    named "H L Foods Co [...]" that got misrouted here purely because "foods
+    co" appears mid-name, then failed against the Kroger API (which has no
+    record of it, correctly) with no indication anywhere that the match
+    itself was the actual problem. A real chain listing is always named
+    "<Banner> ..." (e.g. "Ralphs", "Food 4 Less #123"), never "<other text>
+    <Banner> ...", so requiring the banner as a prefix keeps every genuine
+    match (verified against probe_kroger_banners.py's confirmed listings)
+    while dropping names that merely contain the words somewhere later on."""
+    lower = store_name.lower().strip()
+    return any(lower.startswith(banner) for banner in KROGER_BANNERS)
 
 
 def _chain_for(store_name: Optional[str]) -> Optional[str]:
-    """Map a Google Places banner name to its Kroger API `chain` code, or None."""
+    """Map a Google Places banner name to its Kroger API `chain` code, or None.
+    Prefix match — see is_kroger_banner's docstring for why not substring."""
     if not store_name:
         return None
-    lower = store_name.lower().replace("'", "")
+    lower = store_name.lower().strip().replace("'", "")
     for sub, code in BANNER_TO_CHAIN.items():
-        if sub.replace("'", "") in lower:
+        if lower.startswith(sub.replace("'", "")):
             return code
     return None
 

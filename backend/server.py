@@ -893,6 +893,13 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             _apply_prices(kroger_key, kroger_prices)
         else:
             print("[Kroger] Real prices fetched but no Kroger-family store in route — discarding.", flush=True)
+    elif kroger_key:
+        # _fetch_kroger()/_within_budget already log their own reason on an
+        # exception or a timeout; this covers the third, previously-silent
+        # case — the call returned cleanly with zero products (e.g. no live
+        # product endpoint for this specific store) — so kroger_key never
+        # gets applied and, until now, nothing said why.
+        _store_failed("Kroger", f"no products returned for '{kroger_key}'")
 
     if aldi_key:
         aldi_prices = _within_budget(fut_aldi, "ALDI")
@@ -1176,6 +1183,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                         "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
                     }
             real_priced_keys.add(kroger_key)
+        else:
+            _store_failed("Kroger", f"no products returned for '{kroger_key}'")
 
     # --- ALDI, Meijer, Walmart, Target, Trader Joe's, Costco, Instacart fallback ---
     # (same blocks as generate_plan but without the King Soopers King Soopers fallback)
