@@ -133,6 +133,15 @@ _HTTP_CONCURRENCY = int(os.environ.get("WALMART_HTTP_CONCURRENCY", "18"))
 # host; 3 tries could hog it long enough to time out every other chain waiting
 # behind it. Fail to fallback a try sooner.
 _WARM_TRIES = int(os.environ.get("WALMART_WARM_TRIES", "2"))
+# A live CloakBrowser warm launches a real Chromium — comfortably fine on a
+# laptop, a real risk of OOM-killing the whole process on Render's 512MB
+# instance (confirmed 2026-09-12: a mid-request PerimeterX throttle exhausted
+# the pool/Supabase/disk sources, fell through to _warm_http_session(), and
+# the process was killed and restarted by the host mid-request — no traceback,
+# just a fresh boot log, the signature of an OOM kill). Set ALLOW_BROWSER_WARM=0
+# on memory-constrained hosts to make that path fail this one chain cleanly
+# (_Blocked, caught by callers) instead of risking the entire server.
+_ALLOW_BROWSER_WARM = os.environ.get("ALLOW_BROWSER_WARM", "1").strip().lower() not in ("0", "false", "no")
 _IMPERSONATE = os.environ.get("WALMART_IMPERSONATE", "chrome")
 _NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>')
 
@@ -915,6 +924,9 @@ def _ensure_http_session() -> dict:
                 _http_session = cached
                 _session_source = "fallback"
                 print("[Walmart] Reused cached HTTP cookie (no warm).", flush=True)
+            elif not _ALLOW_BROWSER_WARM:
+                raise _Blocked("pool/remote/disk all exhausted and ALLOW_BROWSER_WARM=0 "
+                                "on this host — refusing to launch CloakBrowser here.")
             else:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
@@ -1188,9 +1200,16 @@ def price_all_walmart(
             if _session_source != "pool":
                 _drop_http_session()
 
-        # Fallback: browser pool, only if HTTP produced nothing at all.
+        # Fallback: browser pool, only if HTTP produced nothing at all. This
+        # launches N CloakBrowser workers directly — real memory risk on a
+        # constrained host, same reasoning as the _ensure_http_session guard
+        # above (see ALLOW_BROWSER_WARM's comment) — so it's gated the same way.
         if prices:
             src = "curl_cffi"
+        elif not _ALLOW_BROWSER_WARM:
+            print("[Walmart] HTTP path empty and ALLOW_BROWSER_WARM=0 — skipping the "
+                  "CloakBrowser pool fallback, falling back to Instacart.", flush=True)
+            src = "none"
         else:
             print("[Walmart] HTTP path empty — falling back to CloakBrowser pool.", flush=True)
             try:

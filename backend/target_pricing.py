@@ -176,6 +176,13 @@ _SEARCH_TTL = int(os.environ.get("TARGET_SEARCH_TTL", str(6 * 3600)))
 # blocks (up to MAX_IP_REFRESHES).
 _HTTP_CONCURRENCY = int(os.environ.get("TARGET_HTTP_CONCURRENCY", "6"))
 _WARM_TRIES = int(os.environ.get("TARGET_WARM_TRIES", "3"))
+# A live CloakBrowser warm launches a real Chromium — fine on a laptop, a real
+# OOM risk on Render's 512MB instance once pool/Supabase/disk are all exhausted
+# mid-request (same reasoning as walmart_pricing.py's ALLOW_BROWSER_WARM — see
+# its comment for the 2026-09-12 incident that motivated this). Set
+# ALLOW_BROWSER_WARM=0 on memory-constrained hosts to fail this chain cleanly
+# instead of risking the whole process.
+_ALLOW_BROWSER_WARM = os.environ.get("ALLOW_BROWSER_WARM", "1").strip().lower() not in ("0", "false", "no")
 _IMPERSONATE = os.environ.get("TARGET_IMPERSONATE", "chrome")
 
 # Every warm/validate search used to hit the literal same term ("eggs"), every
@@ -1169,6 +1176,9 @@ def _ensure_http_session() -> dict:
                 _http_session = cached
                 _session_source = "fallback"
                 print("[Target] Reused cached HTTP cookie (no warm).", flush=True)
+            elif not _ALLOW_BROWSER_WARM:
+                raise _ImpervaBlocked("pool/remote/disk all exhausted and ALLOW_BROWSER_WARM=0 "
+                                       "on this host — refusing to launch CloakBrowser here.")
             else:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
