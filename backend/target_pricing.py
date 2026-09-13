@@ -1105,11 +1105,15 @@ def _load_http_session() -> Optional[dict]:
 
 
 def _load_remote_session() -> Optional[dict]:
-    """Off-box cookie from Supabase (published by mint_sessions.py on GitHub
-    Actions). None if unavailable/stale — caller falls back to disk/warm."""
+    """Off-box cookie from Supabase (published by mint_sessions.py / a manual
+    mint_and_upload_session.py run). None if unavailable/stale — caller falls
+    back to disk/warm. Reuses _HTTP_COOKIE_TTL (same knob as the disk-cache
+    path) instead of session_store.load's 20-minute default — that default
+    assumed a ~15-30min GitHub Actions mint cadence which no longer exists;
+    with a once-daily manual mint, 20min left this cache cold almost all day."""
     try:
         import session_store
-        return session_store.load("target")
+        return session_store.load("target", max_age_seconds=_HTTP_COOKIE_TTL)
     except Exception:
         return None
 
