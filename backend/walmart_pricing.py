@@ -138,10 +138,22 @@ _WARM_TRIES = int(os.environ.get("WALMART_WARM_TRIES", "2"))
 # instance (confirmed 2026-09-12: a mid-request PerimeterX throttle exhausted
 # the pool/Supabase/disk sources, fell through to _warm_http_session(), and
 # the process was killed and restarted by the host mid-request — no traceback,
-# just a fresh boot log, the signature of an OOM kill). Set ALLOW_BROWSER_WARM=0
-# on memory-constrained hosts to make that path fail this one chain cleanly
-# (_Blocked, caught by callers) instead of risking the entire server.
-_ALLOW_BROWSER_WARM = os.environ.get("ALLOW_BROWSER_WARM", "1").strip().lower() not in ("0", "false", "no")
+# just a fresh boot log, the signature of an OOM kill).
+#
+# Blocked by DEFAULT on Render — detected via `RENDER`, which Render injects
+# into every service's environment automatically, with no config needed on
+# our end. This is deliberately NOT opt-in (an env var someone has to
+# remember to set): a fresh Render service, a wiped env var, a new hosting
+# account — none of those should be able to silently re-enable a path that
+# can take the whole process down. `ALLOW_BROWSER_WARM` still exists as an
+# explicit override in either direction (e.g. "1" to force it back on for a
+# one-off debug session on Render, or "0" to disable it locally too).
+_ON_RENDER = bool(os.environ.get("RENDER"))
+_allow_warm_override = os.environ.get("ALLOW_BROWSER_WARM")
+if _allow_warm_override is not None:
+    _ALLOW_BROWSER_WARM = _allow_warm_override.strip().lower() not in ("0", "false", "no")
+else:
+    _ALLOW_BROWSER_WARM = not _ON_RENDER
 _IMPERSONATE = os.environ.get("WALMART_IMPERSONATE", "chrome")
 _NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>')
 

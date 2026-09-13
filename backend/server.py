@@ -340,6 +340,16 @@ class PrewarmRequest(BaseModel):
     shopping_time_hours: float = 3.0
 
 
+def _store_failed(chain: str, reason) -> None:
+    """One uniform, greppable line for every store pricer that failed or came
+    back empty — `grep "STORE FAILED" <render logs>` finds every skip and why,
+    instead of hunting through a dozen differently-worded per-chain messages
+    (or, in a few spots, silent `except: pass` with nothing logged at all).
+    Callers already catch the exception and skip/fall back on their own —
+    this is purely the visibility layer, never control flow."""
+    print(f"[STORE FAILED] {chain}: {reason}", flush=True)
+
+
 def _geocode_address(address: str):
     """Geocode an address to (lat, lon), using the shared geocode cache.
 
@@ -725,7 +735,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 kroger_async.price_all_async(to_buy_quantities, lat, lon, store_name=kroger_key)
             )
         except Exception as e:
-            print(f"[Kroger] Async pricing failed ({e}), store will be excluded.", flush=True)
+            _store_failed("Kroger", e)
             prices = {}
         if not prices:
             ks_key = next((k for k in price_database if is_king_soopers_store(k)), None)
@@ -739,7 +749,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                         prices = ks_prices
                         print(f"[KS] Instacart fallback priced {len(ks_prices)} ingredients.", flush=True)
                 except Exception as e:
-                    print(f"[KS] Instacart fallback failed ({e}).", flush=True)
+                    _store_failed("King Soopers (Instacart fallback)", e)
         return prices
 
     def _fetch_aldi():
@@ -748,7 +758,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             _, _, prices = price_all_aldi(to_buy_quantities, aldi_lat, aldi_lon)
             return prices
         except Exception as e:
-            print(f"[ALDI] Pricing failed ({e}), store will be excluded.", flush=True)
+            _store_failed("ALDI", e)
             return {}
 
     def _fetch_meijer():
@@ -757,7 +767,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             _, _, prices = meijer_pricing.price_all_meijer(to_buy_quantities, m_lat, m_lon)
             return prices
         except Exception as e:
-            print(f"[Meijer] Pricing failed ({e}), store will be excluded.", flush=True)
+            _store_failed("Meijer", e)
             return {}
 
     def _fetch_loop_store(store_key):
@@ -768,7 +778,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
                 return {"prices": tj_prices or {}, "label": "TJ"}
             except Exception as e:
-                print(f"[TJ] Pricing failed ({e}), store will be excluded.", flush=True)
+                _store_failed("Trader Joe's", e)
                 return {"prices": {}, "label": "TJ"}
 
         # Target: try direct RedSky pricing first; on failure fall through to
@@ -779,9 +789,9 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _, _, tg_prices = target_pricing.price_all_target(to_buy_quantities, tg_lat, tg_lon)
                 if tg_prices:
                     return {"prices": tg_prices, "label": "Target"}
-                print(f"[Target] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
+                _store_failed("Target", f"empty result for '{store_key}' — falling back to Instacart")
             except Exception as e:
-                print(f"[Target] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
+                _store_failed("Target", f"{e} — falling back to Instacart")
 
         # Walmart: try direct CloakBrowser pricing first; on failure fall through
         # to the generic Instacart slug below (Walmart isn't on Instacart, so this
@@ -791,9 +801,9 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _, _, wm_prices = walmart_pricing.price_all_walmart(to_buy_quantities, lat, lon)
                 if wm_prices:
                     return {"prices": wm_prices, "label": "Walmart"}
-                print(f"[Walmart] Direct pricing empty for '{store_key}' — falling back to Instacart.", flush=True)
+                _store_failed("Walmart", f"empty result for '{store_key}' — falling back to Instacart")
             except Exception as e:
-                print(f"[Walmart] Direct pricing failed ({e}) — falling back to Instacart.", flush=True)
+                _store_failed("Walmart", f"{e} — falling back to Instacart")
 
         # Australia — IGA (not on Instacart, AU isn't covered, so no fallback).
         if is_iga_store(store_key):
@@ -805,9 +815,9 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 )
                 if iga_prices:
                     return {"prices": iga_prices, "label": "IGA"}
-                print(f"[IGA] Direct pricing empty for '{store_key}'.", flush=True)
+                _store_failed("IGA", f"empty result for '{store_key}'")
             except Exception as e:
-                print(f"[IGA] Direct pricing failed ({e}).", flush=True)
+                _store_failed("IGA", e)
             return {"prices": {}, "label": "IGA"}
 
         # Costco: prices are near-uniform nationally, so when the local warehouse
@@ -818,7 +828,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(to_buy_quantities, lat, lon)
                 return {"prices": cc_prices or {}, "label": "IC:costco", "costco_meta": cc_meta or {}}
             except Exception as e:
-                print(f"[IC:costco] Pricing failed ({e}), store will be excluded.", flush=True)
+                _store_failed("Costco (Instacart)", e)
             return {"prices": {}, "label": "IC:costco"}
 
         slug = get_instacart_slug(store_key)
@@ -827,7 +837,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _, _, ic_prices = instacart_pricing.price_all_instacart(to_buy_quantities, lat, lon, slug)
                 return {"prices": ic_prices or {}, "label": f"IC:{slug}"}
             except Exception as e:
-                print(f"[IC:{slug}] Pricing failed ({e}), store will be excluded.", flush=True)
+                _store_failed(f"Instacart:{slug}", e)
         return {"prices": {}, "label": ""}
 
     # ---- Fan out: every store priced at once ----
@@ -869,10 +879,10 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         except FuturesTimeout:
             # Leave it running: it will stop at its next cooperative checkpoint,
             # and single-flight stops the next request from starting another.
-            print(f"[Pricing] {label} exceeded the {budget:.0f}s budget — skipping.", flush=True)
+            _store_failed(label, f"exceeded the {budget:.0f}s pricing budget — skipping")
             return None
         except Exception as e:
-            print(f"[Pricing] {label} errored: {repr(e)[:100]}", flush=True)
+            _store_failed(label, f"errored: {repr(e)[:100]}")
             return None
 
     # ---- Fan in: apply results sequentially (main thread, no races) ----
@@ -890,7 +900,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             print(f"[ALDI] Applying real prices to store: '{aldi_key}'", flush=True)
             _apply_prices(aldi_key, aldi_prices, log_each=True)
         else:
-            print("[ALDI] Real pricing returned nothing, store will be excluded.", flush=True)
+            _store_failed("ALDI", "real pricing returned nothing")
     else:
         print("[ALDI] No ALDI store in route — skipping real pricing.", flush=True)
 
@@ -900,7 +910,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
             print(f"[Meijer] Applying real prices to store: '{meijer_key}'", flush=True)
             _apply_prices(meijer_key, meijer_prices)
         else:
-            print("[Meijer] Real pricing returned nothing, store will be excluded.", flush=True)
+            _store_failed("Meijer", "real pricing returned nothing")
     else:
         print("[Meijer] No Meijer store in route — skipping direct pricing.", flush=True)
 
@@ -925,7 +935,7 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
     # Drop any store that real pricing couldn't cover — no synthetic fallback.
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
     for k in unpriced:
-        print(f"[Pricing] No real prices for '{k}' — excluding from optimization.", flush=True)
+        _store_failed(k, "no real prices — excluding from optimization")
         del price_database[k]
 
     if not price_database:
@@ -1151,6 +1161,7 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         try:
             _, _, kroger_prices = asyncio.run(kroger_async.price_all_async(to_buy_quantities, lat, lon))
         except Exception as e:
+            _store_failed("Kroger", e)
             kroger_prices = {}
         if kroger_prices:
             for ing_name, result in kroger_prices.items():
@@ -1176,7 +1187,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         if is_aldi_store(store_key):
             try:
                 _, _, aldi_prices = price_all_aldi(to_buy_quantities, lat, lon)
-            except Exception:
+            except Exception as e:
+                _store_failed("ALDI", e)
                 aldi_prices = {}
             if aldi_prices:
                 for ing_name, result in aldi_prices.items():
@@ -1195,7 +1207,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         if is_meijer_store(store_key):
             try:
                 _, _, meijer_prices = meijer_pricing.price_all_meijer(to_buy_quantities, lat, lon)
-            except Exception:
+            except Exception as e:
+                _store_failed("Meijer", e)
                 meijer_prices = {}
             if meijer_prices:
                 for ing_name, result in meijer_prices.items():
@@ -1214,7 +1227,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         if is_trader_joes_store(store_key):
             try:
                 _, tj_prices = trader_joes_pricing.price_all_tj(to_buy_quantities)
-            except Exception:
+            except Exception as e:
+                _store_failed("Trader Joe's", e)
                 tj_prices = {}
             if tj_prices:
                 for ing_name, result in tj_prices.items():
@@ -1248,8 +1262,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                             }
                     real_priced_keys.add(store_key)
                     continue
-            except Exception:
-                pass
+            except Exception as e:
+                _store_failed("Target", f"{e} — falling back to Instacart")
         if is_walmart_store(store_key):
             try:
                 wm_lat, wm_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
@@ -1268,8 +1282,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                             }
                     real_priced_keys.add(store_key)
                     continue
-            except Exception:
-                pass
+            except Exception as e:
+                _store_failed("Walmart", f"{e} — falling back to Instacart")
         if is_iga_store(store_key):
             try:
                 ig_store_id = iga_pricing.find_nearest_iga_store(lat, lon) or config.IGA_DEFAULT_STORE_ID
@@ -1290,8 +1304,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                             }
                     real_priced_keys.add(store_key)
                     continue
-            except Exception:
-                pass
+            except Exception as e:
+                _store_failed("IGA", e)
         if "costco" in store_key.lower():
             try:
                 _, _, cc_prices, cc_meta = instacart_pricing.price_all_costco(to_buy_quantities, lat, lon)
@@ -1313,8 +1327,8 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                             "distance_km": cc_meta.get("distance_km"),
                             "store": cc_meta.get("store", ""),
                         }
-            except Exception:
-                pass
+            except Exception as e:
+                _store_failed("Costco (Instacart)", e)
             continue
         slug = get_instacart_slug(store_key)
         if slug:
@@ -1333,11 +1347,12 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                                 "units_to_buy": math.ceil(result.get("units_to_buy", 1)),
                             }
                     real_priced_keys.add(store_key)
-            except Exception:
-                pass
+            except Exception as e:
+                _store_failed(f"Instacart:{slug}", e)
 
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
     for k in unpriced:
+        _store_failed(k, "no real prices — excluding from optimization")
         del price_database[k]
     if not price_database:
         raise HTTPException(status_code=503, detail="No stores with real pricing found in your area.")
