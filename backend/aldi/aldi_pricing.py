@@ -16,6 +16,7 @@ prices format (same as kroger_async):
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 import uuid
@@ -32,7 +33,21 @@ from kroger_search_map import get_all_terms
 # Constants
 # ---------------------------------------------------------------------------
 ALDI_BANNERS: set[str] = {"aldi"}
-SESSION_TTL = 30 * 24 * 3600  # re-bootstrap after 30 days
+
+# Same reasoning as target_pricing.py / walmart_pricing.py: on Render, never
+# launch a live CloakBrowser (real OOM risk on 512MB — see the 2026-09-12
+# incident that motivated ALLOW_BROWSER_WARM there) and never age-reject a
+# cached session either (checking one costs nothing; a genuinely dead session
+# fails naturally on the next real request instead of needing a guessed TTL).
+# Both auto-detected via `RENDER`, no config needed; both still overridable.
+_ON_RENDER = bool(os.environ.get("RENDER"))
+_allow_warm_override = os.environ.get("ALLOW_BROWSER_WARM")
+if _allow_warm_override is not None:
+    _ALLOW_BROWSER_WARM = _allow_warm_override.strip().lower() not in ("0", "false", "no")
+else:
+    _ALLOW_BROWSER_WARM = not _ON_RENDER
+_env_ttl = os.environ.get("ALDI_SESSION_TTL")
+SESSION_TTL = float(_env_ttl) if _env_ttl is not None else (float("inf") if _ON_RENDER else 30 * 24 * 3600)
 
 BASE_GQL = "https://www.aldi.us/graphql"
 _SESSION_CACHE = Path(__file__).parent / ".aldi_session.json"
@@ -214,6 +229,9 @@ def _get_session() -> tuple[requests.Session, str, str]:
             cookies, qp, zone_id, shop_id = (
                 remote["cookies"], remote["qp"], remote["zone_id"], remote["shop_id"])
             print("[ALDI] Reused off-box session (Supabase, no browser).", flush=True)
+        elif not _ALLOW_BROWSER_WARM:
+            raise RuntimeError("ALDI: no cached session available and ALLOW_BROWSER_WARM=0 "
+                                "on this host — refusing to launch CloakBrowser here.")
         else:
             cookies, qp, zone_id, shop_id = _bootstrap()
         _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id, "shop_id": shop_id,

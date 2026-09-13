@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import threading
 import time
@@ -108,7 +109,18 @@ def is_instacart_retailer(store_name: str) -> bool:
 # Constants
 # ---------------------------------------------------------------------------
 
-SESSION_TTL = 2 * 3600
+# Same reasoning as target_pricing.py / walmart_pricing.py / aldi_pricing.py:
+# on Render, never launch a live CloakBrowser (OOM risk on 512MB) and never
+# age-reject a cached session either (a genuinely dead one fails naturally on
+# the next real request). Both auto-detected via `RENDER`, both overridable.
+_ON_RENDER = bool(os.environ.get("RENDER"))
+_allow_warm_override = os.environ.get("ALLOW_BROWSER_WARM")
+if _allow_warm_override is not None:
+    _ALLOW_BROWSER_WARM = _allow_warm_override.strip().lower() not in ("0", "false", "no")
+else:
+    _ALLOW_BROWSER_WARM = not _ON_RENDER
+_env_ttl = os.environ.get("INSTACART_SESSION_TTL")
+SESSION_TTL = float(_env_ttl) if _env_ttl is not None else (float("inf") if _ON_RENDER else 2 * 3600)
 BASE_GQL = "https://www.instacart.com/graphql"
 _SESSION_CACHE = Path(__file__).parent / ".ic_session.json"
 
@@ -281,6 +293,10 @@ def _get_session(bootstrap_slug: str = "publix") -> tuple[requests.Session, str]
             if remote:
                 cookies, qp, zone_id = remote["cookies"], remote["qp"], remote["zone_id"]
                 print("[IC] Reused off-box session (Supabase, no browser).", flush=True)
+            elif not _ALLOW_BROWSER_WARM:
+                raise RuntimeError("Instacart: no cached session available and "
+                                    "ALLOW_BROWSER_WARM=0 on this host — refusing to "
+                                    "launch CloakBrowser here.")
             else:
                 cookies, qp, zone_id = _bootstrap(bootstrap_slug)
             _mem_cache = {"cookies": cookies, "qp": qp, "zone_id": zone_id,

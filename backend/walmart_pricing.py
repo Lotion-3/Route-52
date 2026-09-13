@@ -163,7 +163,17 @@ _session_source: Optional[str] = None      # "pool" | "fallback" — origin of _
 # Disk cache so the last cookie survives restarts and can be reused next run
 # (validated first). PerimeterX _px3 lives minutes, so a short max-age is safe.
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".walmart_http_session.json"
-_HTTP_COOKIE_TTL = int(os.environ.get("WALMART_COOKIE_TTL", str(60 * 60)))
+# On Render, never age-reject a cached cookie (disk or Supabase) — checking
+# one costs nothing (an HTTP replay, no browser), and a genuinely dead cookie
+# already fails cleanly through the normal block-detection path (_Blocked,
+# handled by every caller) rather than needing a preemptive age guess. That
+# guess was also just wrong in practice: cookies have been empirically
+# observed to survive well past the old 1h default. Off Render, keep the
+# normal TTL — a fresh mint is cheap there, so being conservative and
+# re-minting sooner is a reasonable default (still overridable either way
+# via WALMART_COOKIE_TTL).
+_env_ttl = os.environ.get("WALMART_COOKIE_TTL")
+_HTTP_COOKIE_TTL = float(_env_ttl) if _env_ttl is not None else (float("inf") if _ON_RENDER else 60 * 60)
 _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".walmart_asset_cache.pkl"
 
 # Pool of pre-minted cookies (backend/.minted_walmart_cookies.json) tried

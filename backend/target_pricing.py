@@ -223,7 +223,16 @@ _thread_local = threading.local()          # per-worker: .http routes RedSky →
 # is safe. For a low-traffic app this disk reuse — not the in-memory session — is
 # what actually saves the browser warm (requests are too sparse to hit memory).
 _HTTP_SESSION_CACHE = Path(__file__).parent / ".target_http_session.json"
-_HTTP_COOKIE_TTL = int(os.environ.get("TARGET_COOKIE_TTL", str(60 * 60)))
+# On Render, never age-reject a cached cookie (disk or Supabase) — checking
+# one costs nothing (an HTTP replay, no browser), and a genuinely dead cookie
+# already fails cleanly through the normal block-detection path (_ImpervaBlocked,
+# handled by every caller) rather than needing a preemptive age guess that's
+# also just been wrong in practice: Target cookies were empirically observed to
+# survive 27+ hours, far past the old 1h default. Off Render, keep the normal
+# TTL — a fresh mint is cheap there. Still overridable either way via
+# TARGET_COOKIE_TTL.
+_env_ttl = os.environ.get("TARGET_COOKIE_TTL")
+_HTTP_COOKIE_TTL = float(_env_ttl) if _env_ttl is not None else (float("inf") if _ON_RENDER else 60 * 60)
 _STATIC_ASSET_CACHE_PATH = Path(__file__).parent / ".target_asset_cache.pkl"
 
 # Pool of pre-minted cookies (backend/saved_target_cookies.json) tried BEFORE
