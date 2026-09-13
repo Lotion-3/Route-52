@@ -66,6 +66,25 @@ EXCLUDED_STORE_TERMS = [
     'hearing aid', 'hearing center',
     'pharmacy',
     'liquor store',
+    # Unrelated businesses that happen to start with a banner name, confirmed
+    # live 2026-09-13: is_kroger_banner()/is_walmart_store() match as a
+    # PREFIX (see kroger_async.py), and geo_utils.GROCERY_TYPES has to accept
+    # the generic 'store'/'department_store' Places types or real Target/
+    # Costco listings get excluded too (Google tags both of those ONLY as
+    # department_store/store — never grocery_or_supermarket — confirmed via
+    # a live Places lookup). So the type filter can't be tightened without
+    # breaking real chains; these are name-shape false positives instead:
+    # "Ralphs Sports Cards" (an unrelated Ohio collectibles shop, confirmed
+    # via Places: types=['establishment','point_of_interest','store'], zero
+    # connection to the Ralphs grocery chain) got routed to the Kroger API
+    # and failed there; worse, "Baker's Welding And Crane Service" matched
+    # the "baker's" banner, got REAL prices from Kroger's nearest-store
+    # fallback (a real, different Baker's supermarket), and was silently
+    # placed into the shopping route AT THE WELDING SHOP'S ADDRESS — a wrong
+    # answer, not just a failed one. Both would have been caught here.
+    'sports cards', 'trading cards', 'card shop', 'collectibles',
+    'welding', 'crane service', 'auto repair', 'auto body', 'collision center',
+    'business center',  # "Walmart Business Center" (electronics/furniture outlet, not a supercenter)
     # professional services — catches "William S Kroger Attorney", "Karim Meijer MD", etc.
     'attorney', 'law firm', ' law ', 'criminal defense', 'legal',
     ', md', ', do', ', pa', ', dds', ' m.d.', ' d.o.',
