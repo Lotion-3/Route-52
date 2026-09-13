@@ -39,6 +39,18 @@ ORS_ISOCHRONE_URL = "https://api.openrouteservice.org/v2/isochrones/driving-car"
 # --- STORE SEARCH CONFIG ---
 STORE_KEYWORDS = [
     'Walmart', 'Aldi', 'Kroger', 'Target', 'Meijer', 'Trader Joe\'s', 'Trader Joes', 'Costco', 'Jewel Osco',
+    # Kroger-family regional banners. kroger_async.py's is_kroger_banner/
+    # BANNER_TO_CHAIN already know how to route every one of these to the
+    # right Kroger API `chain` code (King Soopers falls back to Instacart via
+    # kingsoopers_pricing.py) -- they just weren't being searched for. Each
+    # confirmed as a real grocery_or_supermarket result via Google Places on
+    # 2026-09-06 (see probe_kroger_banners.py); "Owen's" and "Copps" were
+    # deliberately left out -- both banners are fully retired/rebranded and
+    # return nothing.
+    'King Soopers', 'City Market', 'Dillons', 'Food 4 Less', 'Foods Co',
+    'Fred Meyer', 'Fry\'s', 'Gerbes', 'Harris Teeter', 'Jay C', 'Mariano\'s',
+    'Pay Less', 'Pick \'n Save', 'Metro Market', 'QFC', 'Ralphs',
+    'Ruler Foods', 'Smith\'s', 'Baker\'s',
     # Australia.
     'IGA',
 ]

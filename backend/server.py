@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import json
 import math
 import threading
@@ -246,6 +247,9 @@ _RATE_LIMITS = {                     # bucket → (max requests, window seconds)
     "plan": (int(os.getenv("RATE_LIMIT_PLAN", "10")), 600.0),
     "prewarm": (int(os.getenv("RATE_LIMIT_PREWARM", "60")), 600.0),
     "autocomplete": (int(os.getenv("RATE_LIMIT_AUTOCOMPLETE", "120")), 60.0),
+    # Tight: this bucket only ever sees one caller (the daily local mint
+    # script), so a burst here is a sign of someone guessing SESSION_UPLOAD_TOKEN.
+    "internal_session": (int(os.getenv("RATE_LIMIT_INTERNAL_SESSION", "20")), 600.0),
 }
 
 
@@ -1417,6 +1421,50 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
         "user_location": {"lat": user_loc[0], "lng": user_loc[1]},
     }
     return res
+
+
+# ── Session cookie upload (internal — not client-facing) ────────────────────
+# Lets a script running on a real residential IP (a laptop — the datacenter
+# IPs on Render/GitHub Actions are what Target/Walmart's WAFs actually flag)
+# mint a fresh WAF cookie and push it here. This writes to the exact same
+# Supabase row target_pricing.py / walmart_pricing.py already read on every
+# request via session_store.load() — see _load_remote_session() in those
+# files — so nothing else needs to change for prod to pick it up.
+#
+# Bearer-token gated. Deliberately narrow: the token can only overwrite
+# session rows for the chains below, nothing else in Supabase — unlike the
+# service-role key, this is the only credential that should ever leave this
+# server or reach a laptop.
+_SESSION_UPLOAD_TOKEN = os.environ.get("SESSION_UPLOAD_TOKEN", "")
+_UPLOADABLE_CHAINS = {"target", "walmart", "aldi", "instacart"}
+
+
+class SessionUpload(BaseModel):
+    cookies: Dict[str, str]
+    ua: str = Field(default="", max_length=500)
+    store_id: Optional[str] = Field(default=None, max_length=40)
+    extra: Optional[Dict] = None
+
+
+@app.post("/internal/sessions/{chain}", dependencies=[Depends(rate_limit("internal_session"))])
+def upload_session(chain: str, body: SessionUpload, authorization: Optional[str] = Header(None)):
+    if not _SESSION_UPLOAD_TOKEN:
+        raise HTTPException(status_code=503, detail="Session upload disabled (SESSION_UPLOAD_TOKEN not set).")
+    token = (authorization or "").replace("Bearer ", "").strip()
+    # Constant-time compare — a timing side-channel on a short-lived cookie
+    # token is a low-value target, but it costs nothing to close here too.
+    if not token or not hmac.compare_digest(token, _SESSION_UPLOAD_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid or missing token.")
+    if chain not in _UPLOADABLE_CHAINS:
+        raise HTTPException(status_code=404, detail=f"Unknown chain {chain!r}.")
+    if not body.cookies:
+        raise HTTPException(status_code=400, detail="cookies must be non-empty.")
+    import session_store
+    ok = session_store.save(chain, {"cookies": body.cookies, "ua": body.ua},
+                             store_id=body.store_id, extra=body.extra)
+    if not ok:
+        raise HTTPException(status_code=502, detail="Supabase write failed.")
+    return {"ok": True, "chain": chain, "cookie_count": len(body.cookies)}
 
 
 app.include_router(router)
