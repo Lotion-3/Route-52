@@ -191,32 +191,40 @@ _pool_exhausted_logged = False # warn-once guard, mirrors the no-proxy warning p
 
 
 def _load_cookie_pool() -> list[dict]:
-    """Load the pool once at import. Missing/malformed file degrades to an
-    empty pool — _next_pool_session() then always returns None immediately,
-    so _ensure_http_session() falls straight through to the existing
-    remote/disk/warm chain, exactly like before this pool existed."""
-    if _COOKIE_POOL_FILE is None:
-        return []
+    """Load the pool once at import: local file entries first (oldest-first,
+    dev-only convenience — Render has none, gitignored), then the never-pruned
+    Supabase pool (session_store.load_pool, newest-first — see
+    mint_pool_refresh.py) appended after. Either source missing/empty just
+    shrinks the combined list; _next_pool_session() falls through to the
+    existing remote/disk/warm chain once it's exhausted, exactly like before
+    either pool existed."""
+    pool: list[dict] = []
+    if _COOKIE_POOL_FILE is not None:
+        try:
+            raw = json.loads(_COOKIE_POOL_FILE.read_text())
+            if isinstance(raw, list):
+                for i, entry in enumerate(raw):
+                    if isinstance(entry, dict) and entry.get("cookies") and entry.get("ua"):
+                        pool.append(entry)
+                    else:
+                        print(f"[Walmart] Cookie pool entry #{i + 1} missing cookies/ua — skipped.", flush=True)
+            else:
+                print("[Walmart] Cookie pool file is not a JSON array — ignoring.", flush=True)
+        except FileNotFoundError:
+            print(f"[Walmart] No cookie pool file at {_COOKIE_POOL_FILE} — "
+                  "checking the Supabase pool next.", flush=True)
+        except Exception as e:
+            print(f"[Walmart] Cookie pool file unreadable ({repr(e)[:100]}) — "
+                  "checking the Supabase pool next.", flush=True)
+    n_local = len(pool)
     try:
-        raw = json.loads(_COOKIE_POOL_FILE.read_text())
-    except FileNotFoundError:
-        print(f"[Walmart] No cookie pool file at {_COOKIE_POOL_FILE} — "
-              "skipping straight to remote/disk/warm.", flush=True)
-        return []
+        import session_store
+        remote_pool = session_store.load_pool("walmart")
+        pool.extend({"cookies": e["cookies"], "ua": e["ua"]} for e in remote_pool if e.get("cookies"))
     except Exception as e:
-        print(f"[Walmart] Cookie pool file unreadable ({repr(e)[:100]}) — "
-              "skipping straight to remote/disk/warm.", flush=True)
-        return []
-    if not isinstance(raw, list):
-        print("[Walmart] Cookie pool file is not a JSON array — ignoring.", flush=True)
-        return []
-    pool = []
-    for i, entry in enumerate(raw):
-        if isinstance(entry, dict) and entry.get("cookies") and entry.get("ua"):
-            pool.append(entry)
-        else:
-            print(f"[Walmart] Cookie pool entry #{i + 1} missing cookies/ua — skipped.", flush=True)
-    print(f"[Walmart] Loaded {len(pool)} pooled cookie(s) from {_COOKIE_POOL_FILE.name}.", flush=True)
+        print(f"[Walmart] Supabase pool unavailable ({repr(e)[:100]}).", flush=True)
+    print(f"[Walmart] Loaded {n_local} local + {len(pool) - n_local} Supabase-pool "
+          f"cookie(s) ({len(pool)} total).", flush=True)
     return pool
 
 

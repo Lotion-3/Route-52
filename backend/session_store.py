@@ -36,6 +36,28 @@ Supabase tables (run once — see schema.sql):
       detail      text         default '',
       created_at  timestamptz  not null default now()
     );
+
+    -- Long-lived, append-only cookie archive (2026-09-14). Distinct from
+    -- chain_sessions above (one row per chain, upserted/overwritten every
+    -- mint) -- this one row is inserted per mint and NEVER overwritten or
+    -- deleted, growing indefinitely as mint_pool_refresh.py is run over
+    -- weeks/months. Runtime tries them newest-first and just advances past
+    -- whichever ones fail this process, same as the local pool-file pattern
+    -- in walmart_pricing.py/target_pricing.py already used -- this is that
+    -- same idea, sourced from Supabase so it works on Render too, and never
+    -- pruned so a rare very-long-lived cookie (one was observed to survive
+    -- 41 days) doesn't get discarded just because it's old.
+    create table if not exists chain_session_pool (
+      id          bigserial primary key,
+      chain       text         not null,
+      cookies     jsonb        not null,
+      user_agent  text         default '',
+      store_id    text,
+      extra       jsonb        default '{}'::jsonb,
+      created_at  timestamptz  not null default now()
+    );
+    create index if not exists idx_chain_session_pool_chain_time
+      on chain_session_pool(chain, created_at desc);
 """
 from __future__ import annotations
 
@@ -87,6 +109,54 @@ def load(chain: str, max_age_seconds: int = 20 * 60) -> Optional[dict]:
     except Exception as e:
         print(f"[session_store] load({chain}) failed: {repr(e)[:120]}", flush=True)
         return None
+
+
+_POOL_TABLE = "chain_session_pool"
+
+
+def save_to_pool(chain: str, session: dict, store_id: Optional[str] = None,
+                  extra: Optional[dict] = None) -> bool:
+    """Append one session to `chain`'s long-lived pool. ALWAYS an insert --
+    never overwrites or deletes an existing row, unlike save() above. Meant
+    to be called many times over weeks/months (see mint_pool_refresh.py);
+    the pool only ever grows. Never raises."""
+    try:
+        from db import db
+        db.client.table(_POOL_TABLE).insert({
+            "chain": chain,
+            "cookies": session.get("cookies") or {},
+            "user_agent": session.get("ua") or session.get("user_agent") or "",
+            "store_id": store_id,
+            "extra": extra or {},
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"[session_store] save_to_pool({chain}) failed: {repr(e)[:120]}", flush=True)
+        return False
+
+
+def load_pool(chain: str, limit: int = 300) -> list[dict]:
+    """Return up to `limit` sessions for `chain`, newest first: [{'cookies',
+    'ua', 'store_id', 'extra'}, ...]. Callers walk this list and use the
+    first one that still validates/prices, advancing past dead ones without
+    ever deleting anything here. Empty list (never None) on any failure so
+    callers can `for s in load_pool(...):` unconditionally."""
+    try:
+        from db import db
+        resp = (db.client.table(_POOL_TABLE).select("*")
+                .eq("chain", chain).order("created_at", desc=True).limit(limit).execute())
+        return [
+            {
+                "cookies": row.get("cookies") or {},
+                "ua": row.get("user_agent") or "",
+                "store_id": row.get("store_id"),
+                "extra": row.get("extra") or {},
+            }
+            for row in (resp.data or [])
+        ]
+    except Exception as e:
+        print(f"[session_store] load_pool({chain}) failed: {repr(e)[:120]}", flush=True)
+        return []
 
 
 def save_assets(chain: str, assets: dict) -> bool:

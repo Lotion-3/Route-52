@@ -217,3 +217,23 @@ CREATE TABLE IF NOT EXISTS chain_block_events (
 );
 CREATE INDEX IF NOT EXISTS idx_chain_block_events_chain_time
     ON chain_block_events(chain, created_at);
+
+-- 12. Long-lived, append-only cookie archive (2026-09-14, session_store.py
+-- save_to_pool()/load_pool()). Distinct from chain_sessions above (one row
+-- per chain, overwritten every mint) -- one row is INSERTED per verified
+-- mint here and never overwritten or deleted, meant to accumulate over
+-- weeks/months via mint_pool_refresh.py. Runtime tries entries newest-first
+-- and just advances past whichever fail this process; nothing here is ever
+-- pruned, since an unusually long-lived cookie (one was observed to survive
+-- 41 days) shouldn't be discarded just for being old.
+CREATE TABLE IF NOT EXISTS chain_session_pool (
+    id          BIGSERIAL PRIMARY KEY,
+    chain       TEXT NOT NULL,
+    cookies     JSONB NOT NULL,
+    user_agent  TEXT DEFAULT '',
+    store_id    TEXT,
+    extra       JSONB DEFAULT '{}'::jsonb,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_chain_session_pool_chain_time
+    ON chain_session_pool(chain, created_at DESC);

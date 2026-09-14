@@ -212,20 +212,69 @@ def _load_remote_session() -> dict:
         return {}
 
 
+_pool_idx = 0  # cursor into _cookie_pool; persists for process lifetime
+
+
+def _load_cookie_pool() -> list[dict]:
+    """Long-lived, never-pruned Supabase pool (session_store.load_pool,
+    newest-first — see mint_pool_refresh.py). No local-file precedent for
+    ALDI (unlike Target/Walmart) — Supabase is the only source. Empty on any
+    failure; _get_session() then falls straight through to the single
+    legacy remote session / bootstrap, exactly as before this pool existed."""
+    try:
+        import session_store
+        pool = session_store.load_pool("aldi")
+        print(f"[ALDI] Loaded {len(pool)} Supabase-pool session(s).", flush=True)
+        return pool
+    except Exception as e:
+        print(f"[ALDI] Supabase pool unavailable ({repr(e)[:100]}).", flush=True)
+        return []
+
+
+_cookie_pool: list[dict] = _load_cookie_pool()
+
+
+def _next_pool_session() -> Optional[dict]:
+    """Return the next not-yet-tried pool entry, or None once exhausted.
+    Never re-offers one already tried this process — a block during actual
+    use calls _invalidate_session(), which clears _mem_cache and brings the
+    caller straight back here for the next entry."""
+    global _pool_idx
+    if _pool_idx < len(_cookie_pool):
+        entry = _cookie_pool[_pool_idx]
+        _pool_idx += 1
+        if entry.get("cookies", {}).get("__Host-instacart_sid"):
+            return {
+                "cookies": entry["cookies"],
+                "qp": (entry.get("extra") or {}).get("qp", ""),
+                "zone_id": (entry.get("extra") or {}).get("zone_id", ""),
+                "shop_id": entry.get("store_id") or (entry.get("extra") or {}).get("shop_id", ""),
+            }
+    return None
+
+
 def _get_session() -> tuple[requests.Session, str, str]:
-    """Return (session, zone_id, shop_id), using disk cache, the off-box
-    Supabase session, or re-bootstrapping (browser) as a last resort."""
+    """Return (session, zone_id, shop_id), using disk cache, the never-pruned
+    Supabase pool, the single legacy remote session, or re-bootstrapping
+    (browser) as a last resort."""
     global _mem_cache, _session
 
     if not _mem_cache:
         _mem_cache = _load_disk_session()
 
     if not _mem_cache:
-        # Off-box session (GitHub Actions -> Supabase) first, so the 512MB
-        # server skips launching a browser entirely; then disk (already
-        # checked above); then bootstrap here as the last resort.
-        remote = _load_remote_session()
-        if remote:
+        # Never-pruned Supabase pool first (many chances, see
+        # mint_pool_refresh.py), then the single legacy remote session, then
+        # disk (already checked above), then bootstrap here as the last
+        # resort — all so the 512MB server skips launching a browser as long
+        # as ANY cached session anywhere still works.
+        pool_session = _next_pool_session()
+        if pool_session:
+            cookies, qp, zone_id, shop_id = (
+                pool_session["cookies"], pool_session["qp"], pool_session["zone_id"], pool_session["shop_id"])
+            print(f"[ALDI] Reused pool session #{_pool_idx}/{len(_cookie_pool)} "
+                  "(Supabase, no browser).", flush=True)
+        elif (remote := _load_remote_session()):
             cookies, qp, zone_id, shop_id = (
                 remote["cookies"], remote["qp"], remote["zone_id"], remote["shop_id"])
             print("[ALDI] Reused off-box session (Supabase, no browser).", flush=True)
