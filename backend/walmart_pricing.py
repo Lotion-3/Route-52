@@ -190,22 +190,45 @@ _pool_idx: int = 0             # cursor into _cookie_pool; persists for process 
 _pool_exhausted_logged = False # warn-once guard, mirrors the no-proxy warning pattern
 
 
+def _entry_epoch(entry: dict) -> float:
+    """Best-effort recency for merge-sorting local-file and Supabase-pool
+    entries together. Local entries carry saved_at_epoch; Supabase entries
+    carry created_at (ISO). Unparseable/missing sorts to the very back
+    (0) rather than raising — a cookie with no known age is treated as the
+    least worth trying first, not excluded."""
+    if entry.get("saved_at_epoch"):
+        try:
+            return float(entry["saved_at_epoch"])
+        except (TypeError, ValueError):
+            return 0.0
+    created_at = entry.get("created_at")
+    if created_at:
+        try:
+            from datetime import datetime
+            return datetime.fromisoformat(str(created_at).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return 0.0
+    return 0.0
+
+
 def _load_cookie_pool() -> list[dict]:
-    """Load the pool once at import: local file entries first (oldest-first,
-    dev-only convenience — Render has none, gitignored), then the never-pruned
-    Supabase pool (session_store.load_pool, newest-first — see
-    mint_pool_refresh.py) appended after. Either source missing/empty just
-    shrinks the combined list; _next_pool_session() falls through to the
-    existing remote/disk/warm chain once it's exhausted, exactly like before
-    either pool existed."""
-    pool: list[dict] = []
+    """Load the pool once at import: local file entries (dev-only
+    convenience — Render has none, gitignored) merged with the never-pruned
+    Supabase pool (session_store.load_pool — see mint_pool_refresh.py),
+    sorted so the single most-recently-minted cookie from EITHER source
+    comes first — a freshly-appended Supabase entry must outrank a stale
+    local file entry, not be tried only after every local one is exhausted.
+    Either source missing/empty just shrinks the combined list;
+    _next_pool_session() falls through to the existing remote/disk/warm
+    chain once it's exhausted, exactly like before either pool existed."""
+    local: list[dict] = []
     if _COOKIE_POOL_FILE is not None:
         try:
             raw = json.loads(_COOKIE_POOL_FILE.read_text())
             if isinstance(raw, list):
                 for i, entry in enumerate(raw):
                     if isinstance(entry, dict) and entry.get("cookies") and entry.get("ua"):
-                        pool.append(entry)
+                        local.append(entry)
                     else:
                         print(f"[Walmart] Cookie pool entry #{i + 1} missing cookies/ua — skipped.", flush=True)
             else:
@@ -216,15 +239,16 @@ def _load_cookie_pool() -> list[dict]:
         except Exception as e:
             print(f"[Walmart] Cookie pool file unreadable ({repr(e)[:100]}) — "
                   "checking the Supabase pool next.", flush=True)
-    n_local = len(pool)
+    remote: list[dict] = []
     try:
         import session_store
-        remote_pool = session_store.load_pool("walmart")
-        pool.extend({"cookies": e["cookies"], "ua": e["ua"]} for e in remote_pool if e.get("cookies"))
+        remote = [{"cookies": e["cookies"], "ua": e["ua"], "created_at": e.get("created_at")}
+                  for e in session_store.load_pool("walmart") if e.get("cookies")]
     except Exception as e:
         print(f"[Walmart] Supabase pool unavailable ({repr(e)[:100]}).", flush=True)
-    print(f"[Walmart] Loaded {n_local} local + {len(pool) - n_local} Supabase-pool "
-          f"cookie(s) ({len(pool)} total).", flush=True)
+    pool = sorted(local + remote, key=_entry_epoch, reverse=True)
+    print(f"[Walmart] Loaded {len(local)} local + {len(remote)} Supabase-pool "
+          f"cookie(s), merged newest-first ({len(pool)} total).", flush=True)
     return pool
 
 

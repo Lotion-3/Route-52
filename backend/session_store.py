@@ -151,6 +151,7 @@ def load_pool(chain: str, limit: int = 300) -> list[dict]:
                 "ua": row.get("user_agent") or "",
                 "store_id": row.get("store_id"),
                 "extra": row.get("extra") or {},
+                "created_at": row.get("created_at"),  # lets callers merge-sort against other sources
             }
             for row in (resp.data or [])
         ]
