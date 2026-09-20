@@ -102,6 +102,18 @@ def is_iga_store(store_name: str) -> bool:
     return any(b in store_name.lower() for b in IGA_BANNERS)
 
 
+def is_in_australia(lat: float, lon: float) -> bool:
+    """Rough bounding box for mainland Australia + Tasmania.
+
+    Gates this AU-only igashop.com.au integration away from US IGA-banner
+    stores: IGA is also a common independent-grocer banner in the US
+    (especially rural Midwest), which this Metcash API has zero data for.
+    Without this check, a US "IGA" store name resolves to the nearest
+    *Australian* IGA (often thousands of km away) and gets priced against
+    that instead — wrong prices silently mislabeled as the real store."""
+    return -44.0 <= lat <= -10.0 and 112.0 <= lon <= 154.0
+
+
 def _fetch_products(term: str, store_id: str) -> list[dict]:
     """Plain public request — no cookies, no session, no WAF to defeat."""
     from curl_cffi import requests as _ccffi

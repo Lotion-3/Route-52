@@ -1,0 +1,13 @@
+{
+  "verdict": "SUCCESS",
+  "exit_code": 0,
+  "summary": "4/4 succeeded in 2.8s (first half completed: 2/2, second half: 2/2)",
+  "config": {
+    "term": "xterm-256color",
+    "item_count": "4",
+    "concurrency": "4",
+    "mint_index": 24
+  },
+  "stdout": "Loaded cookie from COOKIE_JSON env var (39 entries).\nReplaying saved Walmart cookie (39 entries) from THIS runner's IP -- 4 items @ concurrency=4\n\n  OK   bananas            55 products (1.57s)\n  OK   eggs               53 products (2.11s)\n  OK   bread              55 products (2.54s)\n  OK   milk               55 products (2.81s)\n\nRESULT: 4/4 succeeded in 2.8s (first half completed: 2/2, second half: 2/2)\n",
+  "stderr": ""
+}

@@ -806,9 +806,15 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 _store_failed("Walmart", f"{e} — falling back to Instacart")
 
         # Australia — IGA (not on Instacart, AU isn't covered, so no fallback).
+        # IGA is also a common independent-grocer banner in the US, which this
+        # AU-only integration has no data for — gate on real AU coordinates so
+        # a US "IGA" store doesn't get mislabeled with Australian prices.
         if is_iga_store(store_key):
+            ig_lat, ig_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
+            if not iga_pricing.is_in_australia(ig_lat, ig_lon):
+                _store_failed("IGA", f"'{store_key}' is a non-AU IGA-banner store — no pricing support yet")
+                return {"prices": {}, "label": "IGA"}
             try:
-                ig_lat, ig_lon = STORE_LOCATIONS.get(store_key, (lat, lon))
                 ig_store_id = iga_pricing.find_nearest_iga_store(ig_lat, ig_lon) or config.IGA_DEFAULT_STORE_ID
                 _, _, iga_prices = iga_pricing.price_all_iga(
                     to_buy_quantities, store_id=ig_store_id, lat=ig_lat, lon=ig_lon,
@@ -1293,7 +1299,7 @@ def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_c
                     continue
             except Exception as e:
                 _store_failed("Walmart", f"{e} — falling back to Instacart")
-        if is_iga_store(store_key):
+        if is_iga_store(store_key) and iga_pricing.is_in_australia(lat, lon):
             try:
                 ig_store_id = iga_pricing.find_nearest_iga_store(lat, lon) or config.IGA_DEFAULT_STORE_ID
                 _, _, iga_prices = iga_pricing.price_all_iga(

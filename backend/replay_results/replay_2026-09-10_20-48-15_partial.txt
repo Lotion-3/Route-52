@@ -1,0 +1,13 @@
+{
+  "verdict": "PARTIAL",
+  "exit_code": 1,
+  "summary": "0/4 succeeded in 0.5s (first half completed: 0/2, second half: 0/2)",
+  "config": {
+    "term": "xterm-256color",
+    "item_count": "4",
+    "concurrency": "4",
+    "mint_index": 22
+  },
+  "stdout": "Loaded cookie from COOKIE_JSON env var (39 entries).\nReplaying saved Walmart cookie (39 entries) from THIS runner's IP -- 4 items @ concurrency=4\n\n  FAIL bread              BLOCKED (px-captcha) status=200 (0.35s)\n  FAIL bananas            BLOCKED (px-captcha) status=200 (0.37s)\n  FAIL eggs               BLOCKED (px-captcha) status=200 (0.40s)\n  FAIL milk               BLOCKED (px-captcha) status=200 (0.52s)\n\nRESULT: 0/4 succeeded in 0.5s (first half completed: 0/2, second half: 0/2)\n",
+  "stderr": ""
+}

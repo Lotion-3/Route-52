@@ -1,0 +1,13 @@
+{
+  "verdict": "PARTIAL",
+  "exit_code": 1,
+  "summary": "4/5 succeeded in 2.9s (first half completed: 1/2, second half: 3/3)",
+  "config": {
+    "term": "xterm-256color",
+    "item_count": "5",
+    "concurrency": "5",
+    "mint_index": 0
+  },
+  "stdout": "Loaded cookie from COOKIE_JSON env var (39 entries).\nReplaying saved Walmart cookie (39 entries) from THIS runner's IP -- 5 items @ concurrency=5\n\n  FAIL chicken breast     BLOCKED (px-captcha) status=200 (0.93s)\n  OK   eggs               55 products (1.68s)\n  OK   bread              55 products (2.05s)\n  OK   bananas            55 products (2.27s)\n  OK   milk               55 products (2.90s)\n\nRESULT: 4/5 succeeded in 2.9s (first half completed: 1/2, second half: 3/3)\n",
+  "stderr": ""
+}
