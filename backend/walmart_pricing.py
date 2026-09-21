@@ -48,6 +48,8 @@ import os
 import pickle
 import random
 import re
+import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -148,12 +150,35 @@ _WARM_TRIES = int(os.environ.get("WALMART_WARM_TRIES", "2"))
 # can take the whole process down. `ALLOW_BROWSER_WARM` still exists as an
 # explicit override in either direction (e.g. "1" to force it back on for a
 # one-off debug session on Render, or "0" to disable it locally too).
+#
+# `WALMART_ALLOW_BROWSER_WARM` (2026-09-20): a Walmart-only override, checked
+# BEFORE the shared one above. Target/ALDI/Instacart stay on their own
+# independent gates in their own modules and don't read this var, so
+# whatever Walmart does here never reopens the OOM path for them.
+#
+# Walmart's own DEFAULT (no override set) is now TRUE even on Render
+# (2026-09-20) — unlike the other three chains, which still default to
+# blocked. This is deliberately a last-resort exception, not a blanket
+# re-opening of the risk documented above: by the time this path is
+# reached, the pool, the Supabase main session, AND the disk cache have
+# ALL already failed for this Walmart request specifically (see
+# _ensure_http_session — this is its final `else` branch). The website has
+# no other way to get Walmart prices at all (unlike the native app, which
+# can price Walmart from the user's own device — see
+# frontend/services/walmartDirect.ts and server.py's
+# generate_plan_phase1/phase2); accepting the OOM risk here is the explicit
+# trade the web version makes for that reason. Still overridable with
+# WALMART_ALLOW_BROWSER_WARM=0 if it turns out to bite harder in practice
+# than the alternative (Walmart just always excluded on web).
 _ON_RENDER = bool(os.environ.get("RENDER"))
+_walmart_allow_warm_override = os.environ.get("WALMART_ALLOW_BROWSER_WARM")
 _allow_warm_override = os.environ.get("ALLOW_BROWSER_WARM")
-if _allow_warm_override is not None:
+if _walmart_allow_warm_override is not None:
+    _ALLOW_BROWSER_WARM = _walmart_allow_warm_override.strip().lower() not in ("0", "false", "no")
+elif _allow_warm_override is not None:
     _ALLOW_BROWSER_WARM = _allow_warm_override.strip().lower() not in ("0", "false", "no")
 else:
-    _ALLOW_BROWSER_WARM = not _ON_RENDER
+    _ALLOW_BROWSER_WARM = True
 _IMPERSONATE = os.environ.get("WALMART_IMPERSONATE", "chrome")
 _NEXT_DATA_RE = re.compile(r'<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)</script>')
 
@@ -881,6 +906,57 @@ def _warm_http_session() -> dict:
     return {"cookies": cookies, "ua": ua}
 
 
+_WARM_SUBPROCESS_TIMEOUT = float(os.environ.get("WALMART_WARM_SUBPROCESS_TIMEOUT", "90"))
+
+
+def _warm_http_session_isolated() -> dict:
+    """Same result as _warm_http_session(), but run in a SEPARATE OS process
+    (walmart_warm_subprocess.py) — see that file's docstring for why: an OOM
+    kill during a live browser warm is a SIGKILL, not a Python exception,
+    so nothing in-process can catch it or let the rest of a request's
+    pricing continue. Isolating the warm in a child process turns that into
+    an ordinary subprocess failure the parent can catch and recover from —
+    used on Render (see _ensure_http_session's use of _ON_RENDER); local
+    dev keeps calling _warm_http_session() directly, no isolation needed
+    there. Raises _Blocked on any failure, same contract as the in-process
+    version, so callers don't need to know which one ran.
+
+    Result is handed back via a temp FILE, not stdout — importing
+    walmart_pricing (and its dependencies) in the child pulls in plenty of
+    their own unstructured print()s, so stdout can't be trusted to carry
+    only the JSON (confirmed 2026-09-21: it wasn't)."""
+    import tempfile
+    script = Path(__file__).parent / "walmart_warm_subprocess.py"
+    fd, out_path = tempfile.mkstemp(prefix="walmart_warm_", suffix=".json")
+    os.close(fd)
+    try:
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(script), out_path],
+                capture_output=True, timeout=_WARM_SUBPROCESS_TIMEOUT, text=True,
+            )
+        except subprocess.TimeoutExpired:
+            raise _Blocked(f"isolated warm timed out after {_WARM_SUBPROCESS_TIMEOUT:.0f}s", category="transport")
+        if proc.returncode != 0:
+            # A negative returncode on POSIX means the child was killed by
+            # that signal (-9 = SIGKILL = OOM) — exactly the failure mode
+            # this exists to survive; still just an ordinary caught
+            # exception here, not a crash of the process actually serving
+            # the request.
+            detail = (proc.stderr or "").strip()[:150]
+            raise _Blocked(f"isolated warm failed (exit {proc.returncode}): {detail}", category="transport")
+        try:
+            with open(out_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise _Blocked(f"isolated warm produced unparseable output: {repr(e)[:100]}", category="soft")
+    finally:
+        try:
+            os.unlink(out_path)
+        except Exception:
+            pass
+
+
 def _save_http_session(session: dict) -> None:
     """Persist the warmed cookie to disk so it survives restarts and can be reused
     next run (validated first) — see try_cached_http_session."""
@@ -985,11 +1061,17 @@ def _ensure_http_session() -> dict:
                 last: Optional[Exception] = None
                 for _ in range(_WARM_TRIES):
                     try:
-                        _http_session = _warm_http_session()
+                        # Isolated on Render — see _warm_http_session_isolated's
+                        # docstring: an OOM kill here must take down a throwaway
+                        # child process, not the server process handling this
+                        # (and every other concurrent) request. Local dev warms
+                        # in-process as always — no OOM risk worth the overhead.
+                        _http_session = _warm_http_session_isolated() if _ON_RENDER else _warm_http_session()
                         _session_source = "fallback"
                         _save_http_session(_http_session)
                         print(f"[Walmart] HTTP session warmed (curl_cffi"
-                              f"{', proxy' if _PROXY else ''}).", flush=True)
+                              f"{', proxy' if _PROXY else ''}"
+                              f"{', isolated' if _ON_RENDER else ''}).", flush=True)
                         break
                     except Exception as e:
                         last = e
@@ -997,6 +1079,57 @@ def _ensure_http_session() -> dict:
                 if _http_session is None:
                     raise _Blocked(f"warm failed after {_WARM_TRIES} tries: {repr(last)[:80]}")
     return _http_session
+
+
+def get_client_session_pool() -> list[dict]:
+    """EXPERIMENTAL (2026-09-20): hand out every cached cookie this process
+    knows about (local pool file + Supabase pool, newest first — the same
+    list _next_pool_session() walks one at a time) so a caller can test each
+    one itself instead of only getting the first live one. Raw dump, no live
+    validation here — that's the whole point, the caller (the phone) is
+    doing the validating. Never raises; empty list if the pool is empty."""
+    return [{"cookies": e["cookies"], "ua": e["ua"]} for e in _cookie_pool if e.get("cookies")]
+
+
+def get_client_session(allow_fresh_mint: bool = True) -> Optional[dict]:
+    """EXPERIMENTAL (2026-09-20): hand the current best Walmart cookie+UA to a
+    caller that wants to replay it FROM ITS OWN NETWORK, not this server's —
+    the native-app "price Walmart from the user's device" test. Same
+    pool → remote → disk chain as _ensure_http_session(); never raises —
+    returns None if nothing usable could be produced.
+
+    Deliberately does NOT set the in-memory _http_session / _session_source —
+    this server keeps pricing with its own session independently; handing a
+    cookie out for client-side reuse must not perturb server-side state.
+
+    allow_fresh_mint (default True): these Walmart cookies have empirically
+    been dying within minutes (confirmed 2026-09-20 — a disk-cached cookie
+    from a pricing run moments earlier already failed live validation), so
+    pool/remote/disk usually have nothing alive to hand out. When True and
+    every cached source is dead, falls back to a real CloakBrowser mint —
+    same _ALLOW_BROWSER_WARM gate as _ensure_http_session() (still off by
+    default on Render), and ~30-60s, not instant. Pass False for a
+    caller that wants the old instant-or-503 behavior."""
+    with _http_lock:
+        pool_session = _next_pool_session()
+        if pool_session is not None:
+            return {"cookies": pool_session["cookies"], "ua": pool_session["ua"]}
+        cached = _load_remote_session()
+        if cached and _validate_http_session(cached):
+            return {"cookies": cached["cookies"], "ua": cached["ua"]}
+        cached = _load_http_session()
+        if cached and _validate_http_session(cached):
+            return {"cookies": cached["cookies"], "ua": cached["ua"]}
+        if allow_fresh_mint and _ALLOW_BROWSER_WARM:
+            for _ in range(_WARM_TRIES):
+                try:
+                    fresh = _warm_http_session_isolated() if _ON_RENDER else _warm_http_session()
+                    _save_http_session(fresh)
+                    return {"cookies": fresh["cookies"], "ua": fresh["ua"]}
+                except Exception as e:
+                    print(f"[Walmart] get_client_session() mint attempt failed: {repr(e)[:100]}", flush=True)
+                    _rotate_proxy_session()
+    return None
 
 
 def try_cached_http_session() -> bool:

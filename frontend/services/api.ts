@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { priceWalmartAutoDevice } from './walmartDirect';
 
 // Backend port — must match localrun.bat → PORT=8002
 const BACKEND_PORT = 8002;
@@ -68,7 +69,7 @@ const getApiUrl = () => {
     return lanApiUrl();
 };
 
-const DEV_API_URL = getApiUrl();
+export const DEV_API_URL = getApiUrl();
 // Surfaces which backend is in use so it's obvious in the Expo / browser console.
 console.log(`[api] target=${API_TARGET ?? 'auto'} → ${DEV_API_URL}`);
 
@@ -254,47 +255,112 @@ const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number => {
     return Math.min(hi, Math.max(lo, n));
 };
 
+const buildPreferences = (params: ShoppingPlanRequest) => ({
+    address: params.location,
+    budget: Number.isFinite(Number(params.budget)) ? Number(params.budget) : 150,
+    shopping_time_hours: Number(params.time) || 3,
+    calorie_target: clampInt(params.calories, 800, 8000, 2000),
+    household_size: clampInt(params.household_size, 1, 12, 1),
+    days_plan: clampInt(params.days, 1, 30, 7),
+    meals_per_day: clampInt(params.meals_per_day, 1, 6, 3),
+    dietary_restrictions: params.dietary_restrictions || "",
+    // Allergens and the avoid-list were collected by the search screen and
+    // then dropped — they never reached the server, so a plan could contain
+    // something the user is allergic to.
+    allergies: params.allergies || "",
+    avoid_ingredients: params.avoid_ingredients || "",
+    health_issues: params.health_issues || "",
+    cuisines: params.cuisines || "",
+    experiment: params.experiment !== undefined ? params.experiment : true,
+    cook_time: params.cook_time || "30-45 minutes",
+    fridge_items: params.fridge_items || "",
+    has_costco_card: params.has_costco_card !== undefined ? params.has_costco_card : false,
+});
+
+// Legacy single-shot path: server prices every store including Walmart
+// itself (usually fails there — Render's shared egress IP keeps getting
+// rate-limited by Walmart's WAF, so Walmart just comes back excluded, same
+// as it always has). Used directly on web (no device-pricing option exists
+// there — see walmartDirect.ts) and as the native path's fallback if the
+// two-phase flow below fails for any reason.
+const generatePlanLegacy = async (params: ShoppingPlanRequest, signal: AbortSignal): Promise<ShoppingPlanResponse> => {
+    const response = await fetch(`${DEV_API_URL}/api/generate_plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ preferences: buildPreferences(params) }),
+        signal,
+    });
+    if (!response.ok) throw await errorFromResponse(response);
+    return response.json();
+};
+
+// Real Walmart pricing, sourced from the user's own device, WITH Walmart
+// genuinely competing for a spot in the optimized route (2026-09-20) — not
+// just listed alongside it. Two round trips to the server:
+//   phase1: prices every store EXCEPT Walmart, returns a token + the
+//           ingredient list Walmart needs prices for.
+//   (here): light-scan the cached cookie pool from THIS device (native
+//           only — a browser can't do this at all, see walmartDirect.ts),
+//           price the real list with whichever cookie works, falling back
+//           to a server-side live mint only as priceWalmartAutoDevice's own
+//           last resort.
+//   phase2: server merges those prices into the SAME price data phase1
+//           built and runs the SAME optimizer the legacy path uses —
+//           Walmart can now actually win a spot in the route.
+// See server.py's generate_plan_phase1/phase2 for the other half of this.
+const generatePlanDeviceWalmart = async (params: ShoppingPlanRequest, signal: AbortSignal): Promise<ShoppingPlanResponse> => {
+    const phase1 = await fetch(`${DEV_API_URL}/api/generate_plan/phase1`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ preferences: buildPreferences(params) }),
+        signal,
+    });
+    if (!phase1.ok) throw await errorFromResponse(phase1);
+    const { token, ingredients } = await phase1.json();
+
+    let walmartPrices: Record<string, { unit_price: number; description: string; brand: string; size_str: string }> = {};
+    let sessionSource = '';
+    try {
+        const { prices, sessionSource: src } = await priceWalmartAutoDevice(ingredients, (phase, done, total) =>
+            console.log(`[walmartDirect] ${phase} ${done}/${total}`),
+        );
+        sessionSource = src;
+        walmartPrices = Object.fromEntries(
+            Object.entries(prices).map(([name, it]) => [
+                name,
+                { unit_price: it.price, description: it.name, brand: it.brand, size_str: it.size },
+            ]),
+        );
+    } catch (e) {
+        // Device pricing failed entirely (pool scan AND server live-mint
+        // fallback both came up empty) — phase2 with empty walmart_prices
+        // just excludes Walmart, same as the legacy path when it fails.
+        console.log('[walmartDirect] device pricing failed entirely, continuing without Walmart:', e);
+    }
+
+    const phase2 = await fetch(`${DEV_API_URL}/api/generate_plan/phase2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, walmart_prices: walmartPrices, session_source: sessionSource }),
+        signal,
+    });
+    if (!phase2.ok) throw await errorFromResponse(phase2);
+    return phase2.json();
+};
+
 export const generatePlan = async (params: ShoppingPlanRequest): Promise<ShoppingPlanResponse> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), PLAN_TIMEOUT_MS);
     try {
-        const response = await fetch(`${DEV_API_URL}/api/generate_plan`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...authHeaders(),
-            },
-            body: JSON.stringify({
-                preferences: {
-                    address: params.location,
-                    budget: Number.isFinite(Number(params.budget)) ? Number(params.budget) : 150,
-                    shopping_time_hours: Number(params.time) || 3,
-                    calorie_target: clampInt(params.calories, 800, 8000, 2000),
-                    household_size: clampInt(params.household_size, 1, 12, 1),
-                    days_plan: clampInt(params.days, 1, 30, 7),
-                    meals_per_day: clampInt(params.meals_per_day, 1, 6, 3),
-                    dietary_restrictions: params.dietary_restrictions || "",
-                    // Allergens and the avoid-list were collected by the search
-                    // screen and then dropped — they never reached the server, so
-                    // a plan could contain something the user is allergic to.
-                    allergies: params.allergies || "",
-                    avoid_ingredients: params.avoid_ingredients || "",
-                    health_issues: params.health_issues || "",
-                    cuisines: params.cuisines || "",
-                    experiment: params.experiment !== undefined ? params.experiment : true,
-                    cook_time: params.cook_time || "30-45 minutes",
-                    fridge_items: params.fridge_items || "",
-                    has_costco_card: params.has_costco_card !== undefined ? params.has_costco_card : false
-                }
-            }),
-            signal: controller.signal,
-        });
-
-        if (!response.ok) {
-            throw await errorFromResponse(response);
+        if (Platform.OS === 'web') {
+            return await generatePlanLegacy(params, controller.signal);
         }
-
-        return await response.json();
+        try {
+            return await generatePlanDeviceWalmart(params, controller.signal);
+        } catch (e) {
+            console.log('[api] two-phase plan failed, falling back to legacy single-shot:', e);
+            return await generatePlanLegacy(params, controller.signal);
+        }
     } catch (error: any) {
         if (error?.name === 'AbortError') {
             console.error('API Error: plan request timed out');

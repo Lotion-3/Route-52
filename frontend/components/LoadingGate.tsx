@@ -93,7 +93,7 @@ export default function LoadingGate({ durationMs = 5000, onDone }: LoadingGatePr
 
 const styles = StyleSheet.create({
     overlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         zIndex: 1000,
         elevation: 1000,
     },

@@ -314,6 +314,24 @@ class UserPreferences(BaseModel):
 class PlanRequest(BaseModel):
     preferences: UserPreferences
 
+class WalmartPriceEntry(BaseModel):
+    """One ingredient's device-sourced Walmart price — see
+    frontend/services/walmartDirect.ts. unit_price is the matched product's
+    own price, NOT a qty-scaled total (the device path doesn't run the
+    buy-N-units optimization walmart_pricing.find_best_purchase does
+    server-side) — Phase 2 uses it as price_database's per-unit figure
+    directly, same slot _apply_prices() would fill from a server-priced
+    store."""
+    unit_price: float = Field(gt=0, le=500)
+    description: str = Field(default="", max_length=300)
+    brand: str = Field(default="", max_length=200)
+    size_str: str = Field(default="", max_length=100)
+
+class WalmartPhase2Request(BaseModel):
+    token: str = Field(min_length=1, max_length=128)
+    walmart_prices: dict[str, WalmartPriceEntry] = Field(default_factory=dict)
+    session_source: str = Field(default="", max_length=200)
+
 class PriceListItem(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     qty: float = Field(default=1.0, gt=0, le=10_000)
@@ -521,11 +539,43 @@ def autocomplete(q: str = ""):
         return {"suggestions": []}
 
 
-@router.post("/generate_plan", dependencies=[Depends(rate_limit("plan"))])
-def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
-    print(f"\nRECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
-    prefs = request.preferences
-    
+@router.get("/walmart/session", dependencies=[Depends(rate_limit("autocomplete"))])
+def walmart_client_session():
+    """EXPERIMENTAL (2026-09-20): hands the app a Walmart cookie+UA to replay
+    Walmart's search endpoint directly from the user's own device/IP instead
+    of this server's — see frontend/services/walmartDirect.ts. Testing
+    whether spreading requests across real user IPs avoids the single-IP
+    ban pattern Render's shared egress IP keeps hitting. Falls back to a
+    live CloakBrowser mint (~30-60s) when nothing cached validates — these
+    cookies have been observed dying within minutes, so that's the common
+    case, not the exception (see walmart_pricing.get_client_session)."""
+    session = walmart_pricing.get_client_session()
+    if not session:
+        raise HTTPException(status_code=503, detail="No live Walmart session available right now.")
+    return session
+
+
+@router.get("/walmart/session_pool", dependencies=[Depends(rate_limit("autocomplete"))])
+def walmart_client_session_pool():
+    """EXPERIMENTAL (2026-09-20): dumps every cached Walmart cookie this
+    process knows about (local pool file + Supabase pool), unvalidated, so
+    the app can test each one itself from the device and see how many
+    survive replay from a real phone — see
+    walmart_pricing.get_client_session_pool and
+    frontend/services/walmartDirect.ts's testWalmartCookiePoolDirect."""
+    return {"sessions": walmart_pricing.get_client_session_pool()}
+
+
+def _build_plan_pricing(prefs: "UserPreferences", defer_walmart: bool = False) -> dict:
+    """Steps 1-7: meal plan, store search, and pricing every store EXCEPT
+    (when defer_walmart) Walmart, whose key is left in price_database with
+    an empty dict rather than attempted or dropped — a caller wanting
+    Walmart included (see the /generate_plan/phase1+2 pair below) fills it
+    in itself before calling _finalize_plan. Stops short of the
+    drop-unpriced-stores / coupon / optimizer / response steps — those are
+    _finalize_plan's job, shared by both the single-shot legacy endpoint and
+    the two-phase native-device-pricing flow."""
+
     # 1. Geocode Address (Google first — same source as autocomplete — then OSM)
     user_loc = _geocode_address(prefs.address)
     if not user_loc:
@@ -708,6 +758,13 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
         k for k in list(price_database.keys())
         if not is_kroger_banner(k) and not is_aldi_store(k) and not is_meijer_store(k)
     ]
+    if defer_walmart:
+        # Left in price_database (empty dict) rather than removed — the
+        # phase2 endpoint fills it in from the device before _finalize_plan
+        # runs; if it never gets filled, _finalize_plan's normal
+        # drop-unpriced-stores step excludes it exactly like any other
+        # store real pricing couldn't cover.
+        loop_keys = [k for k in loop_keys if not is_walmart_store(k)]
 
     def _apply_prices(store_key, prices, log_each=False):
         """Write one store's real prices into price_database + product_details."""
@@ -945,6 +1002,35 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
                 "store": cc_meta.get("store", ""),
             }
 
+    return {
+        "prefs": prefs,
+        "user_loc": user_loc, "lat": lat, "lon": lon,
+        "meal_plan": meal_plan, "at_home_ingredients": at_home_ingredients,
+        "plan_warnings": plan_warnings, "to_buy_quantities": to_buy_quantities,
+        "STORE_LOCATIONS": STORE_LOCATIONS, "STORE_ADDRESSES": STORE_ADDRESSES,
+        "location_names": location_names, "durations_matrix": durations_matrix,
+        "price_database": price_database, "product_details": product_details,
+        "real_priced_keys": real_priced_keys, "costco_estimates": costco_estimates,
+        "shopping_list": shopping_list, "MAX_TIME_SECS": MAX_TIME_SECS,
+    }
+
+
+def _finalize_plan(ctx: dict, user_id: Optional[str]) -> dict:
+    """Drop-unpriced-stores through the response + save — the tail shared by
+    the legacy single-shot /generate_plan and phase2 of the two-phase native
+    flow (called after phase2 has merged device-priced Walmart into ctx, if
+    it found any). ctx is exactly _build_plan_pricing's return value, plus
+    whatever phase2 merged into it."""
+    prefs = ctx["prefs"]
+    user_loc, lat, lon = ctx["user_loc"], ctx["lat"], ctx["lon"]
+    meal_plan, at_home_ingredients = ctx["meal_plan"], ctx["at_home_ingredients"]
+    plan_warnings, to_buy_quantities = ctx["plan_warnings"], ctx["to_buy_quantities"]
+    STORE_LOCATIONS, STORE_ADDRESSES = ctx["STORE_LOCATIONS"], ctx["STORE_ADDRESSES"]
+    location_names, durations_matrix = ctx["location_names"], ctx["durations_matrix"]
+    price_database, product_details = ctx["price_database"], ctx["product_details"]
+    real_priced_keys, costco_estimates = ctx["real_priced_keys"], ctx["costco_estimates"]
+    shopping_list, MAX_TIME_SECS = ctx["shopping_list"], ctx["MAX_TIME_SECS"]
+
     # Drop any store that real pricing couldn't cover — no synthetic fallback.
     unpriced = [k for k in list(price_database.keys()) if k not in real_priced_keys]
     for k in unpriced:
@@ -1098,6 +1184,112 @@ def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_cur
 
     print(f"DEBUG SERVER: Sending benchmark {cheapest_single_store_name} to frontend", flush=True)
     return res
+
+
+@router.post("/generate_plan", dependencies=[Depends(rate_limit("plan"))])
+def generate_plan(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
+    """Legacy single-shot path (web, and any native client that skips the
+    two-phase flow): prices every store including Walmart itself, same as
+    always. See /generate_plan/phase1 + phase2 for the native path that lets
+    the device price Walmart instead."""
+    print(f"\nRECEIVED PLAN REQUEST (Server v{SERVER_VERSION})", flush=True)
+    ctx = _build_plan_pricing(request.preferences, defer_walmart=False)
+    return _finalize_plan(ctx, user_id)
+
+
+# ---------------------------------------------------------------------------
+# Two-phase native flow (2026-09-20): phase1 prices everything except
+# Walmart and hands the app the ingredient list; the app light-scans its
+# cached Walmart cookies from the DEVICE itself (see
+# frontend/services/walmartDirect.ts), prices Walmart with whichever one
+# works, and phase2 merges that in before running the SAME optimizer as the
+# legacy path — Walmart genuinely competes for a spot in the route, not
+# just listed alongside it. In-memory only: fine for Render's single
+# instance, and a lost context (restart, TTL) just means phase2 404s and
+# the app falls back to the legacy endpoint.
+# ---------------------------------------------------------------------------
+_PLAN_PHASE_TTL = float(os.environ.get("PLAN_PHASE_TTL_SECONDS", "600"))
+_plan_phase_lock = threading.Lock()
+_plan_phase_cache: dict[str, tuple[float, dict, Optional[str]]] = {}
+
+
+def _cache_plan_context(ctx: dict, user_id: Optional[str]) -> str:
+    token = uuid.uuid4().hex
+    expires_at = time.time() + _PLAN_PHASE_TTL
+    with _plan_phase_lock:
+        # Lazy-prune expired entries on every insert — no background thread
+        # needed for what's at most a handful of concurrent in-flight plans.
+        for k in [k for k, (exp, _, _) in _plan_phase_cache.items() if exp < time.time()]:
+            del _plan_phase_cache[k]
+        _plan_phase_cache[token] = (expires_at, ctx, user_id)
+    return token
+
+
+def _pop_plan_context(token: str) -> tuple[Optional[dict], Optional[str]]:
+    with _plan_phase_lock:
+        entry = _plan_phase_cache.pop(token, None)
+    if not entry:
+        return None, None
+    expires_at, ctx, user_id = entry
+    if expires_at < time.time():
+        return None, None
+    return ctx, user_id
+
+
+@router.post("/generate_plan/phase1", dependencies=[Depends(rate_limit("plan"))])
+def generate_plan_phase1(request: PlanRequest, user_id: Optional[str] = Depends(get_current_user)):
+    """Meal plan + every store priced except Walmart. Returns a token
+    (redeem with phase2 within _PLAN_PHASE_TTL) and the ingredient names the
+    app needs to price Walmart for on the device."""
+    print(f"\nRECEIVED PLAN REQUEST phase1 (Server v{SERVER_VERSION})", flush=True)
+    ctx = _build_plan_pricing(request.preferences, defer_walmart=True)
+    token = _cache_plan_context(ctx, user_id)
+    return {"token": token, "ingredients": list(ctx["to_buy_quantities"].keys())}
+
+
+@router.post("/generate_plan/phase2", dependencies=[Depends(rate_limit("plan"))])
+def generate_plan_phase2(request: WalmartPhase2Request):
+    """Merges device-priced Walmart items into the phase1 context (if any —
+    an empty walmart_prices just means Walmart gets excluded, same as the
+    legacy path when server-side pricing fails) and runs the same
+    finalize step (drop-unpriced, coupon, optimizer, response, save) the
+    legacy endpoint uses."""
+    ctx, user_id = _pop_plan_context(request.token)
+    if ctx is None:
+        raise HTTPException(status_code=410, detail="This plan's token expired or was already used — start over.")
+
+    price_database = ctx["price_database"]
+    product_details = ctx["product_details"]
+    real_priced_keys = ctx["real_priced_keys"]
+    to_buy_quantities = ctx["to_buy_quantities"]
+    walmart_keys = [k for k in price_database if is_walmart_store(k)]
+
+    for store_key in walmart_keys:
+        matched = 0
+        for ing_name, entry in request.walmart_prices.items():
+            if ing_name not in to_buy_quantities:
+                continue  # not part of this plan — ignore anything unexpected
+            key = ing_name.lower().strip()
+            price_database[store_key][key] = entry.unit_price
+            if entry.description:
+                product_details[(store_key, key)] = {
+                    "product_name": f"{entry.brand} {entry.description}".strip(),
+                    "size_str": entry.size_str,
+                    # Device pricing doesn't run the buy-N-units optimization
+                    # (walmart_pricing.find_best_purchase) — one unit is the
+                    # honest default rather than implying a real computed count.
+                    "units_to_buy": 1,
+                }
+            matched += 1
+        if matched:
+            real_priced_keys.add(store_key)
+            print(f"[Walmart] Device-priced {matched}/{len(to_buy_quantities)} ingredients "
+                  f"via {request.session_source or 'device'} — applying to '{store_key}'.", flush=True)
+        else:
+            _store_failed(store_key, "device pricing returned nothing — excluding from optimization")
+
+    return _finalize_plan(ctx, user_id)
+
 
 @router.post("/price_list", dependencies=[Depends(rate_limit("plan"))])
 def price_list(request: PriceListRequest, user_id: Optional[str] = Depends(get_current_user)):

@@ -299,18 +299,75 @@ def _load_cookie_pool() -> list[dict]:
 _cookie_pool: list[dict] = _load_cookie_pool()
 
 
+_VALIDATE_SLUG = "publix"
+_VALIDATE_COORDS = (39.7684, -86.1581)  # Indianapolis — any real US metro works, this just
+                                          # needs a retailer slug/coords pair that exists.
+# ShopCollectionScoped types postalCode as String! (non-nullable) — None
+# 400s with "invalid value" instead of a clean auth failure (confirmed
+# 2026-09-21), same schema quirk as aldi_pricing's validator hit.
+_VALIDATE_POSTAL = "46201"
+
+
+def _validate_pool_entry(cookies: dict, qp: str) -> bool:
+    """Cheap liveness check (no browser, one request): does a generic
+    ShopCollectionScoped call still authenticate with this cookie? Not
+    retailer-specific (the pooled session isn't either — RETAILER_REGISTRY
+    shares one session across every Instacart storefront), just confirms
+    the session itself is still accepted. Deliberately hand-rolled instead
+    of calling _gql() — that invalidates the ACTIVE _mem_cache/_session on a
+    401/403, which is wrong here: this is testing an unrelated POOL
+    CANDIDATE, not the session actually in use. Mirrors
+    walmart_pricing._validate_http_session / aldi_pricing's equivalent."""
+    if not cookies:
+        return False
+    s = requests.Session()
+    s.cookies.update(cookies)
+    if qp:
+        s.headers.update({"x-ic-qp": qp})
+    lat, lon = _VALIDATE_COORDS
+    params = {
+        "operationName": "ShopCollectionScoped",
+        "variables": json.dumps({
+            "retailerSlug": _VALIDATE_SLUG, "postalCode": _VALIDATE_POSTAL,
+            "coordinates": {"latitude": lat, "longitude": lon},
+            "addressId": None, "allowCanonicalFallback": False,
+        }, separators=(",", ":")),
+        "extensions": json.dumps(
+            {"persistedQuery": {"version": 1, "sha256Hash": HASHES["ShopCollectionScoped"]}},
+            separators=(",", ":"),
+        ),
+    }
+    headers = {**BASE_HEADERS, "x-page-view-id": str(uuid.uuid4()),
+               "referer": f"https://www.instacart.com/{_VALIDATE_SLUG}/search_v3/"}
+    try:
+        r = s.get(BASE_GQL, params=params, headers=headers, timeout=12)
+        if r.status_code != 200:
+            return False
+        data = r.json()
+        return "errors" not in data and bool(data.get("data"))
+    except Exception:
+        return False
+
+
 def _next_pool_session() -> Optional[dict]:
-    """Return the next not-yet-tried pool entry, or None once exhausted.
-    A block during actual use calls _invalidate_session(), which clears
-    _mem_cache and brings the caller straight back here for the next entry."""
+    """Return the next pool entry that passes a live validate, or None once
+    every remaining candidate has been tried this process — a light scan
+    (like walmart_pricing/target_pricing/aldi_pricing's _next_pool_session),
+    not a blind grab. A block during actual use still calls
+    _invalidate_session() on the ACTIVE session as before, independent of
+    this scan."""
     global _pool_idx
-    if _pool_idx < len(_cookie_pool):
+    while _pool_idx < len(_cookie_pool):
         entry = _cookie_pool[_pool_idx]
+        cookies = entry.get("cookies") or {}
+        qp = (entry.get("extra") or {}).get("qp", "")
+        zone_id = (entry.get("extra") or {}).get("zone_id", "")
+        idx = _pool_idx
         _pool_idx += 1
-        if entry.get("cookies"):
-            return {"cookies": entry["cookies"],
-                     "qp": (entry.get("extra") or {}).get("qp", ""),
-                     "zone_id": (entry.get("extra") or {}).get("zone_id", "")}
+        if _validate_pool_entry(cookies, qp):
+            print(f"[IC] Pool entry #{idx + 1}/{len(_cookie_pool)} validated live.", flush=True)
+            return {"cookies": cookies, "qp": qp, "zone_id": zone_id}
+        print(f"[IC] Pool entry #{idx + 1}/{len(_cookie_pool)} is dead — advancing.", flush=True)
     return None
 
 
